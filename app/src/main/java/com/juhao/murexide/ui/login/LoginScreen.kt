@@ -42,146 +42,143 @@ fun LoginScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        Text(
+            text = "欢迎登录",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+        // 邮箱输入框
+        OutlinedTextField(
+            value = email,
+            onValueChange = { 
+                email = it
+                emailError = null
+            },
+            label = { Text("邮箱") },
+            placeholder = { Text("请输入邮箱地址") },
+            isError = emailError != null,
+            supportingText = emailError?.let { { Text(it) } },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            singleLine = true,
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // 密码输入框
+        OutlinedTextField(
+            value = password,
+            onValueChange = { 
+                password = it
+                passwordError = null
+            },
+            label = { Text("密码") },
+            placeholder = { Text("请输入密码") },
+            visualTransformation = PasswordVisualTransformation(),
+            isError = passwordError != null,
+            supportingText = passwordError?.let { { Text(it) } },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // 错误提示
+        if (uiState is LoginUiState.Error) { 
             Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = (uiState as LoginUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 24.dp),
+                style = MaterialTheme.typography.bodyMedium
             )
-            
-            Text(
-                text = "欢迎登录",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+        }
 
-            // 邮箱输入框
-            OutlinedTextField(
-                value = email,
-                onValueChange = { 
-                    email = it
-                    emailError = null
-                },
-                label = { Text("邮箱") },
-                placeholder = { Text("请输入邮箱地址") },
-                isError = emailError != null,
-                supportingText = emailError?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // 密码输入框
-            OutlinedTextField(
-                value = password,
-                onValueChange = { 
-                    password = it
-                    passwordError = null
-                },
-                label = { Text("密码") },
-                placeholder = { Text("请输入密码") },
-                visualTransformation = PasswordVisualTransformation(),
-                isError = passwordError != null,
-                supportingText = passwordError?.let { { Text(it) } },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // 错误提示
-            if (uiState is LoginUiState.Error) { 
-                Text(
-                    text = (uiState as LoginUiState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 24.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // 登录按钮
-            Button(
-                onClick = {
-                    // 验证输入
-                    var hasError = false
-                    
-                    if (email.isBlank()) {
-                        emailError = "请输入邮箱"
-                        hasError = true
-                    } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                        emailError = "邮箱格式不正确"
-                        hasError = true
-                    }
-                    
-                    if (password.isBlank()) {
-                        passwordError = "请输入密码"
-                        hasError = true
-                    } else if (password.length < 6) {
-                        passwordError = "密码长度不能少于6位"
-                        hasError = true
-                    }
-                    
-                    if (!hasError) {
-                        viewModel.login(email, password)
-                    }
-                },
-                enabled = uiState !is LoginUiState.Loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                if (uiState is LoginUiState.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "登录",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-
-            // 其他选项
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(onClick = { /* TODO: 忘记密码 */ }) {
-                    Text("忘记密码？")
+        // 登录按钮
+        Button(
+            onClick = {
+                // 验证输入
+                var hasError = false
+                
+                if (email.isBlank()) {
+                    emailError = "请输入邮箱"
+                    hasError = true
+                } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                    emailError = "邮箱格式不正确"
+                    hasError = true
                 }
                 
-                TextButton(onClick = { /* TODO: 注册账号 */ }) {
-                    Text("注册账号")
+                if (password.isBlank()) {
+                    passwordError = "请输入密码"
+                    hasError = true
+                } else if (password.length < 6) {
+                    passwordError = "密码长度不能少于6位"
+                    hasError = true
                 }
+                
+                if (!hasError) {
+                    viewModel.login(email, password)
+                }
+            },
+            enabled = uiState !is LoginUiState.Loading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            if (uiState is LoginUiState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "登录",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        }
+
+        // 其他选项
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(onClick = { /* TODO: 忘记密码 */ }) {
+                Text("忘记密码？")
+            }
+            
+            TextButton(onClick = { /* TODO: 注册账号 */ }) {
+                Text("注册账号")
             }
         }
     }

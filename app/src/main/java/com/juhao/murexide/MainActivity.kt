@@ -20,6 +20,7 @@ import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.ui.conversation.ConversationListScreen
 import com.juhao.murexide.ui.login.LoginScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
+import com.juhao.murexide.R
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +70,7 @@ fun MainScreen(token: String, onLogout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("会话列表") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     TextButton(onClick = onLogout) {
                         Text("登出")

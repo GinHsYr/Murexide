@@ -80,10 +80,10 @@ fun ConversationItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(conversation.avatarUrl, 54.dp)
+        Avatar(conversation.avatarUrl, 52.dp)
         
         Spacer(modifier = Modifier.width(12.dp))
         
@@ -131,7 +131,8 @@ fun ConversationItem(
                     
                     Badges(
                         hasUnread = conversation.hasUnread,
-                        isAtMentioned = conversation.isAtMentioned
+                        isAtMentioned = conversation.isAtMentioned,
+                        unreadCount = conversation.unreadMessage
                     )
                 }
             }
@@ -140,7 +141,11 @@ fun ConversationItem(
 }
 
 @Composable
-private fun Badges(hasUnread: Boolean, isAtMentioned: Boolean) {
+private fun Badges(
+    hasUnread: Boolean, 
+    isAtMentioned: Boolean,
+    unreadCount: Int,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (isAtMentioned) {
             Badge(
@@ -156,7 +161,7 @@ private fun Badges(hasUnread: Boolean, isAtMentioned: Boolean) {
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Text("新", style = MaterialTheme.typography.labelSmall)
+                Text("$unreadCount", style = MaterialTheme.typography.labelSmall)
             }
         }
     }
