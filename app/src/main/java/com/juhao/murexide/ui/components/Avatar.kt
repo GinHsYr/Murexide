@@ -1,4 +1,4 @@
-package com.juhao.murexide.utils
+package com.juhao.murexide.ui.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape

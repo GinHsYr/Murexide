@@ -113,23 +113,13 @@ fun LoginScreen(
             )
 
             // 错误提示
-            if (uiState is LoginUiState.Error) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = (uiState as LoginUiState.Error).message,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            if (uiState is LoginUiState.Error) { 
+                Text(
+                    text = (uiState as LoginUiState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 24.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             // 登录按钮

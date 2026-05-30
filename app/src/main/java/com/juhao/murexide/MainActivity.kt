@@ -13,10 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.juhao.murexide.datastore.TokenStorage
@@ -26,46 +23,41 @@ import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private var isLoggedIn by mutableStateOf(false)
-    private var token by mutableStateOf("")
-    private lateinit var tokenStorage: TokenStorage
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        tokenStorage = TokenStorage(this)
-        
-        lifecycleScope.launch {
-            if (tokenStorage.isLoggedIn()) {
-                token = tokenStorage.getToken() ?: ""
-                isLoggedIn = true
-            }
-        }
+        val tokenStorage = TokenStorage(this)
         
         setContent {
+            var isLoggedIn by remember { mutableStateOf(true) }
+            var token by remember { mutableStateOf("") }
+            
+            LaunchedEffect(Unit) {
+                isLoggedIn = tokenStorage.isLoggedIn()
+                token = tokenStorage.getToken() ?: ""
+            }
+            
             MurexideTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     if (isLoggedIn) {
-                        MainScreen(token, onLogout = {
+                        MainScreen(token) {
                             lifecycleScope.launch {
                                 tokenStorage.clearToken()
                                 isLoggedIn = false
                                 token = ""
                                 Toast.makeText(this@MainActivity, "已登出", Toast.LENGTH_SHORT).show()
                             }
-                        })
+                        }
                     } else {
-                        LoginScreen(
-                            onLoginSuccess = { successToken ->
+                        LoginScreen { successToken ->
+                            lifecycleScope.launch {
+                                tokenStorage.saveToken(successToken)
                                 token = successToken
-                                lifecycleScope.launch {
-                                    tokenStorage.saveToken(successToken)
-                                }
                                 isLoggedIn = true
                                 Toast.makeText(this@MainActivity, "登录成功", Toast.LENGTH_SHORT).show()
                             }
-                        )
+                        }
                     }
                 }
             }

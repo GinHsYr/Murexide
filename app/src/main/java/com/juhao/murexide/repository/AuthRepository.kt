@@ -13,7 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class AuthRepository {
     private val client = NetworkClient.okHttpClient
-    private val baseUrl = NetworkClient.getBaseUrl()
+    private val baseUrl = NetworkClient.BASE_URL
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun login(email: String, password: String, deviceId: String): Result<String> {

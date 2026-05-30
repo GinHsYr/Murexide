@@ -12,7 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class ConversationRepository {
     private val client = NetworkClient.okHttpClient
-    private val baseUrl = NetworkClient.getBaseUrl()
+    private val baseUrl = NetworkClient.BASE_URL
 
     suspend fun getConversationList(token: String, md5: String = ""): Result<List<ConversationItem>> {
         return withContext(Dispatchers.IO) {
