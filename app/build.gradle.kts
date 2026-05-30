@@ -90,7 +90,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.coil.compose)
-    implementation(libs.coil.network.okhttp)
 
     // Wire (Protobuf)
     implementation(libs.wire.runtime)
