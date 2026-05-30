@@ -40,6 +40,31 @@ android {
     buildFeatures {
         compose = true
     }
+    androidResources {
+        localeFilters.clear()
+        localeFilters.addAll(listOf("zh", "en"))
+    }
+    packaging {
+        resources {
+            excludes.addAll(
+                listOf(
+                    "META-INF/*.kotlin_module",
+                    "META-INF/kotlin-tooling-metadata.json",
+                    "META-INF/*.version",
+                    "META-INF/versions/**",
+                    "META-INF/LICENSE*",
+                    "META-INF/NOTICE*",
+                    "META-INF/AL2.0",
+                    "META-INF/LGPL2.1"
+            ))
+        }
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        dex {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 wire {

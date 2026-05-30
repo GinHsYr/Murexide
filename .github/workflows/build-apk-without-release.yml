@@ -1,7 +1,9 @@
-name: Build Snapshot APK
+name: Build Test APK
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -17,14 +19,14 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'ci-version.gradle') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -35,92 +37,29 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Get version and commit hash
-        id: version
-        run: |
-          BASE_VERSION=$(grep -E '^\s*versionName\s*=\s*"' app/build.gradle.kts | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          FINAL_VERSION="${BASE_VERSION}-${COMMIT_HASH}"
-          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
-          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "final_version=$FINAL_VERSION" >> $GITHUB_OUTPUT
-
       - name: Build and Sign APK
         run: |
-          cat > ci-version.gradle << 'EOF'
-          allprojects { project ->
-            project.afterEvaluate {
-              if (project.hasProperty('android')) {
-                project.android.defaultConfig.versionName = project.findProperty('customVersion') ?: project.android.defaultConfig.versionName
-              }
-            }
-          }
-          EOF
-
           ./gradlew assembleRelease \
-            -I ci-version.gradle \
-            -PcustomVersion="${{ steps.version.outputs.final_version }}" \
             -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Signed APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
+          name: app-release
           path: app/build/outputs/apk/release/*.apk
 
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+      - name: Get commit hash
+        id: commit
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Get commit list
-        id: commits
+      - name: Get latest commit message
+        id: commit_msg
         run: |
-          {
-            echo 'list<<EOF'
-            git log -5 --format='- %s (%an)' --no-merges
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create Prerelease
-        uses: softprops/action-gh-release@v2
-        with:
-          files: app/build/outputs/apk/release/*.apk
-          name: ${{ steps.version.outputs.final_version }}
-          tag_name: ${{ steps.version.outputs.final_version }}
-          body: |
-            ### 🎉 快照版发布！
-            - **版本**: ${{ steps.version.outputs.final_version }}
-            - **基础版本**: ${{ steps.version.outputs.base_version }}
-            - **Commit**: ${{ steps.version.outputs.commit_hash }}
-            - **触发者**: ${{ github.actor }}
-            - **构建时间**: ${{ steps.date.outputs.date }}
-            
-            ### 最近提交
-            ${{ steps.commits.outputs.list }}
-          draft: false
-          prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare build message
-        run: |
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.final_version }}"
-          cat > build-body.md <<EOF
-          ### 快照版本构建完成
-
-          **版本**: ${{ steps.version.outputs.final_version }}
-          **触发者**: ${{ github.actor }}
-          **构建时间**: ${{ steps.date.outputs.date }}
-
-          ### 最近提交
-          ${{ steps.commits.outputs.list }}
-
-          ### 下载
-          [点击下载 APK](${RELEASE_URL})
-          EOF
+          MSG=$(git log -1 --format='%s')
+          echo "msg=$MSG" >> $GITHUB_OUTPUT
 
       - name: Notify bot about build
         continue-on-error: true
@@ -200,9 +139,15 @@ jobs:
               -d "$payload"
           }
 
-          BUILD_MESSAGE="$(cat build-body.md)"
+          MESSAGE="**🔨 构建完成**
 
-          if ! send_markdown "$BUILD_MESSAGE"; then
+**提交**: ${{ steps.commit.outputs.hash }}
+**信息**: ${{ steps.commit_msg.outputs.msg }}
+**触发者**: ${{ github.actor }}
+
+**下载**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if ! send_markdown "$MESSAGE"; then
             echo "Markdown bot notification failed"
             exit 0
           fi

@@ -1,10 +1,12 @@
-name: Build Snapshot APK
+name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,112 +19,69 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'ci-version.gradle') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      - name: Get version and commit hash
-        id: version
-        run: |
-          BASE_VERSION=$(grep -E '^\s*versionName\s*=\s*"' app/build.gradle.kts | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          FINAL_VERSION="${BASE_VERSION}-${COMMIT_HASH}"
-          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
-          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
-          echo "final_version=$FINAL_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build and Sign APK
-        run: |
-          cat > ci-version.gradle << 'EOF'
-          allprojects { project ->
-            project.afterEvaluate {
-              if (project.hasProperty('android')) {
-                project.android.defaultConfig.versionName = project.findProperty('customVersion') ?: project.android.defaultConfig.versionName
-              }
-            }
-          }
-          EOF
-
-          ./gradlew assembleRelease \
-            -I ci-version.gradle \
-            -PcustomVersion="${{ steps.version.outputs.final_version }}" \
-            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      - name: Upload Signed APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-signed
-          path: app/build/outputs/apk/release/*.apk
 
       - name: Get current date
         id: date
         run: echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
 
-      - name: Get commit list
-        id: commits
+      - name: Build and Sign APK
         run: |
-          {
-            echo 'list<<EOF'
-            git log -5 --format='- %s (%an)' --no-merges
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
-      - name: Create Prerelease
-        uses: softprops/action-gh-release@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          files: app/build/outputs/apk/release/*.apk
-          name: ${{ steps.version.outputs.final_version }}
-          tag_name: ${{ steps.version.outputs.final_version }}
-          body: |
-            ### 🎉 快照版发布！
-            - **版本**: ${{ steps.version.outputs.final_version }}
-            - **基础版本**: ${{ steps.version.outputs.base_version }}
-            - **Commit**: ${{ steps.version.outputs.commit_hash }}
-            - **触发者**: ${{ github.actor }}
-            - **构建时间**: ${{ steps.date.outputs.date }}
-            
-            ### 最近提交
-            ${{ steps.commits.outputs.list }}
-          draft: false
-          prerelease: true
+          node-version: '20'
+
+      - name: Generate changelog and create release
+        run: npx changelogithub
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Prepare build message
+      - name: Upload APK to release
         run: |
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.final_version }}"
+          APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "APK file: $APK_FILE"
+          gh release upload ${{ github.ref_name }} "$APK_FILE"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Prepare release announcement
+        id: build_message
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           cat > build-body.md <<EOF
-          ### 快照版本构建完成
+          ### 🎉 正式版发布！
 
-          **版本**: ${{ steps.version.outputs.final_version }}
-          **触发者**: ${{ github.actor }}
-          **构建时间**: ${{ steps.date.outputs.date }}
+          - **版本**: ${VERSION}
+          - **触发者**: ${{ github.actor }}
+          - **构建时间**: ${{ steps.date.outputs.date }}
 
-          ### 最近提交
-          ${{ steps.commits.outputs.list }}
-
-          ### 下载
-          [点击下载 APK](${RELEASE_URL})
+          ### 下载地址
+          https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
           EOF
 
-      - name: Notify bot about build
+      - name: Notify bot about release
         continue-on-error: true
         env:
           BOT_SEND_TOKEN_VAR: ${{ vars.YHCHAT_BOT_SEND_TOKEN }}
@@ -203,7 +162,7 @@ jobs:
           BUILD_MESSAGE="$(cat build-body.md)"
 
           if ! send_markdown "$BUILD_MESSAGE"; then
-            echo "Markdown bot notification failed"
+            echo "Release markdown notification failed"
             exit 0
           fi
 
@@ -220,3 +179,5 @@ jobs:
               echo "APK size $(($APK_SIZE / 1048576))MB >= 20MB, sent link only"
             fi
           fi
+
+          echo "Release announcement sent successfully"

@@ -26,7 +26,7 @@ import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private var isLoggedIn by mutableStateOf(true)
+    private var isLoggedIn by mutableStateOf(false)
     private var token by mutableStateOf("")
     private lateinit var tokenStorage: TokenStorage
 
@@ -37,8 +37,7 @@ class MainActivity : ComponentActivity() {
         tokenStorage = TokenStorage(this)
 
         lifecycleScope.launch {
-            val savedToken = tokenStorage.getToken()
-            if (savedToken != null) {
+            if (tokenStorage.isLoggedIn()) {
                 token = savedToken
                 isLoggedIn = true
             }
@@ -60,6 +59,9 @@ class MainActivity : ComponentActivity() {
                         LoginScreen(
                             onLoginSuccess = { successToken ->
                                 token = successToken
+                                lifecycleScope.launch {
+                                    tokenStorage.saveToken(successToken)
+                                }
                                 isLoggedIn = true
                                 Toast.makeText(this@MainActivity, "登录成功", Toast.LENGTH_SHORT).show()
                             }

@@ -32,18 +32,12 @@ class TokenStorage(private val context: Context) {
             .first()
     }
 
-    /**
-     * 清除 Token（登出时使用）
-     */
     suspend fun clearToken() {
         context.dataStore.edit { preferences ->
             preferences.remove(TOKEN_KEY)
         }
     }
 
-    /**
-     * 检查是否已登录
-     */
     suspend fun isLoggedIn(): Boolean {
         return getToken() != null
     }
