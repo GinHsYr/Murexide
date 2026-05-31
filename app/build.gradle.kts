@@ -90,6 +90,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
 
     implementation(libs.icons.lucide)
 

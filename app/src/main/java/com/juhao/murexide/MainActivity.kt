@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.res.stringResource
 import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.ui.chat.ChatActivity
+import com.juhao.murexide.ui.login.LoginActivity
 import com.juhao.murexide.ui.conversation.ConversationListScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch

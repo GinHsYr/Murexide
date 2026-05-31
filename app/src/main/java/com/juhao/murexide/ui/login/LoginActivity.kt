@@ -1,4 +1,4 @@
-package com.juhao.murexide
+package com.juhao.murexide.ui.login
 
 import android.content.Context
 import android.content.Intent
@@ -12,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.juhao.murexide.datastore.TokenStorage
-import com.juhao.murexide.ui.login.LoginScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 

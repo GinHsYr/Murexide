@@ -215,21 +215,13 @@ fun ChatScreen(
                             itemsIndexed(
                                 items = uiState.messages
                             ) { index, message ->
-                                // reverseLayout = true 时，index 0 是最新消息（顶部），index 越大越旧（底部）
-                                // 判断是否是连续消息（同一个发送者）
-                                val newerMessage = if (index > 0) uiState.messages[index - 1] else null  // index-1 = 更新的消息
-                                val olderMessage = if (index < uiState.messages.size - 1) uiState.messages[index + 1] else null  // index+1 = 更旧的消息
+                                val newerMessage = if (index > 0) uiState.messages[index - 1] else null
+                                val olderMessage = if (index < uiState.messages.size - 1) uiState.messages[index + 1] else null
                                 
-                                // isFirstFromSender: 这是该发送者连续消息组的第一条（时间最新，视觉最上）
-                                // 如果上一条（更新的）不是同一个人，或者这是第一条消息
                                 val isFirstFromSender = newerMessage == null || newerMessage.senderId != message.senderId
-                                
-                                // isLastFromSender: 这是该发送者连续消息组的最后一条（时间最旧，视觉最下）
-                                // 如果下一条（更旧的）不是同一个人，或者这是最后一条消息
                                 val isLastFromSender = olderMessage == null || olderMessage.senderId != message.senderId
-                                
-                                // isNextSameSender: 下一条消息（更旧的）是否是同一个人
-                                val isNextSameSender = olderMessage != null && olderMessage.senderId == message.senderId
+                                val isOlderSameSender = olderMessage != null && olderMessage.senderId == message.senderId
+                                val isNewerSameSender = newerMessage != null && newerMessage.senderId == message.senderId
                                 
                                 MessageBubble(
                                     message = message,
@@ -240,7 +232,7 @@ fun ChatScreen(
                                     isAdmin = uiState.isAdmin,
                                     isLastFromSender = isLastFromSender,
                                     isFirstFromSender = isFirstFromSender,
-                                    isNextSameSender = isNextSameSender
+                                    isOlderSameSender = isOlderSameSender
                                 )
                             }
                         }

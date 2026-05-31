@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.composables.icons.lucide.*
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.ui.chat.EditDialogState
@@ -37,7 +38,8 @@ fun MessageBubble(
     isAdmin: Boolean = false,
     isLastFromSender: Boolean = true,
     isFirstFromSender: Boolean = true,
-    isNextSameSender: Boolean = false
+    isOlderSameSender: Boolean = false,
+    isNewerSameSender: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val isMine = message.isMine
@@ -81,8 +83,10 @@ fun MessageBubble(
                     onLongClick = { showMenu = true }
                 )
                 .padding(
-                    horizontal = 8.dp,
-                    vertical = if (isNextSameSender) 1.dp else 4.dp
+                    start = 8.dp,
+                    end = 8.dp,
+                    top = if (isOlderSameSender) 1.dp else 4.dp,
+                    bottom = if (isNewerSameSender) 1.dp else 4.dp
                 ),
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
@@ -133,9 +137,18 @@ fun MessageBubble(
                             }
 
                             if (message.hasImages && message.imageUrl != null) {
+                                val builder = ImageRequest.Builder(context)
+                                    .data(message.imageUrl)
+                                    
+                                if (url.contains("chat-img.jwznb.com") || 
+                                    url.contains("jwznb.com") || 
+                                    url.contains("myapp.jwznb.com")) {
+                                    builder.setHeader("Referer", "https://myapp.jwznb.com")
+                                }
+                                
                                 Spacer(modifier = Modifier.height(2.dp))
                                 AsyncImage(
-                                    model = message.imageUrl,
+                                    model = builder.build(),
                                     contentDescription = null,
                                     contentScale = ContentScale.FillWidth,
                                     modifier = Modifier
@@ -278,7 +291,7 @@ fun MessageBubble(
                 }
             }
 
-            if (isMine) {
+            if (isMine && isFirstFromSender) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Avatar(
                     url = message.senderAvatar,
