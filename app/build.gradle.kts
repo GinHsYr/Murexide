@@ -91,6 +91,8 @@ dependencies {
 
     implementation(libs.coil.compose)
 
+    implementation(libs.icons.lucide)
+
     // Wire (Protobuf)
     implementation(libs.wire.runtime)
 

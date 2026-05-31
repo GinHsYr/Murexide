@@ -15,13 +15,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.res.stringResource
 import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.conversation.ConversationListScreen
-import com.juhao.murexide.ui.login.LoginScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
-import com.juhao.murexide.R
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -30,34 +30,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val tokenStorage = TokenStorage(this)
-        
-        setContent {
-            var token by remember { mutableStateOf("") }
-            
-            lifecycleScope.launch {
-                token = tokenStorage.getToken() ?: ""
+
+        lifecycleScope.launch {
+            val token = tokenStorage.getToken()
+            if (token == null) {
+                LoginActivity.start(this@MainActivity)
+                finish()
+                return@launch
             }
-            
-            MurexideTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    if (token != "") {
+
+            setContent {
+                MurexideTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
                         MainScreen(token) {
                             lifecycleScope.launch {
                                 tokenStorage.clearToken()
-                                token = ""
                                 Toast.makeText(this@MainActivity, "已登出", Toast.LENGTH_SHORT).show()
+                                LoginActivity.start(this@MainActivity)
+                                finish()
                             }
                         }
-                    } else {
-                        LoginScreen(
-                            onLoginSuccess = { successToken ->
-                                lifecycleScope.launch {
-                                    tokenStorage.saveToken(successToken)
-                                    token = successToken
-                                    Toast.makeText(this@MainActivity, "登录成功", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        )
                     }
                 }
             }
@@ -68,6 +60,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(token: String, onLogout: () -> Unit) {
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -82,8 +76,14 @@ fun MainScreen(token: String, onLogout: () -> Unit) {
     ) { paddingValues ->
         ConversationListScreen(
             token = token,
-            onConversationClick = { chatId ->
-                // TODO: 跳转到聊天页面
+            onConversationClick = { currentChat ->
+                ChatActivity.start(
+                    context = context,
+                    chatId = currentChat.chatId,
+                    chatType = currentChat.chatType,
+                    chatName = currentChat.displayName,
+                    chatAvatar = currentChat.avatarUrl,
+                )
             },
             modifier = Modifier.padding(paddingValues)
         )

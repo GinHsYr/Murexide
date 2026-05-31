@@ -1,0 +1,171 @@
+package com.juhao.murexide.data
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class MessageItem(
+    val msgId: String,
+    val senderId: String,
+    val senderName: String,
+    val senderAvatar: String,
+    val chatId: String,
+    val chatType: Int,
+    val content: String,
+    val contentType: Int,
+    val timestamp: Long,
+    val msgSeq: Long = 0,
+    val direction: String,
+    val isRecalled: Boolean = false,
+    val isEdited: Boolean = false,
+    val quoteMsgId: String? = null,
+    val quoteMsgText: String? = null,
+    val quoteImageUrl: String? = null,
+    val images: List<String> = emptyList(),
+    val audioUrl: String? = null,
+    val audioTime: Int? = null,
+    val videoUrl: String? = null,
+    val fileUrl: String? = null,
+    val fileName: String? = null,
+    val fileSize: Long? = null,
+    val cmdName: String? = null,
+    val cmdId: Long? = null,
+    val cmdType: Int? = null,
+    val tags: List<MessageTag> = emptyList()
+) {
+    val isMine: Boolean
+        get() = direction == "right"
+
+    val isTextMessage: Boolean
+        get() = contentType == 1
+
+    val isImageMessage: Boolean
+        get() = contentType == 2
+
+    val isMarkdownMessage: Boolean
+        get() = contentType == 3
+
+    val isFileMessage: Boolean
+        get() = contentType == 4
+
+    val isVideoMessage: Boolean
+        get() = contentType == 10
+
+    val isAudioMessage: Boolean
+        get() = contentType == 11
+
+    val hasImages: Boolean
+        get() = images.isNotEmpty() || (!imageUrl.isNullOrBlank())
+
+    val imageUrl: String?
+        get() = images.firstOrNull()
+
+    companion object {
+        const val CONTENT_TYPE_TEXT = 1
+        const val CONTENT_TYPE_IMAGE = 2
+        const val CONTENT_TYPE_MARKDOWN = 3
+        const val CONTENT_TYPE_FILE = 4
+        const val CONTENT_TYPE_VIDEO = 10
+        const val CONTENT_TYPE_AUDIO = 11
+    }
+}
+
+@Serializable
+data class MessageTag(
+    val id: Long,
+    val text: String,
+    val color: String
+)
+
+@Serializable
+data class QuoteMessage(
+    val msgId: String,
+    val senderId: String,
+    val senderName: String,
+    val content: String,
+    val imageUrl: String? = null
+)
+
+@Serializable
+data class SendMessageRequest(
+    val msgId: String,
+    val chatId: String,
+    val chatType: Int,
+    val content: MessageContent,
+    val contentType: Int,
+    val quoteMsgId: String? = null
+)
+
+@Serializable
+data class MessageContent(
+    val text: String = "",
+    val image: String? = null,
+    val quoteMsgText: String? = null,
+    val quoteImageUrl: String? = null,
+    val quoteImageName: String? = null,
+    val fileKey: String? = null,
+    val fileName: String? = null,
+    val fileSize: Long? = null,
+    val audio: String? = null,
+    val audioTime: Int? = null,
+    val video: String? = null,
+    val postType: String? = null,
+    val expressionId: String? = null,
+    val stickerItemId: Long? = null,
+    val stickerPackId: Long? = null,
+    val mentionedId: List<String> = emptyList()
+)
+
+@Serializable
+data class SendMessageResponse(
+    val code: Int,
+    val msg: String
+)
+
+@Serializable
+data class EditMessageRequest(
+    val msgId: String,
+    val chatId: String,
+    val chatType: Int,
+    val content: MessageContent,
+    val contentType: Int,
+    val quoteMsgId: String? = null
+)
+
+@Serializable
+data class RecallMessageRequest(
+    val msgId: String,
+    val chatId: String,
+    val chatType: Int
+)
+
+@Serializable
+data class ListMessageRequest(
+    val msgCount: Int = 20,
+    val msgId: String? = null,
+    val chatType: Int,
+    val chatId: String,
+    val msgSeq: Long? = null
+)
+
+@Serializable
+data class ListMessageResponse(
+    val code: Int,
+    val msg: List<MessageItem>? = null,
+    val total: Int = 0
+)
+
+data class ChatUiState(
+    val messages: List<MessageItem> = emptyList(),
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val error: String? = null,
+    val inputText: String = "",
+    val selectedImages: List<String> = emptyList(),
+    val replyTo: MessageItem? = null,
+    val isMarkdown: Boolean = false,
+    val hasMore: Boolean = true,
+    val chatName: String = "",
+    val chatAvatar: String = "",
+    val isAdmin: Boolean = false
+)

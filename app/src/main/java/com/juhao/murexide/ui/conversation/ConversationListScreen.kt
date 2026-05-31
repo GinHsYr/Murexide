@@ -17,7 +17,7 @@ import java.util.*
 @Composable
 fun ConversationListScreen(
     token: String,
-    onConversationClick: (String) -> Unit,
+    onConversationClick: (com.juhao.murexide.data.ConversationItem) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ConversationViewModel = remember { ConversationViewModel(token) }
 ) {
@@ -48,7 +48,7 @@ fun ConversationListScreen(
                     items(state.conversations, key = { it.chatId }) { conversation ->
                         ConversationItem(
                             conversation = conversation,
-                            onClick = { onConversationClick(conversation.chatId) }
+                            onClick = { onConversationClick(conversation) }
                         )
                     }
                 }
