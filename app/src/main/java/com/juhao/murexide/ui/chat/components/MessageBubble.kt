@@ -137,8 +137,9 @@ fun MessageBubble(
                             }
 
                             if (message.hasImages && message.imageUrl != null) {
+                                val url = message.imageUrl
                                 val builder = ImageRequest.Builder(context)
-                                    .data(message.imageUrl)
+                                    .data(url)
                                     
                                 if (url.contains("chat-img.jwznb.com") || 
                                     url.contains("jwznb.com") || 
