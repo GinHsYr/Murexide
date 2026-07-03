@@ -135,7 +135,7 @@ fun ConversationListScreen(
                         ) { conversation ->
                             ConversationItem(
                                 conversation = conversation,
-                                isSelected = currentConversation?.chatId == conversation.chatId,
+                                isSelected = currentConversation?.chatId == conversation.chatId && bigScreenMode,
                                 onClick = {
                                     viewModel.clearUnread(conversation.chatId)
                                     onConversationClick(conversation)
