@@ -114,8 +114,36 @@ fun MessageBubble(
             ""
         }
     }
+    
+    val deleteTimeDisplay = remember(message.deleteTime) {
+        try {
+            val date = Date(message.deleteTime)
+            val now = Date()
+        
+            val todayCalendar = Calendar.getInstance().apply {
+                time = now
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+        
+            when {
+                date.after(todayCalendar.time) -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                date.after(Date(todayCalendar.timeInMillis - 86400000)) -> "昨天 " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                else -> SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date)
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
 
-    val targetAlpha = if (showMenuMsgId != null && !showMenu) 0.4f else 1f
+    val targetAlpha = when {
+        showMenuMsgId != null && !showMenu -> 0.5f
+        message.isRecalled -> 0.8f
+        else -> 1f
+    }
+
     val animatedAlpha by animateFloatAsState(
         targetValue = targetAlpha,
         animationSpec = tween(durationMillis = 300),
@@ -159,7 +187,7 @@ fun MessageBubble(
                 }
             )
     ) {
-        if (message.isRecalled) {
+        if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,28 +198,6 @@ fun MessageBubble(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.widthIn(max = 250.dp)
-                ) {
-                    Text(
-                        text = "${message.senderName} 在 $timestampDisplay 撤回了一条消息",
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        } else if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.widthIn(max = 250.dp)
                 ) {
                     Text(
                         text = message.content,
@@ -342,104 +348,169 @@ fun MessageBubble(
                                     }
                                 }
     
-                                when (message.contentType) {
-                                    MessageItem.CONTENT_TYPE_TEXT,
-                                    MessageItem.CONTENT_TYPE_MARKDOWN -> {
-                                        if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
-                                            MarkdownRenderer.Render(content = message.content)
-                                        } else {
-                                            val timeId = "time_${message.msgId}"
-                                            val textMeasurer = rememberTextMeasurer()
-                                            
-                                            val timeText = buildString {
-                                                append(timestampDisplay)
-                                                if (message.isEdited) append(" 已编辑")
-                                            }
-                                            
-                                            val timeWidth = textMeasurer.measure(
-                                                text = AnnotatedString(timeText),
-                                                style = MaterialTheme.typography.labelSmall
-                                            ).size.width
-                                            
-                                            val density = LocalDensity.current
-                                            val timeWidthSp = with(density) { timeWidth.toSp() }
-                                            
-                                            val textWithTime = buildAnnotatedString {
-                                                append(message.content)
-                                                append(" ")
-                                                appendInlineContent(timeId, " ")
-                                            }
-                                            
-                                            val inlineContent = mapOf(
-                                                timeId to InlineTextContent(
-                                                    placeholder = Placeholder(
-                                                        width = timeWidthSp,
-                                                        height = 1.em,
-                                                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
-                                                    )
-                                                ) {
-                                                    Row (
-                                                        modifier = Modifier.wrapContentWidth(unbounded = true)
-                                                    ) {
-                                                        Text(
-                                                            text = timestampDisplay,
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            maxLines = 1,
-                                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                if (message.isRecalled) {
+                                    Text(
+                                        text = "此消息在 $deleteTimeDisplay 被撤回",
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    )
+                                } else {
+                                    when (message.contentType) {
+                                        MessageItem.CONTENT_TYPE_TEXT,
+                                        MessageItem.CONTENT_TYPE_MARKDOWN -> {
+                                            if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
+                                                MarkdownRenderer.Render(content = message.content)
+                                            } else {
+                                                val timeId = "time_${message.msgId}"
+                                                val textMeasurer = rememberTextMeasurer()
+                                                
+                                                val timeText = buildString {
+                                                    append(timestampDisplay)
+                                                    if (message.isEdited) append(" 已编辑")
+                                                }
+                                                
+                                                val timeWidth = textMeasurer.measure(
+                                                    text = AnnotatedString(timeText),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                ).size.width
+                                                
+                                                val density = LocalDensity.current
+                                                val timeWidthSp = with(density) { timeWidth.toSp() }
+                                                
+                                                val textWithTime = buildAnnotatedString {
+                                                    append(message.content)
+                                                    append(" ")
+                                                    appendInlineContent(timeId, " ")
+                                                }
+                                                
+                                                val inlineContent = mapOf(
+                                                    timeId to InlineTextContent(
+                                                        placeholder = Placeholder(
+                                                            width = timeWidthSp,
+                                                            height = 1.em,
+                                                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
                                                         )
-                                                        if (message.isEdited) {
+                                                    ) {
+                                                        Row (
+                                                            modifier = Modifier.wrapContentWidth(unbounded = true)
+                                                        ) {
                                                             Text(
-                                                                text = " 已编辑",
+                                                                text = timestampDisplay,
                                                                 style = MaterialTheme.typography.labelSmall,
                                                                 maxLines = 1,
                                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                                             )
+                                                            if (message.isEdited) {
+                                                                Text(
+                                                                    text = " 已编辑",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    maxLines = 1,
+                                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                                )
+                                                            }
                                                         }
                                                     }
+                                                )
+                                                
+                                                Text(
+                                                    text = textWithTime,
+                                                    inlineContent = inlineContent,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        
+                                        MessageItem.CONTENT_TYPE_HTML -> {
+                                            UnifiedHtmlWebView(
+                                                htmlContent = message.content,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                onImageClick = { imageUrl ->
+                                                    val allImages = extractImageUrls(message.content)
+                                                    imageList = allImages
+                                                    currentImageIndex = allImages.indexOf(imageUrl).coerceAtLeast(0)
+                                                    showImageViewer = true
                                                 }
                                             )
-                                            
-                                            Text(
-                                                text = textWithTime,
-                                                inlineContent = inlineContent,
-                                                style = MaterialTheme.typography.bodyMedium.copy(
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                            )
                                         }
-                                    }
-                                    
-                                    MessageItem.CONTENT_TYPE_HTML -> {
-                                        UnifiedHtmlWebView(
-                                            htmlContent = message.content,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            onImageClick = { imageUrl ->
-                                                val allImages = extractImageUrls(message.content)
-                                                imageList = allImages
-                                                currentImageIndex = allImages.indexOf(imageUrl).coerceAtLeast(0)
-                                                showImageViewer = true
+        
+                                        MessageItem.CONTENT_TYPE_IMAGE,
+                                        MessageItem.CONTENT_TYPE_STICKER -> {
+                                            message.imageUrl?.let { url ->
+                                                val builder = ImageRequest.Builder(context)
+                                                    .data(url)
+        
+                                                if (url.contains("chat-img.jwznb.com") ||
+                                                    url.contains("jwznb.com") ||
+                                                    url.contains("myapp.jwznb.com")) {
+                                                    builder.setHeader("Referer", "https://myapp.jwznb.com")
+                                                }
+        
+                                                Box {
+                                                    AsyncImage(
+                                                        model = builder.build(),
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.FillWidth,
+                                                        modifier = Modifier
+                                                            .then(
+                                                                if (isLastFromSender || message.quoteMsgText != null)
+                                                                    Modifier.clip(
+                                                                        RoundedCornerShape(
+                                                                            topStart = bubbleCornerRadius.dp,
+                                                                            topEnd = bubbleCornerRadius.dp
+                                                                        )
+                                                                    )
+                                                                 else Modifier
+                                                            )
+                                                            .combinedClickable(
+                                                                onClick = { onImageClick(message) },
+                                                                onLongClick = { onLongPress(message) }
+                                                            )
+                                                    )
+        
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                        modifier = Modifier
+                                                            .align(Alignment.BottomEnd)
+                                                            .padding(end = 6.dp, bottom = 6.dp)
+                                                            .background(
+                                                                color = Color.Black.copy(alpha = 0.3f),
+                                                                shape = RoundedCornerShape(50.dp)
+                                                            )
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
+                                                            Icon(
+                                                                imageVector = Icons.Rounded.Mood,
+                                                                contentDescription = "mood",
+                                                                modifier = Modifier.size(12.dp),
+                                                                tint = Color.White
+                                                            )
+                                                        }
+                                                        Text(
+                                                            text = timestampDisplay,
+                                                            fontSize = 10.sp,
+                                                            lineHeight = 16.sp,
+                                                            maxLines = 1,
+                                                            color = Color.White
+                                                        )
+                                                    }
+                                                }
                                             }
-                                        )
-                                    }
+                                        }
     
-                                    MessageItem.CONTENT_TYPE_IMAGE,
-                                    MessageItem.CONTENT_TYPE_STICKER -> {
-                                        message.imageUrl?.let { url ->
-                                            val builder = ImageRequest.Builder(context)
-                                                .data(url)
+                                        MessageItem.CONTENT_TYPE_FILE -> {
+                                            message.fileName?.let { fileName ->
+                                                val progress = downloadProgress ?: 0f
+                                                val isDownloading = downloadProgress != null && downloadProgress < 1f
+                                                val isComplete = isDownloaded || (downloadProgress != null && progress >= 1f)
     
-                                            if (url.contains("chat-img.jwznb.com") ||
-                                                url.contains("jwznb.com") ||
-                                                url.contains("myapp.jwznb.com")) {
-                                                builder.setHeader("Referer", "https://myapp.jwznb.com")
-                                            }
-    
-                                            Box {
-                                                AsyncImage(
-                                                    model = builder.build(),
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.FillWidth,
+                                                Row(
                                                     modifier = Modifier
+                                                        .fillMaxWidth()
                                                         .then(
                                                             if (isLastFromSender || message.quoteMsgText != null)
                                                                 Modifier.clip(
@@ -448,195 +519,139 @@ fun MessageBubble(
                                                                         topEnd = bubbleCornerRadius.dp
                                                                     )
                                                                 )
-                                                             else Modifier
+                                                            else Modifier
+                                                        )
+                                                        .background(
+                                                            if (isMine)
+                                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                                                            else
+                                                                MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                                                         )
                                                         .combinedClickable(
-                                                            onClick = { onImageClick(message) },
+                                                            onClick = {
+                                                                if (!isDownloading) {
+                                                                    onDownloadClick(message)
+                                                                }
+                                                            },
                                                             onLongClick = { onLongPress(message) }
                                                         )
-                                                )
-    
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                    modifier = Modifier
-                                                        .align(Alignment.BottomEnd)
-                                                        .padding(end = 6.dp, bottom = 6.dp)
-                                                        .background(
-                                                            color = Color.Black.copy(alpha = 0.3f),
-                                                            shape = RoundedCornerShape(50.dp)
-                                                        )
-                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        .padding(12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
-                                                        Icon(
-                                                            imageVector = Icons.Rounded.Mood,
-                                                            contentDescription = "mood",
-                                                            modifier = Modifier.size(12.dp),
-                                                            tint = Color.White
-                                                        )
-                                                    }
-                                                    Text(
-                                                        text = timestampDisplay,
-                                                        fontSize = 10.sp,
-                                                        lineHeight = 16.sp,
-                                                        maxLines = 1,
-                                                        color = Color.White
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    MessageItem.CONTENT_TYPE_FILE -> {
-                                        message.fileName?.let { fileName ->
-                                            val progress = downloadProgress ?: 0f
-                                            val isDownloading = downloadProgress != null && downloadProgress < 1f
-                                            val isComplete = isDownloaded || (downloadProgress != null && progress >= 1f)
-
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .then(
-                                                        if (isLastFromSender || message.quoteMsgText != null)
-                                                            Modifier.clip(
-                                                                RoundedCornerShape(
-                                                                    topStart = bubbleCornerRadius.dp,
-                                                                    topEnd = bubbleCornerRadius.dp
+                                                    Surface(
+                                                        shape = CircleShape,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(40.dp)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            if (isDownloading) {
+                                                                CircularProgressIndicator(
+                                                                    progress = { progress },
+                                                                    modifier = Modifier.size(30.dp),
+                                                                    color = MaterialTheme.colorScheme.onPrimary,
+                                                                    strokeWidth = 2.dp
                                                                 )
-                                                            )
-                                                        else Modifier
-                                                    )
-                                                    .background(
-                                                        if (isMine)
-                                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                                                        else
-                                                            MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
-                                                    )
-                                                    .combinedClickable(
-                                                        onClick = {
-                                                            if (!isDownloading) {
-                                                                onDownloadClick(message)
+                                                            } else {
+                                                                Icon(
+                                                                    imageVector = if (isComplete) Icons.Rounded.Check else getFileIcon(fileName),
+                                                                    contentDescription = null,
+                                                                    modifier = Modifier.size(24.dp),
+                                                                    tint = MaterialTheme.colorScheme.onPrimary
+                                                                )
                                                             }
-                                                        },
-                                                        onLongClick = { onLongPress(message) }
-                                                    )
-                                                    .padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Surface(
-                                                    shape = CircleShape,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(40.dp)
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        if (isDownloading) {
-                                                            CircularProgressIndicator(
-                                                                progress = { progress },
-                                                                modifier = Modifier.size(30.dp),
-                                                                color = MaterialTheme.colorScheme.onPrimary,
-                                                                strokeWidth = 2.dp
-                                                            )
-                                                        } else {
-                                                            Icon(
-                                                                imageVector = if (isComplete) Icons.Rounded.Check else getFileIcon(fileName),
-                                                                contentDescription = null,
-                                                                modifier = Modifier.size(24.dp),
-                                                                tint = MaterialTheme.colorScheme.onPrimary
-                                                            )
                                                         }
                                                     }
-                                                }
-
-                                                Spacer(modifier = Modifier.width(12.dp))
-
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = fileName,
-                                                        fontSize = 14.sp,
-                                                        lineHeight = 20.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-
-                                                    Row(modifier = Modifier.padding(top = 2.dp)) {
-                                                        message.fileSize?.let { size ->
-                                                            Text(
-                                                                text = formatFileSize(size),
-                                                                fontSize = 12.sp,
-                                                                lineHeight = 18.sp,
-                                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                                                modifier = Modifier.padding(end = 4.dp)
-                                                            )
-                                                        }
+    
+                                                    Spacer(modifier = Modifier.width(12.dp))
+    
+                                                    Column(modifier = Modifier.weight(1f)) {
                                                         Text(
-                                                            text = timestampDisplay,
-                                                            fontSize = 12.sp,
-                                                            lineHeight = 18.sp,
+                                                            text = fileName,
+                                                            fontSize = 14.sp,
+                                                            lineHeight = 20.sp,
+                                                            fontWeight = FontWeight.Bold,
                                                             maxLines = 1,
-                                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            color = MaterialTheme.colorScheme.onSurface
                                                         )
-
-                                                        if (isDownloading) {
+    
+                                                        Row(modifier = Modifier.padding(top = 2.dp)) {
+                                                            message.fileSize?.let { size ->
+                                                                Text(
+                                                                    text = formatFileSize(size),
+                                                                    fontSize = 12.sp,
+                                                                    lineHeight = 18.sp,
+                                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                                    modifier = Modifier.padding(end = 4.dp)
+                                                                )
+                                                            }
                                                             Text(
-                                                                text = " ${(progress * 100).toInt()}%",
+                                                                text = timestampDisplay,
                                                                 fontSize = 12.sp,
                                                                 lineHeight = 18.sp,
-                                                                color = MaterialTheme.colorScheme.primary
+                                                                maxLines = 1,
+                                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                                             )
-                                                        } else if (isComplete) {
-                                                            Text(
-                                                                text = " 已下载",
-                                                                fontSize = 12.sp,
-                                                                lineHeight = 18.sp,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
+    
+                                                            if (isDownloading) {
+                                                                Text(
+                                                                    text = " ${(progress * 100).toInt()}%",
+                                                                    fontSize = 12.sp,
+                                                                    lineHeight = 18.sp,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                            } else if (isComplete) {
+                                                                Text(
+                                                                    text = " 已下载",
+                                                                    fontSize = 12.sp,
+                                                                    lineHeight = 18.sp,
+                                                                    color = MaterialTheme.colorScheme.primary
+                                                                )
+                                                            }
                                                         }
                                                     }
-                                                }
-
-                                                if (isComplete) {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.CheckCircle,
-                                                        contentDescription = "已下载",
-                                                        modifier = Modifier.size(20.dp),
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                } else if (isDownloading) {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.Close,
-                                                        contentDescription = "取消下载",
-                                                        modifier = Modifier
-                                                            .size(20.dp)
-                                                            .clickable { /* 取消下载逻辑 */ },
-                                                        tint = MaterialTheme.colorScheme.error
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.Download,
-                                                        contentDescription = "下载",
-                                                        modifier = Modifier
-                                                            .size(20.dp)
-                                                            .clickable { onDownloadClick(message) },
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
+    
+                                                    if (isComplete) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.CheckCircle,
+                                                            contentDescription = "已下载",
+                                                            modifier = Modifier.size(20.dp),
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    } else if (isDownloading) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Close,
+                                                            contentDescription = "取消下载",
+                                                            modifier = Modifier
+                                                                .size(20.dp)
+                                                                .clickable { /* 取消下载逻辑 */ },
+                                                            tint = MaterialTheme.colorScheme.error
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Download,
+                                                            contentDescription = "下载",
+                                                            modifier = Modifier
+                                                                .size(20.dp)
+                                                                .clickable { onDownloadClick(message) },
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-    
-                                    else -> {
-                                        Text(
-                                            text = "暂不支持解析此消息：${message.contentType}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                                        )
+        
+                                        else -> {
+                                            Text(
+                                                text = "暂不支持解析此消息：${message.contentType}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                            )
+                                        }
                                     }
                                 }
     
-                                if (!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT) {
+                                if (!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT && !message.isRecalled) {
                                     Row(
                                         modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)
                                     ) {

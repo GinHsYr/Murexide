@@ -63,6 +63,7 @@ class MessageRepository {
                                     msgSeq = msg.msg_seq,
                                     direction = msg.direction,
                                     isRecalled = msg.msg_delete_time > 0,
+                                    deleteTime = msg.msg_delete_time,
                                     isEdited = msg.edit_time > 0,
                                     quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
                                     quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },

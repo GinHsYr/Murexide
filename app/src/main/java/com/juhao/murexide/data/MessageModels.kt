@@ -14,6 +14,7 @@ data class MessageItem(
     val content: String = "",
     val contentType: Int,
     val timestamp: Long,
+    val deleteTime: Long = 0,
     val msgSeq: Long = 0,
     val direction: String,
     val isRecalled: Boolean = false,
