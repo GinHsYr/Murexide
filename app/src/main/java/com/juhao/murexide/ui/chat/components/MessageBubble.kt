@@ -328,7 +328,7 @@ fun MessageBubble(
     
                                 if (message.isRecalled) {
                                     Text(
-                                        text = "此消息已被撤回且删除",
+                                        text = "此消息已被撤回",
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -640,7 +640,7 @@ fun MessageBubble(
                                             maxLines = 1,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                         )
-                                        if (message.isEdited) {
+                                        if (message.isEdited && !message.isRecalled) {
                                             Text(
                                                 text = "已编辑",
                                                 fontSize = 10.sp,
