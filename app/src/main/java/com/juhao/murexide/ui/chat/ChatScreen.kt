@@ -906,7 +906,7 @@ fun ChatScreen(
                 val targetAlpha = when {
                     showMenuMsgId != null && topVisibleMessageId != showMenuMsgId -> 0.5f
                     topVisibleMessage?.isRecalled == true -> 0.6f
-                    else 1f
+                    else -> 1f
                 }
                 
                 val animatedAlpha by animateFloatAsState(
