@@ -114,33 +114,10 @@ fun MessageBubble(
             ""
         }
     }
-    
-    val deleteTimeDisplay = remember(message.deleteTime) {
-        try {
-            val date = Date(message.deleteTime)
-            val now = Date()
-        
-            val todayCalendar = Calendar.getInstance().apply {
-                time = now
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-        
-            when {
-                date.after(todayCalendar.time) -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
-                date.after(Date(todayCalendar.timeInMillis - 86400000)) -> "昨天 " + SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
-                else -> SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date)
-            }
-        } catch (_: Exception) {
-            ""
-        }
-    }
 
     val targetAlpha = when {
         showMenuMsgId != null && !showMenu -> 0.5f
-        message.isRecalled -> 0.8f
+        message.isRecalled -> 0.6f
         else -> 1f
     }
 
@@ -237,9 +214,10 @@ fun MessageBubble(
                     Spacer(modifier = Modifier.width(44.dp))
                 }
     
-                val hideMsgCard = message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                val hideMsgCard = (message.contentType == MessageItem.CONTENT_TYPE_IMAGE
                     || message.contentType == MessageItem.CONTENT_TYPE_STICKER
-                    || message.contentType == MessageItem.CONTENT_TYPE_FILE
+                    || message.contentType == MessageItem.CONTENT_TYPE_FILE)
+                    && !message.isRecalled
     
                 Box(modifier = Modifier.weight(1f, fill = false)) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
@@ -350,10 +328,10 @@ fun MessageBubble(
     
                                 if (message.isRecalled) {
                                     Text(
-                                        text = "此消息在 $deleteTimeDisplay 被撤回",
-                                        textAlign = TextAlign.Center,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                        text = "此消息在 $timestampDisplay 被撤回",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
                                     )
                                 } else {
                                     when (message.contentType) {

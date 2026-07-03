@@ -103,7 +103,6 @@ fun ChatScreen(
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
     val showMyBubbleAvatarSetting by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     
-
     var viewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var viewerInitialPage by remember { mutableIntStateOf(0) }
     var viewerVisible by remember { mutableStateOf(false) }
@@ -791,13 +790,13 @@ fun ChatScreen(
                         val olderMessage = uiState.messages.getOrNull(index + 1)
 
                         val isFirstFromSender =
-                            newerMessage == null || newerMessage.isRecalled || newerMessage.contentType == MessageItem.CONTENT_TYPE_TIP || newerMessage.senderId != message.senderId
+                            newerMessage == null || newerMessage.contentType == MessageItem.CONTENT_TYPE_TIP || newerMessage.senderId != message.senderId
                         val isLastFromSender =
-                            olderMessage == null || olderMessage.isRecalled || olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP || olderMessage.senderId != message.senderId
+                            olderMessage == null || olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP || olderMessage.senderId != message.senderId
                         val isOlderSameSender =
-                            olderMessage != null && !olderMessage.isRecalled && olderMessage.contentType != MessageItem.CONTENT_TYPE_TIP && olderMessage.senderId == message.senderId
+                            olderMessage != null && olderMessage.contentType != MessageItem.CONTENT_TYPE_TIP && olderMessage.senderId == message.senderId
                         val isNewerSameSender =
-                            newerMessage != null && !newerMessage.isRecalled && newerMessage.contentType != MessageItem.CONTENT_TYPE_TIP && newerMessage.senderId == message.senderId
+                            newerMessage != null && newerMessage.contentType != MessageItem.CONTENT_TYPE_TIP && newerMessage.senderId == message.senderId
 
                         val isTopVisibleItem = message.msgId == topVisibleMessageId
 
@@ -904,8 +903,12 @@ fun ChatScreen(
                         .padding(12.dp)
                 )
 
-                val targetAlpha =
-                    if (showMenuMsgId != null && topVisibleMessageId != showMenuMsgId) 0.4f else 1f
+                val targetAlpha = when {
+                    showMenuMsgId != null && topVisibleMessageId != showMenuMsgId -> 0.5f
+                    topVisibleMessage?.isRecalled == true -> 0.6f
+                    else 1f
+                }
+                
                 val animatedAlpha by animateFloatAsState(
                     targetValue = targetAlpha,
                     animationSpec = tween(durationMillis = 300),
