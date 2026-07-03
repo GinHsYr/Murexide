@@ -214,9 +214,10 @@ fun MessageBubble(
                     Spacer(modifier = Modifier.width(44.dp))
                 }
     
-                val hideMsgCard = message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                val hideMsgCard = (message.contentType == MessageItem.CONTENT_TYPE_IMAGE
                     || message.contentType == MessageItem.CONTENT_TYPE_STICKER
-                    || message.contentType == MessageItem.CONTENT_TYPE_FILE
+                    || message.contentType == MessageItem.CONTENT_TYPE_FILE)
+                    && !message.isRecalled
     
                 Box(modifier = Modifier.weight(1f, fill = false)) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
