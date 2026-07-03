@@ -214,10 +214,9 @@ fun MessageBubble(
                     Spacer(modifier = Modifier.width(44.dp))
                 }
     
-                val hideMsgCard = (message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                val hideMsgCard = message.contentType == MessageItem.CONTENT_TYPE_IMAGE
                     || message.contentType == MessageItem.CONTENT_TYPE_STICKER
-                    || message.contentType == MessageItem.CONTENT_TYPE_FILE)
-                    && !message.isRecalled
+                    || message.contentType == MessageItem.CONTENT_TYPE_FILE
     
                 Box(modifier = Modifier.weight(1f, fill = false)) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
@@ -328,8 +327,8 @@ fun MessageBubble(
     
                                 if (message.isRecalled) {
                                     Text(
-                                        text = "此消息在 $timestampDisplay 被撤回",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                        text = "此消息已被撤回且删除",
+                                        style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     )
@@ -629,7 +628,7 @@ fun MessageBubble(
                                     }
                                 }
     
-                                if (!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT && !message.isRecalled) {
+                                if ((!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT) || message.isRecalled) {
                                     Row(
                                         modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)
                                     ) {
