@@ -19,8 +19,6 @@ class CommunityViewModel(
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
-    private var currentBaId: Int = 0
-
     init {
         loadData()
     }
@@ -53,10 +51,10 @@ class CommunityViewModel(
             _uiState.value = _uiState.value.copy(isLoadingPosts = true)
 
             val result = if (baId != null && baId > 0) {
-                currentBaId = baId
+                _uiState.value = _uiState.value.copy(currentBaId = baId)
                 repository.getPostList(baId)
             } else {
-                currentBaId = 0
+                _uiState.value = _uiState.value.copy(currentBaId = 0)
                 repository.getRecommendPosts()
             }
 
@@ -119,16 +117,18 @@ class CommunityViewModel(
     }
 
     fun selectBa(baId: Int) {
-        if (currentBaId != baId) {
+        val currentId = _uiState.value.currentBaId
+        if (currentId != baId) {
             loadPosts(baId)
         }
     }
 
     fun refresh() {
-        if (currentBaId == 0) {
+        val currentId = _uiState.value.currentBaId
+        if (currentId == 0) {
             loadPosts()
         } else {
-            loadPosts(currentBaId)
+            loadPosts(currentId)
         }
     }
 }
@@ -138,5 +138,6 @@ data class CommunityUiState(
     val posts: List<PostItem> = emptyList(),
     val isLoadingBa: Boolean = false,
     val isLoadingPosts: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val currentBaId: Int = 0
 )

@@ -39,6 +39,8 @@ fun CommunityScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    val currentBaId = uiState.currentBaId
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,6 +69,7 @@ fun CommunityScreen(
             BaSelector(
                 baList = uiState.baList,
                 isLoading = uiState.isLoadingBa,
+                currentBaId = currentBaId,
                 onBaSelected = { baId ->
                     viewModel.selectBa(baId)
                 }
@@ -98,6 +101,7 @@ fun BaSelector(
     baList: List<BaItem>,
     isLoading: Boolean,
     onBaSelected: (Int) -> Unit,
+    currentBaId: Int,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -110,7 +114,7 @@ fun BaSelector(
         // 推荐选项
         item {
             FilterChip(
-                selected = false,
+                selected = currentBaId == 0,
                 onClick = { onBaSelected(0) },
                 label = { Text("推荐") }
             )
@@ -118,7 +122,7 @@ fun BaSelector(
 
         items(baList) { ba ->
             FilterChip(
-                selected = false,
+                selected = currentBaId == ba.id,
                 onClick = { onBaSelected(ba.id) },
                 label = { Text(ba.name) },
                 leadingIcon = {

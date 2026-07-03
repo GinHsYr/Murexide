@@ -53,7 +53,7 @@ data class PostItem(
     val likeNum: Int,
     val commentNum: Int,
     val collectNum: Int,
-    val amountNum: Int,
+    val amountNum: Number,
     val isLiked: String,  // "0" 或 "1"
     val isCollected: Int, // 0 或 1
     val isReward: Int,
