@@ -1,6 +1,7 @@
 package com.juhao.murexide.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Contextual
 
 @Serializable
 data class BaListResponse(
@@ -53,7 +54,7 @@ data class PostItem(
     val likeNum: Int,
     val commentNum: Int,
     val collectNum: Int,
-    val amountNum: Number,
+    @Contextual val amountNum: Number,
     val isLiked: String,  // "0" 或 "1"
     val isCollected: Int, // 0 或 1
     val isReward: Int,
