@@ -173,7 +173,7 @@ fun ChatScreen(
                     val firstVisibleIndex = topVisibleItem.index
                     val message = uiState.messages.getOrNull(firstVisibleIndex)
 
-                    if (message == null || message.isRecalled) {
+                    if (message == null) {
                         Triple(false, "", false)
                     } else {
                         val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
@@ -190,10 +190,10 @@ fun ChatScreen(
                         val olderMessage =
                             if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
                         val isLastFromSender =
-                            olderMessage == null || olderMessage.isRecalled || olderMessage.senderId != message.senderId
+                            olderMessage == null || olderMessage.senderId != message.senderId
                         val hasOtherSameSender =
-                            (newerMessage != null && !newerMessage.isRecalled && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                                    (olderMessage != null && !olderMessage.isRecalled && olderMessage.senderId == message.senderId)
+                            (newerMessage != null && newerMessage.senderId == message.senderId && !isLastFromSender) ||
+                                    (olderMessage != null && olderMessage.senderId == message.senderId)
 
                         if (hasEnoughSpace) {
                             Triple(true, message.senderAvatar, message.isMine)
