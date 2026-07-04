@@ -1,6 +1,7 @@
 [versions]
 agp = "9.2.1"
 coreKtx = "1.16.0"
+hazeMaterials = "1.7.2"
 lifecycleRuntimeKtx = "2.9.2"
 lifecycleViewmodelCompose = "2.9.2"
 activityCompose = "1.9.0"
@@ -15,6 +16,7 @@ multiplatformMarkdownRenderer = "0.43.0"
 multiplatformMarkdownRendererM3 = "0.43.0"
 multiplatformMarkdownRendererCoil2 = "0.43.0"
 navigation = "2.8.4"
+haze = "1.7.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -52,6 +54,10 @@ wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
+
+# Haze
+haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
+haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = "hazeMaterials" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -55,7 +55,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -87,9 +86,6 @@ fun MultiImageViewer(
     if (!isVisible || images.isEmpty()) return
 
     val context = LocalContext.current
-    val windowInfo = LocalWindowInfo.current
-    val screenWidth = windowInfo.containerSize.width.toFloat()
-    val screenHeight = windowInfo.containerSize.height.toFloat()
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
 
@@ -126,12 +122,26 @@ fun MultiImageViewer(
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = imageStates[pagerState.currentPage].value.scale <= 1.001f
             ) { page ->
+                val imageRequest = remember(images[page]) {
+                    ImageRequest.Builder(context)
+                        .data(images[page])
+                        .apply {
+                            if (images[page].contains("chat-img.jwznb.com") ||
+                                images[page].contains("jwznb.com") ||
+                                images[page].contains("myapp.jwznb.com")
+                            ) {
+                                setHeader("Referer", "https://myapp.jwznb.com")
+                            }
+                        }
+                        .build()
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                 ) {
                     AsyncImage(
-                        model = images[page],
+                        model = imageRequest,
                         contentDescription = null,
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -219,24 +229,24 @@ fun MultiImageViewer(
                             },
                         contentScale = ContentScale.Fit,
                         onLoading = {
-                            loadStates[page].value = 1
+                            loadStates[page].intValue = 1
                         },
                         onError = {
-                            loadStates[page].value = 2
+                            loadStates[page].intValue = 2
                         },
                         onSuccess = {
-                            loadStates[page].value = 3
+                            loadStates[page].intValue = 3
                         }
                     )
 
-                    if (loadStates[page].value == 1) {
+                    if (loadStates[page].intValue == 1) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(48.dp))
                         }
-                    } else if (loadStates[page].value == 2) {
+                    } else if (loadStates[page].intValue == 2) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -257,7 +267,7 @@ fun MultiImageViewer(
                             )
                             IconButton(
                                 onClick = {
-                                    loadStates[page].value = 1
+                                    loadStates[page].intValue = 1
                                 }
                             ) {
                                 Icon(

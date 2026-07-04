@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -66,8 +67,15 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.draw.clip
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
+    ExperimentalHazeMaterialsApi::class
+)
 @Composable
 fun ChatScreen(
     modifier: Modifier = Modifier,
@@ -106,6 +114,8 @@ fun ChatScreen(
     var viewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var viewerInitialPage by remember { mutableIntStateOf(0) }
     var viewerVisible by remember { mutableStateOf(false) }
+
+    val hazeState = remember { HazeState() }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -348,135 +358,99 @@ fun ChatScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            AnimatedContent(
-                targetState = selectionMode,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(200)) togetherWith
-                            fadeOut(animationSpec = tween(200))
-                },
-                label = "top_bar_transition"
-            ) { isSelectionMode ->
-                if (isSelectionMode) {
-                    TopAppBar(
-                        title = {
-                            AnimatedContent(
-                                targetState = selectedMessages.size,
-                                transitionSpec = {
-                                    if (targetState > initialState) {
-                                        slideInVertically(
-                                            initialOffsetY = { fullHeight -> fullHeight },
-                                            animationSpec = tween(200)
-                                        ) togetherWith slideOutVertically(
-                                            targetOffsetY = { fullHeight -> -fullHeight },
-                                            animationSpec = tween(200)
-                                        )
-                                    } else {
-                                        slideInVertically(
-                                            initialOffsetY = { fullHeight -> -fullHeight },
-                                            animationSpec = tween(200)
-                                        ) togetherWith slideOutVertically(
-                                            targetOffsetY = { fullHeight -> fullHeight },
-                                            animationSpec = tween(200)
-                                        )
-                                    }
-                                },
-                                label = "selected_count"
-                            ) { count ->
-                                Text(
-                                    text = "$count",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "退出多选")
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        actions = {
-                            if (selectedMessages.size == 1) {
-                                IconButton(onClick = { 
-                                    selectedMessages.firstOrNull()?.let { viewModel.setReplyTo(it) }
-                                    viewModel.exitSelectionMode()
-                                }) {
-                                    Icon(Icons.Rounded.FormatQuote, contentDescription = "引用")
-                                }
-                            }
-                            IconButton(onClick = { showScreenshotSheet = true }) {
-                                Icon(Icons.Rounded.Crop, contentDescription = "截图")
-                            }
-                        }
-                    )
-                } else {
-                    TopAppBar(
-                        title = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        ConversationDetailActivity.start(
-                                            context = context,
-                                            chatId = viewModel.chatId,
-                                            chatType = chatType,
-                                            chatName = chatName,
-                                            chatAvatar = chatAvatar
-                                        )
-                                    }
-                            ) {
-                                Avatar(
-                                    url = chatAvatar,
-                                    size = 36.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = chatName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    if (chatType == 2 && uiState.memberCount != null) {
-                                        Text(
-                                            text = "${uiState.memberCount} 位成员",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-                        ),
-                        actions = {
-                            Box {
-                                DropdownMenu(
-                                    expanded = showMoreMenu,
-                                    onDismissRequest = { showMoreMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("刷新") },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            viewModel.refresh()
-                                        },
-                                        leadingIcon = {
-                                            Icon(Icons.Rounded.Refresh, contentDescription = null)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thin().copy(
+                                noiseFactor = 0f
+                            ),
+                            block = null
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                )
+
+                AnimatedContent(
+                    targetState = selectionMode,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith
+                                fadeOut(animationSpec = tween(200))
+                    },
+                    label = "top_bar_transition"
+                ) { isSelectionMode ->
+                    if (isSelectionMode) {
+                        TopAppBar(
+                            title = {
+                                AnimatedContent(
+                                    targetState = selectedMessages.size,
+                                    transitionSpec = {
+                                        if (targetState > initialState) {
+                                            slideInVertically(
+                                                initialOffsetY = { fullHeight -> fullHeight },
+                                                animationSpec = tween(200)
+                                            ) togetherWith slideOutVertically(
+                                                targetOffsetY = { fullHeight -> -fullHeight },
+                                                animationSpec = tween(200)
+                                            )
+                                        } else {
+                                            slideInVertically(
+                                                initialOffsetY = { fullHeight -> -fullHeight },
+                                                animationSpec = tween(200)
+                                            ) togetherWith slideOutVertically(
+                                                targetOffsetY = { fullHeight -> fullHeight },
+                                                animationSpec = tween(200)
+                                            )
                                         }
+                                    },
+                                    label = "selected_count"
+                                ) { count ->
+                                    Text(
+                                        text = "$count",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text("会话详情") },
-                                        onClick = {
-                                            showMoreMenu = false
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = "退出多选")
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent
+                            ),
+                            actions = {
+                                if (selectedMessages.size == 1) {
+                                    IconButton(onClick = { 
+                                        selectedMessages.firstOrNull()?.let { viewModel.setReplyTo(it) }
+                                        viewModel.exitSelectionMode()
+                                    }) {
+                                        Icon(Icons.Rounded.FormatQuote, contentDescription = "引用")
+                                    }
+                                }
+                                IconButton(onClick = { showScreenshotSheet = true }) {
+                                    Icon(Icons.Rounded.Crop, contentDescription = "截图")
+                                }
+                            }
+                        )
+                    } else {
+                        TopAppBar(
+                            title = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
                                             ConversationDetailActivity.start(
                                                 context = context,
                                                 chatId = viewModel.chatId,
@@ -484,52 +458,110 @@ fun ChatScreen(
                                                 chatName = chatName,
                                                 chatAvatar = chatAvatar
                                             )
-                                        },
-                                        leadingIcon = {
-                                            Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(24.dp))
                                         }
+                                ) {
+                                    Avatar(
+                                        url = chatAvatar,
+                                        size = 36.dp
                                     )
-                                    
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-                                    
-                                    DropdownMenuItem(
-                                        text = { 
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = chatName,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        if (chatType == 2 && uiState.memberCount != null) {
                                             Text(
-                                                when (chatType) {
-                                                    1 -> "删除好友"
-                                                    2 -> "退出群聊"
-                                                    else -> "删除机器人"
-                                                }
+                                                text = "${uiState.memberCount} 位成员",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
                                             )
-                                        },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            viewModel.deleteFriend()
-                                        },
-                                        leadingIcon = {
-                                            Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = null)
                                         }
-                                    )
+                                    }
                                 }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent
+                            ),
+                            actions = {
+                                Box {
+                                    DropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("刷新") },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                viewModel.refresh()
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Rounded.Refresh, contentDescription = null)
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("会话详情") },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                ConversationDetailActivity.start(
+                                                    context = context,
+                                                    chatId = viewModel.chatId,
+                                                    chatType = chatType,
+                                                    chatName = chatName,
+                                                    chatAvatar = chatAvatar
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(24.dp))
+                                            }
+                                        )
+                                        
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                                        
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    when (chatType) {
+                                                        1 -> "删除好友"
+                                                        2 -> "退出群聊"
+                                                        else -> "删除机器人"
+                                                    }
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                viewModel.deleteFriend()
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = null)
+                                            }
+                                        )
+                                    }
 
-                                IconButton(onClick = {
-                                    showMoreMenu = true
-                                }) {
-                                    Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
+                                    IconButton(onClick = {
+                                        showMoreMenu = true
+                                    }) {
+                                        Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
+                                    }
+                                }
+                            },
+                            navigationIcon = {
+                                if (!bigScreenMode) {
+                                    IconButton(onClick = onBackClick) {
+                                        Icon(
+                                            Icons.AutoMirrored.Rounded.ArrowBack,
+                                            contentDescription = "返回"
+                                        )
+                                    }
                                 }
                             }
-                        },
-                        navigationIcon = {
-                            if (!bigScreenMode) {
-                                IconButton(onClick = onBackClick) {
-                                    Icon(
-                                        Icons.AutoMirrored.Rounded.ArrowBack,
-                                        contentDescription = "返回"
-                                    )
-                                }
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         },
@@ -700,7 +732,8 @@ fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .hazeSource(hazeState)
+                .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             uiState.backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
                 val bgRequest = remember(bgUrl) {
@@ -891,6 +924,10 @@ fun ChatScreen(
                                 CircularProgressIndicator()
                             }
                         }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
                     }
                 }
 
