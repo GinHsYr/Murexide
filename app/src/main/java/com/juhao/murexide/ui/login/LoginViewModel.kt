@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class LoginUiState {
     object Idle : LoginUiState()
@@ -130,7 +131,7 @@ class LoginViewModel(
         countdownJob = viewModelScope.launch {
             for (seconds in 60 downTo 1) {
                 _phoneState.update { it.copy(countdown = seconds) }
-                delay(1000)
+                delay(1000.milliseconds)
             }
             _phoneState.update { it.copy(countdown = 0) }
         }

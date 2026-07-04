@@ -60,6 +60,10 @@
             android:name=".ui.conversationdetail.ConversationDetailActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide" />
+        <activity
+            android:name=".ui.mine.EditProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Murexide" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

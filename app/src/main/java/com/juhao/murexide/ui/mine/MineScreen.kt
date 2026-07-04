@@ -17,11 +17,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.clickable
 import com.juhao.murexide.repository.UserInfo
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.CustomItemCell
 import com.juhao.murexide.ui.components.SettingsGroup
 import com.juhao.murexide.ui.components.SettingsItemCell
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.StrokeCap
+
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,9 +47,18 @@ fun MineScreen(
         }
     )
 ) {
+    val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
+
+    val avatarLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            viewModel.uploadAndChangeAvatar(context, it)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -69,6 +88,7 @@ fun MineScreen(
                     CircularProgressIndicator()
                 }
             }
+
             is MineUiState.Error -> {
                 Box(
                     modifier = Modifier
@@ -88,6 +108,7 @@ fun MineScreen(
                     }
                 }
             }
+
             is MineUiState.Success -> {
                 MineContent(
                     userInfo = state.userInfo,
@@ -95,7 +116,55 @@ fun MineScreen(
                     continuousOnlineDay = state.continuousOnlineDay,
                     scrollState = scrollState,
                     paddingValues = it,
-                    introduction = state.introduction
+                    introduction = state.introduction,
+                    onEditProfileClick = {
+                        EditProfileActivity.start(context, token)
+                    },
+                    onAvatarEditClick = {
+                        avatarLauncher.launch("image/*")
+                    }
+                )
+
+                if (state.isUploadingAvatar) {
+                    UploadProgressDialog(progress = state.uploadProgress)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun UploadProgressDialog(progress: Float) {
+    Dialog(
+        onDismissRequest = { },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp,
+            modifier = Modifier.width(280.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "正在上传头像",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                    strokeCap = StrokeCap.Round
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -109,7 +178,9 @@ private fun MineContent(
     continuousOnlineDay: Int?,
     introduction: String,
     scrollState: ScrollState,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onEditProfileClick: () -> Unit,
+    onAvatarEditClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -118,17 +189,56 @@ private fun MineContent(
             .verticalScroll(scrollState)
     ) {
         SettingsGroup {
-            CustomItemCell {
-                Avatar(url = userInfo.avatarUrl, size = 64.dp, canView = true)
+            CustomItemCell(
+                modifier = Modifier.clickable { onEditProfileClick() }
+            ) {
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    Avatar(
+                        url = userInfo.avatarUrl,
+                        size = 64.dp,
+                        modifier = Modifier.clickable { onAvatarEditClick() }
+                    )
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .offset(x = 4.dp, y = 4.dp)
+                            .clickable { onAvatarEditClick() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = "修改头像",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = userInfo.name.ifEmpty { "未知" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = userInfo.name.ifEmpty { "未知" },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "ID: ${userInfo.id}",
@@ -158,7 +268,10 @@ private fun MineContent(
             InfoItem(Icons.Rounded.MonetizationOn, "金币", "${userInfo.coin}")
             InfoItem(Icons.Rounded.Email, "邮箱", userInfo.email.ifEmpty { "未设置" })
             InfoItem(Icons.Rounded.Phone, "手机号", userInfo.phone.ifEmpty { "未绑定" })
-            InfoItem(Icons.Rounded.CardGiftcard, "邀请码", userInfo.invitationCode.ifEmpty { "未设置" })
+            InfoItem(
+                Icons.Rounded.CardGiftcard,
+                "邀请码",
+                userInfo.invitationCode.ifEmpty { "未设置" })
         }
 
         SettingsGroup(title = "活跃度") {

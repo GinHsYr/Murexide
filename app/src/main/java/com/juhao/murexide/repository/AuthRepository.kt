@@ -1,14 +1,8 @@
 package com.juhao.murexide.repository
 
-import com.juhao.murexide.data.BaseResponse
-import com.juhao.murexide.data.CaptchaData
-import com.juhao.murexide.data.CaptchaResponse
-import com.juhao.murexide.data.LoginRequest
-import com.juhao.murexide.data.LoginResponse
-import com.juhao.murexide.data.PhoneLoginRequest
-import com.juhao.murexide.data.VerificationCodeRequest
+import com.juhao.murexide.data.*
 import com.juhao.murexide.network.NetworkClient
-import com.juhao.murexide.proto.user.info
+import com.juhao.murexide.proto.user.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -215,6 +209,127 @@ class AuthRepository {
                             )
                         } else {
                             Result.failure(Exception(userInfo.status?.msg ?: "获取用户信息失败"))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 修改昵称 (ProtoBuf) */
+    suspend fun editNickname(token: String, nickname: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val protoRequest = edit_nickname_send(name = nickname)
+                val requestBody = protoRequest.encode().toRequestBody("application/octet-stream".toMediaType())
+
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/user/edit-nickname")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val protoResponse = edit_nickname.ADAPTER.decode(response.body.bytes())
+                        if (protoResponse.status?.code == 1) {
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(protoResponse.status?.msg ?: "修改昵称失败"))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 修改头像 (ProtoBuf) */
+    suspend fun editAvatar(token: String, avatarUrl: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val protoRequest = edit_avatar_send(url = avatarUrl)
+                val requestBody = protoRequest.encode().toRequestBody("application/octet-stream".toMediaType())
+
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/user/edit-avatar")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val protoResponse = edit_avatar.ADAPTER.decode(response.body.bytes())
+                        if (protoResponse.status?.code == 1) {
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(protoResponse.status?.msg ?: "修改头像失败"))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 修改个人资料 (JSON) */
+    suspend fun saveUserData(token: String, profile: SaveUserDataRequest): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = json.encodeToString(SaveUserDataRequest.serializer(), profile)
+                val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/user/save-user-data")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val baseResponse = json.decodeFromString(BaseResponse.serializer(), response.body.string())
+                        if (baseResponse.code == 1) {
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception(baseResponse.msg.ifBlank { "修改个人资料失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 获取个人资料 (JSON) */
+    suspend fun getUserData(token: String): Result<UserProfileData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/user/get-user-data")
+                    .post("{}".toRequestBody("application/json".toMediaType()))
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val dataResponse = json.decodeFromString(UserDataResponse.serializer(), response.body.string())
+                        if (dataResponse.code == 1 && dataResponse.data != null) {
+                            Result.success(dataResponse.data.data)
+                        } else {
+                            Result.failure(Exception(dataResponse.msg.ifBlank { "获取个人资料失败" }))
                         }
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))
