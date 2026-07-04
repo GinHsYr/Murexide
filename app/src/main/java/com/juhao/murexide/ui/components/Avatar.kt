@@ -55,7 +55,7 @@ fun Avatar(
             .size(size)
             .clip(
                 if (squareAvatar) {
-                    RoundedCornerShape(size / 5)
+                    RoundedCornerShape(size / 6)
                 } else {
                     CircleShape
                 }

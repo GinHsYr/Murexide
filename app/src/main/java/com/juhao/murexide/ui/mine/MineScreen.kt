@@ -119,7 +119,7 @@ private fun MineContent(
     ) {
         SettingsGroup {
             CustomItemCell {
-                Avatar(url = userInfo.avatarUrl, size = 64.dp)
+                Avatar(url = userInfo.avatarUrl, size = 64.dp, canView = true)
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(

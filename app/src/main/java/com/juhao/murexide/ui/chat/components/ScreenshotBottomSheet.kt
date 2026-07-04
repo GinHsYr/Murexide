@@ -201,22 +201,18 @@ private fun ScreenshotContent(
                     val newerMessage = messages.getOrNull(index + 1)
 
                     val isFirstFromSender = newerMessage == null ||
-                            newerMessage.isRecalled ||
                             newerMessage.contentType == MessageItem.CONTENT_TYPE_TIP ||
                             newerMessage.senderId != message.senderId
 
                     val isLastFromSender = olderMessage == null ||
-                            olderMessage.isRecalled ||
                             olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP ||
                             olderMessage.senderId != message.senderId
 
                     val isOlderSameSender = olderMessage != null &&
-                            !olderMessage.isRecalled &&
                             olderMessage.contentType != MessageItem.CONTENT_TYPE_TIP &&
                             olderMessage.senderId == message.senderId
 
                     val isNewerSameSender = newerMessage != null &&
-                            !newerMessage.isRecalled &&
                             newerMessage.contentType != MessageItem.CONTENT_TYPE_TIP &&
                             newerMessage.senderId == message.senderId
 
