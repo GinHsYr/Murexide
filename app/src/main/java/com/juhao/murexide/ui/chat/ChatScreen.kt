@@ -670,8 +670,6 @@ fun ChatScreen(
                                 if (expressions.isVisible) {
                                     viewModel.hideStickerPanel()
                                 } else {
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
                                     viewModel.toggleStickerPanel()
                                 }
                             }
