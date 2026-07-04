@@ -2,10 +2,6 @@
 
 package com.juhao.murexide.ui.chat
 
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalFocusManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -116,22 +112,6 @@ fun ChatScreen(
     var viewerVisible by remember { mutableStateOf(false) }
 
     val hazeState = remember { HazeState() }
-
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-
-    val windowInsetsIme = WindowInsets.ime
-    val isKeyboardOpen by remember {
-        derivedStateOf {
-            windowInsetsIme.getBottom(density) > 0
-        }
-    }
-
-    LaunchedEffect(isKeyboardOpen) {
-        if (isKeyboardOpen) {
-            viewModel.hideStickerPanel()
-        }
-    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -685,12 +665,10 @@ fun ChatScreen(
                             onToggleSendType = { type ->
                                 viewModel.toggleSendType(type)
                             },
-                            requestFocus = uiState.requestInputFocus,
                             isEmojiPanelVisible = expressions.isVisible,
                             onEmojiClick = {
                                 if (expressions.isVisible) {
                                     viewModel.hideStickerPanel()
-                                    viewModel.showKeyboard()
                                 } else {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()

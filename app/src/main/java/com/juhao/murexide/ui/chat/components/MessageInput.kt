@@ -29,9 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.R
@@ -47,18 +45,9 @@ fun MessageInput(
     onAddVideoClick: () -> Unit,
     onAddFileClick: () -> Unit,
     onToggleSendType: (String) -> Unit,
-    requestFocus: Boolean = false,
     isEmojiPanelVisible: Boolean = false,
     onEmojiClick: () -> Unit
 ) {
-    val focusRequester = remember { FocusRequester() }
-    
-    LaunchedEffect(requestFocus) {
-        if (requestFocus) {
-            focusRequester.requestFocus()
-        }
-    }
-    
     var showMenu by remember { mutableStateOf(false) }
 
     Surface(
@@ -193,7 +182,7 @@ fun MessageInput(
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = onTextChange,
-                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                    modifier = Modifier.weight(1f),
                     placeholder = { Text("输入消息...") },
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 5
@@ -206,11 +195,7 @@ fun MessageInput(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (isEmojiPanelVisible) {
-                            Icons.Rounded.Keyboard
-                        } else {
-                            Icons.Rounded.Mood
-                        },
+                        imageVector = Icons.Rounded.Mood,
                         contentDescription = if (isEmojiPanelVisible) "键盘" else "表情"
                     )
                 }
@@ -235,7 +220,7 @@ fun MessageInput(
                         ) {
                             if (isSending) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp).focusProperties { canFocus = false },
                                     strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.primary
                                 )

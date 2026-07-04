@@ -318,12 +318,6 @@ class ChatViewModel(
                 quoteImageUrl = state.replyTo?.imageUrl,
                 quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment
             )
-            
-            _uiState.update {
-                it.copy(
-                    requestInputFocus = true
-                )
-            }
 
             repository.sendMessage(
                 token = token,
@@ -337,8 +331,7 @@ class ChatViewModel(
                     it.copy(
                         inputText = "",
                         replyTo = null,
-                        isSending = false,
-                        requestInputFocus = true
+                        isSending = false
                     )
                 }
             }.onFailure { error ->
@@ -1044,10 +1037,6 @@ class ChatViewModel(
                 else -> _toastMessage.emit("成功撤回 $successCount 条，失败 $failCount 条")
             }
         }
-    }
-    
-    fun showKeyboard() {
-        _uiState.update { it.copy(requestInputFocus = true) }
     }
 
     fun startDownload(message: MessageItem, context: Context) {
