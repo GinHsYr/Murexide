@@ -1049,10 +1049,6 @@ class ChatViewModel(
     fun showKeyboard() {
         _uiState.update { it.copy(requestInputFocus = true) }
     }
-    
-    fun onInputFocusConsumed() {
-        _uiState.update { it.copy(requestInputFocus = false) }
-    }
 
     fun startDownload(message: MessageItem, context: Context) {
         val fileUrl = message.fileUrl ?: return

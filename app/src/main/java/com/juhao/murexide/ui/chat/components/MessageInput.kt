@@ -48,7 +48,6 @@ fun MessageInput(
     onAddFileClick: () -> Unit,
     onToggleSendType: (String) -> Unit,
     requestFocus: Boolean = false,
-    onFocusConsumed: () -> Unit = {},
     isEmojiPanelVisible: Boolean = false,
     onEmojiClick: () -> Unit
 ) {
@@ -57,7 +56,6 @@ fun MessageInput(
     LaunchedEffect(requestFocus) {
         if (requestFocus) {
             focusRequester.requestFocus()
-            onFocusConsumed()
         }
     }
     
@@ -72,7 +70,10 @@ fun MessageInput(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
-                .navigationBarsPadding()
+                .then(
+                    if (isEmojiPanelVisible) Modifier else
+                    Modifier.navigationBarsPadding()
+                )
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

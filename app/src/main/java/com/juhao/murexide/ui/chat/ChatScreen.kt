@@ -686,7 +686,6 @@ fun ChatScreen(
                                 viewModel.toggleSendType(type)
                             },
                             requestFocus = uiState.requestInputFocus,
-                            onFocusConsumed = { viewModel.onInputFocusConsumed() },
                             isEmojiPanelVisible = expressions.isVisible,
                             onEmojiClick = {
                                 if (expressions.isVisible) {
