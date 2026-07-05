@@ -106,7 +106,8 @@ class MessageRepository {
         chatType: Int,
         content: MessageContent,
         contentType: Int,
-        quoteMsgId: String? = null
+        quoteMsgId: String? = null,
+        commandId: Long? = null
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
@@ -129,7 +130,8 @@ class MessageRepository {
                     expression_id = content.expressionId ?: "",
                     sticker_item_id = content.stickerItemId ?: 0L,
                     sticker_pack_id = content.stickerPackId ?: 0L,
-                    mentioned_id = content.mentionedId
+                    mentioned_id = content.mentionedId,
+                    form = content.form ?: ""
                 )
 
                 val requestProto = send_message_send(
@@ -138,7 +140,8 @@ class MessageRepository {
                     chat_type = chatType.toLong(),
                     content = contentProto,
                     content_type = contentType.toLong(),
-                    quote_msg_id = quoteMsgId ?: ""
+                    quote_msg_id = quoteMsgId ?: "",
+                    command_id = commandId ?: 0L
                 )
                 val requestBody = requestProto.encode().toRequestBody("application/octet-stream".toMediaType())
 

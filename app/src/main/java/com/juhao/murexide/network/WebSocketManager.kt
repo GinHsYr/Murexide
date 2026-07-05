@@ -66,7 +66,6 @@ class WebSocketManager private constructor() {
         data class NewMessage(val message: MessageItem) : WsEvent()
         data class EditMessage(val message: MessageItem) : WsEvent()
         data class StreamContent(val msgId: String, val content: String) : WsEvent()
-        data class DraftUpdate(val chatId: String, val draft: String) : WsEvent()
         data class MessageDeleted(val msgId: String) : WsEvent()
         object Connected : WsEvent()
         object Disconnected : WsEvent()
@@ -276,24 +275,6 @@ class WebSocketManager private constructor() {
         heartbeatJob = null
     }
 
-    fun sendDraftSync(chatId: String, draft: String, deviceId: String) {
-        if (!isConnected) {
-            Log.w(TAG, "WebSocket not connected")
-            return
-        }
-        val json = JSONObject().apply {
-            put("seq", UUID.randomUUID().toString())
-            put("cmd", "inputInfo")
-            put("data", JSONObject().apply {
-                put("chatId", chatId)
-                put("input", draft)
-                put("deviceId", deviceId)
-            })
-        }
-        webSocket?.send(json.toString())
-        Log.d(TAG, "Draft sync sent")
-    }
-
     private fun handleTextMessage(text: String) {
         try {
             val json = JSONObject(text)
@@ -348,14 +329,6 @@ class WebSocketManager private constructor() {
                     streamMessage.data_?.msg?.let { msg ->
                         scope.launch {
                             _messageFlow.emit(WsEvent.StreamContent(msg.msg_id, msg.content))
-                        }
-                    }
-                }
-                "draft_input" -> {
-                    val draftInput = draft_input.ADAPTER.decode(data)
-                    draftInput.data_?.draft?.let { draft ->
-                        scope.launch {
-                            _messageFlow.emit(WsEvent.DraftUpdate(draft.chat_id, draft.input))
                         }
                     }
                 }

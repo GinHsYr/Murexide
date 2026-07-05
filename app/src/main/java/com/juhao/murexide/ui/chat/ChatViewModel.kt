@@ -28,36 +28,29 @@ import com.juhao.murexide.proto.group.info
 import com.juhao.murexide.proto.group.info_send
 import com.juhao.murexide.repository.ChatBackgroundRepository
 import com.juhao.murexide.repository.StickerRepository
+import com.juhao.murexide.repository.InstructionRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import kotlin.time.Duration.Companion.milliseconds
 
 class ChatViewModel(
     private val token: String,
     val chatId: String,
     private val chatType: Int,
-    private val deviceId: String,
     private val repository: MessageRepository = MessageRepository(),
     private val backgroundRepository: ChatBackgroundRepository = ChatBackgroundRepository(),
     private val stickerRepository: StickerRepository = StickerRepository(),
+    private val instructionRepository: InstructionRepository = InstructionRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "ChatViewModel"
-        private const val DRAFT_DEBOUNCE_MS = 500L
-        private const val DRAFT_CLEAR_DELAY_MS = 300L
     }
-    
-    private var lastUserInputTime = 0L
-    private var lastAppliedDraft = ""
-    private var draftClearJob: Job? = null
-    
+
     private var uploadJob: Job? = null
 
     private val msgIdCache = mutableSetOf<String>()
@@ -71,11 +64,12 @@ class ChatViewModel(
     private val _recallDialog = MutableStateFlow(RecallDialogState())
     val recallDialog: StateFlow<RecallDialogState> = _recallDialog.asStateFlow()
 
-    private val _editDialog = MutableStateFlow(EditDialogState())
-    val editDialog: StateFlow<EditDialogState> = _editDialog.asStateFlow()
-
     private val _stickerPanel = MutableStateFlow(StickerPanelState())
     val stickerPanel: StateFlow<StickerPanelState> = _stickerPanel.asStateFlow()
+
+    // 当前待填写的自定义输入指令（type 5），非空时显示表单对话框
+    private val _instructionForm = MutableStateFlow<InstructionItem?>(null)
+    val instructionForm: StateFlow<InstructionItem?> = _instructionForm.asStateFlow()
 
     private val _downloadingFiles = MutableStateFlow<Map<String, Float>>(emptyMap())
     val downloadingFiles: StateFlow<Map<String, Float>> = _downloadingFiles.asStateFlow()
@@ -153,12 +147,6 @@ class ChatViewModel(
                     is WebSocketManager.WsEvent.StreamContent -> {
                         Log.d(TAG, "Stream content: msgId=${event.msgId}")
                         updateStreamMessage(event.msgId, event.content)
-                    }
-                    is WebSocketManager.WsEvent.DraftUpdate -> {
-                        Log.d(TAG, "Draft update from WS: chatId=${event.chatId}, expected=$chatId")
-                        if (event.chatId == chatId) {
-                            updateInputTextFromWs(event.draft)
-                        }
                     }
                     is WebSocketManager.WsEvent.MessageDeleted -> {
                         Log.d(TAG, "Message deleted: msgId=${event.msgId}")
@@ -251,40 +239,7 @@ class ChatViewModel(
 
     fun updateInputText(text: String) {
         if (_uiState.value.inputText == text) return
-        
-        lastUserInputTime = System.currentTimeMillis()
-        
         _uiState.update { it.copy(inputText = text) }
-        
-        wsManager.sendDraftSync(chatId, text, deviceId)
-    }
-
-    private fun updateInputTextFromWs(draft: String) {
-        val currentTime = System.currentTimeMillis()
-        val timeSinceLastInput = currentTime - lastUserInputTime
-        
-        if (timeSinceLastInput < DRAFT_DEBOUNCE_MS) {
-            return
-        }
-        
-        if (draft == lastAppliedDraft) {
-            return
-        }
-        
-        val currentInput = _uiState.value.inputText
-        if (currentInput == draft) {
-            lastAppliedDraft = draft
-            return
-        }
-
-        _uiState.update { it.copy(inputText = draft) }
-        lastAppliedDraft = draft
-        
-        draftClearJob?.cancel()
-        draftClearJob = viewModelScope.launch {
-            delay(DRAFT_CLEAR_DELAY_MS.milliseconds)
-            _uiState.update { it.copy(isRemoteDraft = false) }
-        }
     }
 
     fun toggleSendType(type: String) {
@@ -301,6 +256,10 @@ class ChatViewModel(
 
     fun sendMessage() {
         val state = _uiState.value
+        if (state.editingMessage != null) {
+            editCurrentMessage()
+            return
+        }
         if (state.inputText.isBlank() || state.isSending) return
 
         viewModelScope.launch {
@@ -325,13 +284,17 @@ class ChatViewModel(
                 chatType = chatType,
                 content = content,
                 contentType = contentType,
-                quoteMsgId = state.replyTo?.msgId
+                quoteMsgId = state.replyTo?.msgId,
+                commandId = state.pendingCommandId
             ).onSuccess {
                 _uiState.update {
                     it.copy(
                         inputText = "",
                         replyTo = null,
-                        isSending = false
+                        isSending = false,
+                        pendingCommandId = null,
+                        pendingCommandName = null,
+                        pendingCommandHint = null
                     )
                 }
             }.onFailure { error ->
@@ -732,42 +695,53 @@ class ChatViewModel(
         }
     }
 
-    fun showEditDialog(message: MessageItem) {
-        _editDialog.value = EditDialogState(
-            isOpen = true,
-            message = message,
-            newContent = message.content,
-            sendType = when (message.contentType) {
-                MessageItem.CONTENT_TYPE_MARKDOWN -> "markdown"
-                MessageItem.CONTENT_TYPE_HTML -> "html"
-                else -> "text"
-            }
-        )
+    /** 进入内联编辑模式：把消息内容填入主输入框，并按原类型设置发送类型 */
+    fun startEditMessage(message: MessageItem) {
+        hideStickerPanel()
+        hideInstructionPanel()
+        _uiState.update {
+            it.copy(
+                editingMessage = message,
+                inputText = message.content,
+                sendType = when (message.contentType) {
+                    MessageItem.CONTENT_TYPE_MARKDOWN -> "markdown"
+                    MessageItem.CONTENT_TYPE_HTML -> "html"
+                    else -> "text"
+                },
+                replyTo = null,
+                pendingCommandId = null,
+                pendingCommandName = null,
+                pendingCommandHint = null
+            )
+        }
     }
 
-    fun hideEditDialog() {
-        _editDialog.value = EditDialogState(isOpen = false)
+    /** 退出编辑模式 */
+    fun cancelEdit() {
+        _uiState.update {
+            it.copy(
+                editingMessage = null,
+                inputText = "",
+                sendType = "text"
+            )
+        }
     }
 
-    fun updateEditContent(content: String) {
-        _editDialog.update { it.copy(newContent = content) }
-    }
+    private fun editCurrentMessage() {
+        val state = _uiState.value
+        val message = state.editingMessage ?: return
+        if (state.inputText.isBlank() || state.isSending) return
 
-    fun toggleEditSendType(type: String) {
-        _editDialog.update { it.copy(sendType = type) }
-    }
-
-    fun editMessage() {
-        val state = _editDialog.value
-        val message = state.message ?: return
         val contentType = when (state.sendType) {
             "markdown" -> MessageItem.CONTENT_TYPE_MARKDOWN
             "html" -> MessageItem.CONTENT_TYPE_HTML
             else -> MessageItem.CONTENT_TYPE_TEXT
         }
+        val newContent = state.inputText
 
         viewModelScope.launch {
-            val content = MessageContent(text = state.newContent)
+            _uiState.update { it.copy(isSending = true) }
+            val content = MessageContent(text = newContent)
 
             repository.editMessage(
                 token = token,
@@ -777,15 +751,24 @@ class ChatViewModel(
                 content = content,
                 contentType = contentType
             ).onSuccess {
-                hideEditDialog()
-                val updatedMessage = message.copy(
-                    content = state.newContent,
-                    isEdited = true
+                _uiState.update {
+                    it.copy(
+                        isSending = false,
+                        editingMessage = null,
+                        inputText = "",
+                        sendType = "text"
+                    )
+                }
+                updateEditedMessage(
+                    message.copy(
+                        content = newContent,
+                        contentType = contentType,
+                        isEdited = true
+                    )
                 )
-                updateEditedMessage(updatedMessage)
                 _toastMessage.emit("编辑成功")
             }.onFailure { error ->
-                hideEditDialog()
+                _uiState.update { it.copy(isSending = false) }
                 _toastMessage.emit("编辑失败: ${error.message}")
                 error.printStackTrace()
             }
@@ -800,6 +783,7 @@ class ChatViewModel(
         if (current.isVisible) {
             _stickerPanel.value = current.copy(isVisible = false)
         } else {
+            hideInstructionPanel()
             _stickerPanel.value = current.copy(isVisible = true)
             if (!current.isLoaded && !current.isLoading) {
                 loadStickerData()
@@ -894,6 +878,143 @@ class ChatViewModel(
                 _toastMessage.emit("表情发送失败: ${error.message}")
                 error.printStackTrace()
             }
+        }
+    }
+
+    // ---------- 指令面板 ----------
+
+    /** 切换指令面板显示/隐藏（显示前懒加载一次数据） */
+    fun toggleInstructionPanel() {
+        val panel = _uiState.value.instructionPanel
+        if (panel.isVisible) {
+            hideInstructionPanel()
+        } else {
+            hideStickerPanel()
+            _uiState.update { it.copy(instructionPanel = it.instructionPanel.copy(isVisible = true)) }
+            if (!panel.isLoaded && !panel.isLoading) {
+                loadInstructionData()
+            }
+        }
+    }
+
+    fun hideInstructionPanel() {
+        _uiState.update { it.copy(instructionPanel = it.instructionPanel.copy(isVisible = false)) }
+    }
+
+    /** 按会话类型加载指令：群聊走 bot-list，机器人私聊走 web-list */
+    private fun loadInstructionData() {
+        _uiState.update { it.copy(instructionPanel = it.instructionPanel.copy(isLoading = true)) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val state = _uiState.value
+            val bots: List<BotItem>
+            val instructions: List<InstructionItem>
+            when (chatType) {
+                2 -> {
+                    val result = instructionRepository.getGroupBots(token, chatId).getOrElse {
+                        Log.e(TAG, "Failed to load group bots", it)
+                        emptyList<BotItem>() to emptyList()
+                    }
+                    bots = result.first
+                    instructions = result.second
+                }
+                3 -> {
+                    val list = instructionRepository.getBotInstructions(
+                        token, chatId, botName = state.chatName
+                    ).getOrElse {
+                        Log.e(TAG, "Failed to load bot instructions", it)
+                        emptyList()
+                    }
+                    bots = listOf(
+                        BotItem(id = chatId, name = state.chatName, avatarUrl = state.chatAvatar)
+                    )
+                    instructions = list
+                }
+                else -> {
+                    bots = emptyList()
+                    instructions = emptyList()
+                }
+            }
+            _uiState.update {
+                it.copy(
+                    instructionPanel = it.instructionPanel.copy(
+                        isLoading = false,
+                        isLoaded = true,
+                        bots = bots,
+                        instructions = instructions
+                    )
+                )
+            }
+        }
+    }
+
+    /** 点击指令：按类型分流 */
+    fun onInstructionClick(item: InstructionItem) {
+        when (item.type) {
+            2 -> sendInstructionDirect(item)          // 直发指令
+            5 -> _instructionForm.value = item        // 自定义输入指令 → 弹表单
+            else -> {                                  // 普通指令 → 预填输入框、挂载待发送
+                hideInstructionPanel()
+                _uiState.update {
+                    it.copy(
+                        inputText = item.defaultText,
+                        pendingCommandId = item.id,
+                        pendingCommandName = item.name,
+                        pendingCommandHint = item.hintText
+                    )
+                }
+            }
+        }
+    }
+
+    /** 直发指令：立即发送 */
+    private fun sendInstructionDirect(item: InstructionItem) {
+        viewModelScope.launch {
+            repository.sendMessage(
+                token = token,
+                chatId = chatId,
+                chatType = chatType,
+                content = MessageContent(),
+                contentType = MessageItem.CONTENT_TYPE_TEXT,
+                commandId = item.id
+            ).onSuccess {
+                hideInstructionPanel()
+            }.onFailure { error ->
+                _toastMessage.emit("指令发送失败: ${error.message}")
+            }
+        }
+    }
+
+    /** 提交自定义输入指令表单 */
+    fun submitInstructionForm(item: InstructionItem, formJson: String) {
+        viewModelScope.launch {
+            repository.sendMessage(
+                token = token,
+                chatId = chatId,
+                chatType = chatType,
+                content = MessageContent(form = formJson),
+                contentType = MessageItem.CONTENT_TYPE_TEXT,
+                commandId = item.id
+            ).onSuccess {
+                _instructionForm.value = null
+                hideInstructionPanel()
+            }.onFailure { error ->
+                _toastMessage.emit("指令发送失败: ${error.message}")
+            }
+        }
+    }
+
+    fun dismissInstructionForm() {
+        _instructionForm.value = null
+    }
+
+    /** 取消待发送指令 */
+    fun clearPendingCommand() {
+        _uiState.update {
+            it.copy(
+                pendingCommandId = null,
+                pendingCommandName = null,
+                pendingCommandHint = null
+            )
         }
     }
 
@@ -1112,13 +1233,6 @@ class ChatViewModel(
 data class RecallDialogState(
     val isOpen: Boolean = false,
     val msgId: String? = null
-)
-
-data class EditDialogState(
-    val isOpen: Boolean = false,
-    val message: MessageItem? = null,
-    val newContent: String = "",
-    val sendType: String = "text"
 )
 
 data class StickerPanelState(

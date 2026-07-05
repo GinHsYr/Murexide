@@ -46,7 +46,9 @@ fun MessageInput(
     onAddFileClick: () -> Unit,
     onToggleSendType: (String) -> Unit,
     isEmojiPanelVisible: Boolean = false,
-    onEmojiClick: () -> Unit
+    onEmojiClick: () -> Unit,
+    isInstructionPanelVisible: Boolean = false,
+    onInstructionClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -55,7 +57,7 @@ fun MessageInput(
             .fillMaxWidth()
             .padding(8.dp)
             .then(
-                if (isEmojiPanelVisible) Modifier else
+                if (isEmojiPanelVisible || isInstructionPanelVisible) Modifier else
                 Modifier.navigationBarsPadding()
             )
     ) {
@@ -184,6 +186,16 @@ fun MessageInput(
             )
 
             Spacer(modifier = Modifier.width(5.dp))
+
+            IconButton(
+                onClick = onInstructionClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Terminal,
+                    contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
+                )
+            }
 
             IconButton(
                 onClick = onEmojiClick,

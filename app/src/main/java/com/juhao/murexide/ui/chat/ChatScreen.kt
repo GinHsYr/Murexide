@@ -45,10 +45,11 @@ import com.juhao.murexide.ui.components.Avatar
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.MultiImageViewer
-import com.juhao.murexide.ui.chat.components.EditMessageDialog
 import com.juhao.murexide.ui.chat.components.MessageBubble
 import com.juhao.murexide.ui.chat.components.MessageInput
 import com.juhao.murexide.ui.chat.components.EmojiPanel
+import com.juhao.murexide.ui.chat.components.InstructionPanel
+import com.juhao.murexide.ui.chat.components.InstructionFormDialog
 import com.juhao.murexide.ui.chat.components.UploadProgressBar
 import com.juhao.murexide.ui.chat.components.ScreenshotBottomSheet
 import com.juhao.murexide.ui.chat.components.saveBitmapToGallery
@@ -87,12 +88,13 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
     val expressions by viewModel.stickerPanel.collectAsState()
+    val instructionPanel = uiState.instructionPanel
+    val instructionForm by viewModel.instructionForm.collectAsState()
 
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
     var showMoreMenu by remember { mutableStateOf(false) }
 
     val recallDialog by viewModel.recallDialog.collectAsState()
-    val editDialog by viewModel.editDialog.collectAsState()
 
     val listState = rememberLazyListState()
     var showScrollToBottom by remember { mutableStateOf(false) }
@@ -667,7 +669,92 @@ fun ChatScreen(
                                     }
                                 }
                             }
-    
+
+                            AnimatedVisibility(
+                                visible = uiState.editingMessage != null,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Edit,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "编辑中……",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = uiState.editingMessage?.getDisplayContent() ?: "",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = { viewModel.cancelEdit() },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Close,
+                                            contentDescription = "取消编辑",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            AnimatedVisibility(
+                                visible = uiState.pendingCommandId != null,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Terminal,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "指令: ${uiState.pendingCommandName ?: ""}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = { viewModel.clearPendingCommand() },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Close,
+                                            contentDescription = "取消指令",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
                             MessageInput(
                                 inputText = uiState.inputText,
                                 sendType = uiState.sendType,
@@ -687,13 +774,19 @@ fun ChatScreen(
                                     } else {
                                         viewModel.toggleStickerPanel()
                                     }
-                                }
+                                },
+                                isInstructionPanelVisible = instructionPanel.isVisible,
+                                onInstructionClick = { viewModel.toggleInstructionPanel() }
                             )
-    
+
                             BackHandler(enabled = expressions.isVisible) {
                                 viewModel.hideStickerPanel()
                             }
-    
+
+                            BackHandler(enabled = instructionPanel.isVisible) {
+                                viewModel.hideInstructionPanel()
+                            }
+
                             AnimatedVisibility(
                                 visible = expressions.isVisible,
                                 enter = fadeIn() + expandVertically(),
@@ -709,6 +802,22 @@ fun ChatScreen(
                                         viewModel.sendStickerItem(stickerItem)
                                     },
                                     stickerPacks = expressions.stickerPacks,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(280.dp)
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = instructionPanel.isVisible,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                InstructionPanel(
+                                    bots = instructionPanel.bots,
+                                    instructions = instructionPanel.instructions,
+                                    isLoading = instructionPanel.isLoading,
+                                    onInstructionClick = { viewModel.onInstructionClick(it) },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(280.dp)
@@ -840,7 +949,7 @@ fun ChatScreen(
                         MessageBubble(
                             message = message,
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
-                            onEdit = { viewModel.showEditDialog(message) },
+                            onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },
                             isAdmin = uiState.isAdmin,
                             isLastFromSender = isLastFromSender,
@@ -998,21 +1107,13 @@ fun ChatScreen(
         )
     }
 
-    if (editDialog.isOpen && editDialog.message != null) {
-        EditMessageDialog(
-            state = editDialog,
-            onDismiss = { viewModel.hideEditDialog() },
-            onContentChange = { viewModel.updateEditContent(it) },
-            onSave = { viewModel.editMessage() },
-            onToggleSendType = { type ->
-                viewModel.toggleEditSendType(type)
-            }
+    instructionForm?.let { item ->
+        InstructionFormDialog(
+            item = item,
+            onDismiss = { viewModel.dismissInstructionForm() },
+            onSubmit = { formJson -> viewModel.submitInstructionForm(item, formJson) }
         )
     }
-}
-
-fun getDeviceId(): String {
-    return "android_${System.currentTimeMillis()}"
 }
 
 @Composable

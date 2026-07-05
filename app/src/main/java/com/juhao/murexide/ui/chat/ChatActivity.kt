@@ -37,8 +37,7 @@ class ChatActivity : ComponentActivity() {
                                 return ChatViewModel(
                                     token = token,
                                     chatId = chatId,
-                                    chatType = chatType,
-                                    deviceId = com.juhao.murexide.ui.chat.getDeviceId()
+                                    chatType = chatType
                                 ) as T
                             }
                         }

@@ -87,7 +87,9 @@ data class MessageContent(
     val expressionId: String? = null,
     val stickerItemId: Long? = null,
     val stickerPackId: Long? = null,
-    val mentionedId: List<String> = emptyList()
+    val mentionedId: List<String> = emptyList(),
+    val commandId: Long? = null,
+    val form: String? = null
 )
 
 data class ChatUiState(
@@ -105,8 +107,6 @@ data class ChatUiState(
     val isAdmin: Boolean = false,
     val memberCount: Long? = null,
     val isSending: Boolean = false,
-    val isRemoteDraft: Boolean = false,
-    val draftSource: String? = null,
     val backgroundUrl: String? = null,
     val isUploading: Boolean = false,
     val uploadProgress: Float = 0f,
@@ -114,5 +114,10 @@ data class ChatUiState(
     val selectionMode: Boolean = false,
     val selectedMessages: Set<MessageItem> = emptySet(),
     val downloadingFiles: Map<String, Float> = emptyMap(),
-    val downloadedFiles: Set<String> = emptySet()
+    val downloadedFiles: Set<String> = emptySet(),
+    val instructionPanel: InstructionPanelState = InstructionPanelState(),
+    val pendingCommandId: Long? = null,
+    val pendingCommandName: String? = null,
+    val pendingCommandHint: String? = null,
+    val editingMessage: MessageItem? = null
 )

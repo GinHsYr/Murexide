@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.data.MessageItem
-import com.juhao.murexide.ui.chat.EditDialogState
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.UnifiedHtmlWebView
 import com.juhao.murexide.ui.components.MultiImageViewer
@@ -739,65 +738,6 @@ fun MessageBubble(
             }
         }
     }
-}
-
-@Composable
-fun EditMessageDialog(
-    state: EditDialogState,
-    onDismiss: () -> Unit,
-    onContentChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onToggleSendType: (String) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("编辑消息") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
-                OutlinedTextField(
-                    value = state.newContent,
-                    onValueChange = onContentChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("新内容") },
-                    minLines = 5
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("消息类型：", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    FilterChip(
-                        selected = state.sendType == "text",
-                        onClick = { onToggleSendType("text") },
-                        label = { Text("文本") }
-                    )
-                    FilterChip(
-                        selected = state.sendType == "markdown",
-                        onClick = { onToggleSendType("markdown") },
-                        label = { Text("Markdown") }
-                    )
-                    FilterChip(
-                        selected = state.sendType == "html",
-                        onClick = { onToggleSendType("html") },
-                        label = { Text("HTML") }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onSave) { Text("保存") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
 }
 
 private fun getFileIcon(fileName: String): androidx.compose.ui.graphics.vector.ImageVector {

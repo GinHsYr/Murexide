@@ -48,7 +48,6 @@ import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
-import com.juhao.murexide.ui.chat.getDeviceId
 import com.juhao.murexide.ui.community.CommunityScreen
 import com.juhao.murexide.ui.settings.SettingsActivity
 
@@ -192,8 +191,7 @@ fun MainScreen(token: String) {
                                                 return ChatViewModel(
                                                     token = token,
                                                     chatId = currentConversation!!.chatId,
-                                                    chatType = currentConversation!!.chatType,
-                                                    deviceId = getDeviceId()
+                                                    chatType = currentConversation!!.chatType
                                                 ) as T
                                             }
                                         }
