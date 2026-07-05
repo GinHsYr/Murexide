@@ -180,7 +180,7 @@ private fun EmojiGrid(
 @Composable
 private fun EmojiGridItem(
     url: String?,
-    name: String,
+    name: String? = null,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -208,12 +208,14 @@ private fun EmojiGridItem(
             modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.extraSmall),
             contentScale = ContentScale.Fit
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        name?.let {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
