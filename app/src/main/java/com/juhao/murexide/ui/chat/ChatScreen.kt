@@ -928,6 +928,7 @@ fun ChatScreen(
                     onClick = scrollToBottom,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .padding(bottom = innerPadding.calculateBottomPadding())
                         .padding(12.dp)
                 )
 
@@ -948,6 +949,7 @@ fun ChatScreen(
                         modifier = Modifier
                             .alpha(animatedAlpha)
                             .align(if (floatingAvatarIsMine) Alignment.BottomEnd else Alignment.BottomStart)
+                            .padding(bottom = innerPadding.calculateBottomPadding())
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Avatar(

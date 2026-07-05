@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.data.ExpressionItem
@@ -150,6 +151,7 @@ private fun StickerPackGridPage(
         val item = items[index]
         EmojiGridItem(
             url = resolveStickerUrl(item.url),
+            name = item.name,
             onClick = { onItemClick(item) }
         )
     }
@@ -178,6 +180,7 @@ private fun EmojiGrid(
 @Composable
 private fun EmojiGridItem(
     url: String?,
+    name: String,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -193,13 +196,24 @@ private fun EmojiGridItem(
             .build()
     }
 
-    AsyncImage(
-        model = imageRequest,
-        contentDescription = null,
+    Column(
         modifier = Modifier
-            .size(80.dp)
             .clip(MaterialTheme.shapes.extraSmall)
             .clickable(onClick = onClick),
-        contentScale = ContentScale.Fit
-    )
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.extraSmall),
+            contentScale = ContentScale.Fit
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
