@@ -429,7 +429,7 @@ fun ChatScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RoundedCornerShape(9.dp))
                                         .clickable {
                                             ConversationDetailActivity.start(
                                                 context = context,
