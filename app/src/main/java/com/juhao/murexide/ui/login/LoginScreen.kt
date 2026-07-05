@@ -1,5 +1,3 @@
-@file:Suppress("AssignedValueIsNeverRead")
-
 package com.juhao.murexide.ui.login
 
 import android.graphics.BitmapFactory

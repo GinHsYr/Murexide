@@ -1,5 +1,3 @@
-@file:Suppress("AssignedValueIsNeverRead")
-
 package com.juhao.murexide.ui.chat
 
 import android.net.Uri

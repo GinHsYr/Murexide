@@ -170,8 +170,4 @@ class SettingsStorage(private val context: Context) {
             preferences[SHOW_MY_BUBBLE_AVATAR_KEY] = show
         }
     }
-
-    suspend fun getShowMyBubbleAvatar(): Boolean {
-        return showMyBubbleAvatarFlow.first()
-    }
 }

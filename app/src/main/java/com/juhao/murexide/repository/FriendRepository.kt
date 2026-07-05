@@ -8,7 +8,6 @@ import com.juhao.murexide.proto.friend.address_book_list
 import com.juhao.murexide.proto.friend.address_book_list_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request

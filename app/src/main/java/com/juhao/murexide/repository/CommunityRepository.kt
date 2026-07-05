@@ -1,11 +1,9 @@
 package com.juhao.murexide.repository
 
-import android.util.Log
 import com.juhao.murexide.data.*
 import com.juhao.murexide.network.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request

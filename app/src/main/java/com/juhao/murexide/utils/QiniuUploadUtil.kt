@@ -34,8 +34,7 @@ class QiniuUploader(
     private val userToken: String,
     private val enableWebp: Boolean = false,
     private val uploadType: Int = 1, //1图片2视频3文件
-    private val webpQuality: Int = 95,
-    private val debug: Boolean = false
+    private val webpQuality: Int = 95
 ) {
     companion object {
         // 图片配置
@@ -197,7 +196,7 @@ class QiniuUploader(
 
                 val quality = webpQuality.coerceIn(1, 100)
                 val success = bitmap.compress(
-                    Bitmap.CompressFormat.WEBP,
+                    Bitmap.CompressFormat.WEBP_LOSSY,
                     quality,
                     outputFile.outputStream()
                 )

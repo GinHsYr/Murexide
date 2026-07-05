@@ -1,5 +1,3 @@
-@file:Suppress("AssignedValueIsNeverRead")
-
 package com.juhao.murexide.ui.settings
 
 import android.widget.Toast
