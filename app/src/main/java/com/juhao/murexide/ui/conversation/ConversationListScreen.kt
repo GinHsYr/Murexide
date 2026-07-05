@@ -1,5 +1,10 @@
 package com.juhao.murexide.ui.conversation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -330,7 +335,31 @@ private fun Badges(
                 containerColor = if (doNotDisturb) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
                 contentColor = if (doNotDisturb) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
             ) {
-                Text("$unreadCount", style = MaterialTheme.typography.labelSmall)
+                AnimatedContent(
+                    targetState = unreadCount,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            slideInVertically(
+                                initialOffsetY = { fullHeight -> fullHeight },
+                                animationSpec = tween(200)
+                            ) togetherWith slideOutVertically(
+                                targetOffsetY = { fullHeight -> -fullHeight },
+                                animationSpec = tween(200)
+                            )
+                        } else {
+                            slideInVertically(
+                                initialOffsetY = { fullHeight -> -fullHeight },
+                                animationSpec = tween(200)
+                            ) togetherWith slideOutVertically(
+                                targetOffsetY = { fullHeight -> fullHeight },
+                                animationSpec = tween(200)
+                            )
+                        }
+                    },
+                    label = "unread_count"
+                ) { count ->
+                    Text("$count", style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.juhao.murexide.utils
 
 import android.net.Uri
+import android.os.Build
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -194,9 +195,14 @@ class QiniuUploader(
                     return@withContext false
                 }
 
+                val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    Bitmap.CompressFormat.WEBP_LOSSY
+                } else {
+                    Bitmap.CompressFormat.WEBP
+                }
                 val quality = webpQuality.coerceIn(1, 100)
                 val success = bitmap.compress(
-                    Bitmap.CompressFormat.WEBP_LOSSY,
+                    format,
                     quality,
                     outputFile.outputStream()
                 )
