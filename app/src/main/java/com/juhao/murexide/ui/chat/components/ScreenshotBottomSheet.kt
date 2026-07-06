@@ -170,6 +170,9 @@ private fun ScreenshotContent(
     chatAvatar: String,
     privateMode: Boolean
 ) {    
+    val anonymousCache = remember { mutableMapOf<String, String>() }
+    var counter by remember { mutableIntStateOf(0) }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -253,7 +256,13 @@ private fun ScreenshotContent(
                         isOlderSameSender = isOlderSameSender,
                         isNewerSameSender = isNewerSameSender,
                         showAvatar = isFirstFromSender,
-                        privateMode = privateMode
+                        privateMode = privateMode,
+                        anonymousNameProvider = { senderId ->
+                            anonymousCache.getOrPut(senderId) {
+                                counter++
+                                "用户$counter"
+                            }
+                        }
                     )
                 }
             }

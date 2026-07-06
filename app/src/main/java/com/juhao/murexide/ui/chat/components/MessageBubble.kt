@@ -77,7 +77,8 @@ fun MessageBubble(
     downloadProgress: Float? = null,
     isDownloaded: Boolean = false,
     onDownloadClick: (MessageItem) -> Unit = {},
-    privateMode: Boolean = false
+    privateMode: Boolean = false,
+    anonymousNameProvider: ((String) -> String)? = null
 ) {
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -252,8 +253,13 @@ fun MessageBubble(
                                         modifier = Modifier.padding(bottom = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                        val displayName = if (privateMode && anonymousNameProvider != null) {
+                                            anonymousNameProvider(message.senderId)
+                                        } else {
+                                            message.senderName
+                                        }
                                         Text(
-                                            text = if (privateMode) "用户 ${message.senderId.maskMiddle()}" else message.senderName,
+                                            text = displayName,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
@@ -325,7 +331,7 @@ fun MessageBubble(
                                                 Spacer(modifier = Modifier.width(8.dp))
                                             }
                                             Text(
-                                                text = quoteText,
+                                                text = if (privateMode) processQuoteText(quoteText) else quoteText,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
@@ -781,10 +787,20 @@ private fun extractImageUrls(html: String): List<String> {
     return regex.findAll(html).map { it.groupValues[1] }.toList()
 }
 
-fun String.maskMiddle(): String {
-    return when {
-        length <= 2 -> this
-        length <= 4 -> "${first()}***${last()}"
-        else -> "${first()}${"*".repeat(length - 2)}${last()}"
+private fun processQuoteText(quoteText: String): String {
+    if (quoteText.isBlank()) return quoteText
+    
+    val pattern = Regex("^[^:：]+[:：]\\s*(.*)$")
+    val matchResult = pattern.find(quoteText)
+    
+    return if (matchResult != null) {
+        val content = matchResult.groupValues.getOrNull(1)
+        if (!content.isNullOrBlank()) {
+            "用户：$content"
+        } else {
+            "用户：$quoteText"
+        }
+    } else {
+        $quoteText
     }
 }
