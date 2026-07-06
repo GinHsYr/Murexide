@@ -206,12 +206,13 @@ fun PostCard(
     onCollectClick: (Int) -> Unit,
     onPostClick: (PostItem) -> Unit
 ) {
-    Column {
+    Column(
+        modifier = Modifier.padding(horizontal = 4.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onPostClick(post) }
-                .padding(horizontal = 16.dp)
                 .padding(16.dp)
         ) {
             // 作者信息

@@ -59,22 +59,20 @@ fun InstructionPanel(
         val pagerState = rememberPagerState(pageCount = { bots.size })
         val scope = rememberCoroutineScope()
 
-        if (bots.size > 1) {
-            SecondaryScrollableTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                edgePadding = 4.dp,
-                containerColor = Color.Transparent,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                bots.forEachIndexed { index, bot ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = {
-                            Text(text = bot.name, maxLines = 1, fontSize = 13.sp)
-                        }
-                    )
-                }
+        SecondaryScrollableTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            edgePadding = 4.dp,
+            containerColor = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            bots.forEachIndexed { index, bot ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    text = {
+                        Text(text = bot.name, maxLines = 1, fontSize = 13.sp)
+                    }
+                )
             }
         }
 

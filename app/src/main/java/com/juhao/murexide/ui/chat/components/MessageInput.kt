@@ -191,7 +191,7 @@ fun MessageInput(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Terminal,
+                    imageVector = Icons.Rounded.Code,
                     contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
                 )
             }
