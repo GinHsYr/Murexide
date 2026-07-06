@@ -107,7 +107,7 @@ fun BaSelector(
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
@@ -170,9 +170,7 @@ fun PostsList(
             Text("暂无文章", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
-        LazyColumn(
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
+        LazyColumn {
             items(posts) { post ->
                 PostCard(
                     post = post,
@@ -207,12 +205,13 @@ fun PostCard(
     onPostClick: (PostItem) -> Unit
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = 4.dp)
+        modifier = Modifier
+            .clickable { onPostClick(post) }
+            .padding(horizontal = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onPostClick(post) }
                 .padding(16.dp)
         ) {
             // 作者信息
