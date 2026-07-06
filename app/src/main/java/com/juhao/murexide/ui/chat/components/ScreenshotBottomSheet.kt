@@ -114,16 +114,7 @@ fun ScreenshotBottomSheet(
                     icon = Icons.Rounded.VisibilityOff,
                     label = "隐藏信息",
                     onClick = {
-                        scope.launch {
-                            val view = screenshotView ?: return@launch
-                            withContext(Dispatchers.Main) {
-                                val bitmap = createBitmap(view.width, view.height)
-                                val canvas = Canvas(bitmap)
-                                view.draw(canvas)
-                                onSaveImage(bitmap)
-                                onDismiss()
-                            }
-                        }
+                        privateMode = !privateMode
                     },
                     enabled = privateMode
                 )
