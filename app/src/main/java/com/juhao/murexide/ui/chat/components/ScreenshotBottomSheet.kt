@@ -57,6 +57,8 @@ fun ScreenshotBottomSheet(
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<View?>(null) }
+    
+    var privateMode by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -91,7 +93,8 @@ fun ScreenshotBottomSheet(
                                     ScreenshotContent(
                                         messages = messages,
                                         chatName = chatName,
-                                        chatAvatar = chatAvatar
+                                        chatAvatar = chatAvatar,
+                                        privateMode = privateMode
                                     )
                                 }
                             }
@@ -108,6 +111,30 @@ fun ScreenshotBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
+                ScreenshotActionCard(
+                    icon = Icons.Outlined.Incognito,
+                    label = "隐藏会话",
+                    onClick = {
+                        scope.launch {
+                            val view = screenshotView ?: return@launch
+                            withContext(Dispatchers.Main) {
+                                val bitmap = createBitmap(view.width, view.height)
+                                val canvas = Canvas(bitmap)
+                                view.draw(canvas)
+                                onSaveImage(bitmap)
+                                onDismiss()
+                            }
+                        }
+                    },
+                    enabled = privateMode
+                )
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .padding(horizontal = 10.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    thickness = 1.dp
+                )
                 ScreenshotActionCard(
                     icon = Icons.Rounded.Save,
                     label = "保存图片",
@@ -150,7 +177,8 @@ fun ScreenshotBottomSheet(
 private fun ScreenshotContent(
     messages: List<MessageItem>,
     chatName: String,
-    chatAvatar: String
+    chatAvatar: String,
+    privateMode: Boolean
 ) {    
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -169,12 +197,24 @@ private fun ScreenshotContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Avatar(url = chatAvatar, size = 36.dp)
+                if (privateMode) {
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Incognito, contentDescription = null, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                } else {
+                    Avatar(url = chatAvatar, size = 36.dp)
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 
                 Column {
                     Text(
-                        text = chatName,
+                        text = if (privateMode) "隐藏会话" else chatName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -249,7 +289,8 @@ private fun ScreenshotContent(
 private fun ScreenshotActionCard(
     icon: ImageVector,
     label: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = false
 ) {
     Column(
         modifier = Modifier.clickable { onClick() },
@@ -258,7 +299,7 @@ private fun ScreenshotActionCard(
         Surface(
             modifier = Modifier.size(44.dp),
             shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
