@@ -206,7 +206,7 @@ fun MessageBubble(
                             color = MaterialTheme.colorScheme.surfaceContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.Incognito, contentDescription = null, modifier = Modifier.size(24.dp))
+                                Icon(Icons.rounded.Incognito, contentDescription = null, modifier = Modifier.size(24.dp))
                             }
                         }
                     } else {

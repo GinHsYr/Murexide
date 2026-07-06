@@ -19,8 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -112,7 +111,7 @@ fun ScreenshotBottomSheet(
                 horizontalArrangement = Arrangement.Center
             ) {
                 ScreenshotActionCard(
-                    icon = Icons.Outlined.Incognito,
+                    icon = Icons.rounded.Incognito,
                     label = "隐藏会话",
                     onClick = {
                         scope.launch {
@@ -204,7 +203,7 @@ private fun ScreenshotContent(
                         color = MaterialTheme.colorScheme.surface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Incognito, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Icon(Icons.rounded.Incognito, contentDescription = null, modifier = Modifier.size(24.dp))
                         }
                     }
                 } else {
