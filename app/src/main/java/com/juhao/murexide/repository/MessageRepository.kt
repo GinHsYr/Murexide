@@ -10,6 +10,8 @@ import com.juhao.murexide.proto.edit_message_send
 import com.juhao.murexide.proto.edit_message
 import com.juhao.murexide.proto.recall_msg_send
 import com.juhao.murexide.proto.recall_msg
+import com.juhao.murexide.proto.button_report_send
+import com.juhao.murexide.proto.button_report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -77,6 +79,7 @@ class MessageRepository {
                                     cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
                                     cmdId = msg.cmd?.type?.toLong(),
                                     cmdType = msg.cmd?.type,
+                                    buttons = parseMessageButtons(msg.content?.buttons),
                                     tags = msg.sender?.tag?.map { tag ->
                                         MessageTag(
                                             id = tag.id,
@@ -213,6 +216,52 @@ class MessageRepository {
                             Result.success(true)
                         } else {
                             Result.failure(Exception(editResult.status?.msg ?: "编辑失败"))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 上报消息气泡按钮的点击事件 (actionType=3) */
+    suspend fun reportButtonClick(
+        token: String,
+        msgId: String,
+        chatId: String,
+        chatType: Int,
+        userId: String,
+        buttonValue: String
+    ): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestProto = button_report_send(
+                    msg_id = msgId,
+                    chat_type = chatType.toLong(),
+                    chat_id = chatId,
+                    user_id = userId,
+                    button_value = buttonValue
+                )
+                val requestBody = requestProto.encode().toRequestBody("application/octet-stream".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/msg/button-report")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body.bytes()
+                        val result = button_report.ADAPTER.decode(responseBody)
+
+                        if (result.status?.code == 1) {
+                            Result.success(true)
+                        } else {
+                            Result.failure(Exception(result.status?.msg ?: "按钮上报失败"))
                         }
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))

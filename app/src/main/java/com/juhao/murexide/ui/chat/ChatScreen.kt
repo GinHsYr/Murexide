@@ -1,6 +1,7 @@
 package com.juhao.murexide.ui.chat
 
 import android.content.ClipData
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -65,6 +66,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.draw.clip
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
+import com.juhao.murexide.ui.webview.WebViewActivity
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -223,6 +225,24 @@ fun ChatScreen(
     LaunchedEffect(Unit) {
         viewModel.toastMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.buttonEvent.collect { event ->
+            when (event) {
+                is ButtonEvent.OpenUrl -> {
+                    val intent = Intent(context, WebViewActivity::class.java).apply {
+                        putExtra(WebViewActivity.EXTRA_URL, event.url)
+                    }
+                    context.startActivity(intent)
+                }
+                is ButtonEvent.CopyText -> {
+                    clipboardManager.setClipEntry(
+                        ClipEntry(ClipData.newPlainText("button", event.text))
+                    )
+                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
     LaunchedEffect(listState) {
@@ -1022,6 +1042,13 @@ fun ChatScreen(
                             onDownloadClick = { msg ->
                                 if (!selectionMode) {
                                     viewModel.startDownload(msg, context)
+                                } else {
+                                    viewModel.toggleMessageSelection(msg)
+                                }
+                            },
+                            onButtonClick = { msg, button ->
+                                if (!selectionMode) {
+                                    viewModel.onButtonClick(msg, button)
                                 } else {
                                     viewModel.toggleMessageSelection(msg)
                                 }

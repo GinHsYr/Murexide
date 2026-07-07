@@ -185,6 +185,11 @@ message button_report_send {
     string button_value = 6; // 欲点击按钮的值
 }
 
+// 按钮事件点击返回状态信息
+message button_report {
+    Status status = 1;
+}
+
 // 撤回消息
 message recall_msg_send {
     string msg_id = 2; // 消息息ID

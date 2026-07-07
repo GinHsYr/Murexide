@@ -1,6 +1,39 @@
 package com.juhao.murexide.data
 
+import android.util.Log
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+/** 消息气泡内的按钮 */
+@Serializable
+data class MessageButton(
+    val text: String = "",
+    val actionType: Int = 0, // 1-跳转URL，2-复制，3-上报点击事件
+    val url: String? = null,
+    val value: String? = null
+) {
+    companion object {
+        const val ACTION_JUMP = 1
+        const val ACTION_COPY = 2
+        const val ACTION_REPORT = 3
+    }
+}
+
+private val buttonsJson = Json { ignoreUnknownKeys = true }
+
+/**
+ * 解析消息里的 buttons 字段（服务端存储为 JSON 字符串）。
+ * 结构为二维数组：外层为行，内层为一行内的按钮。
+ */
+fun parseMessageButtons(raw: String?): List<List<MessageButton>> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return try {
+        buttonsJson.decodeFromString<List<List<MessageButton>>>(raw)
+    } catch (e: Exception) {
+        Log.w("MessageButtons", "解析按钮失败: $raw", e)
+        emptyList()
+    }
+}
 
 @Serializable
 data class MessageItem(
@@ -32,6 +65,7 @@ data class MessageItem(
     val cmdName: String? = null,
     val cmdId: Long? = null,
     val cmdType: Int? = null,
+    val buttons: List<List<MessageButton>> = emptyList(),
     val tags: List<MessageTag> = emptyList()
 ) {
     val isMine: Boolean

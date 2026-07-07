@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.juhao.murexide.data.MessageButton
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.UnifiedHtmlWebView
@@ -77,6 +78,7 @@ fun MessageBubble(
     downloadProgress: Float? = null,
     isDownloaded: Boolean = false,
     onDownloadClick: (MessageItem) -> Unit = {},
+    onButtonClick: (MessageItem, MessageButton) -> Unit = { _, _ -> },
     privateMode: Boolean = false,
     anonymousNameProvider: ((String) -> String)? = null
 ) {
@@ -643,7 +645,22 @@ fun MessageBubble(
                                         }
                                     }
                                 }
-    
+
+                                if (!message.isRecalled && message.buttons.isNotEmpty()) {
+                                    MessageButtons(
+                                        buttons = message.buttons,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                top = if (hideMsgCard) 4.dp else 6.dp,
+                                                start = if (hideMsgCard) 8.dp else 0.dp,
+                                                end = if (hideMsgCard) 8.dp else 0.dp,
+                                                bottom = if (hideMsgCard) 4.dp else 0.dp
+                                            ),
+                                        onButtonClick = { button -> onButtonClick(message, button) }
+                                    )
+                                }
+
                                 if ((!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT) || message.isRecalled) {
                                     Row(
                                         modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)
@@ -750,6 +767,55 @@ fun MessageBubble(
                     )
                 } else if (isMine && showMyBubbleAvatarSetting) {
                     Spacer(modifier = Modifier.width(44.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageButtons(
+    buttons: List<List<MessageButton>>,
+    modifier: Modifier = Modifier,
+    onButtonClick: (MessageButton) -> Unit
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        buttons.forEach { row ->
+            if (row.isEmpty()) return@forEach
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                row.forEach { button ->
+                    val leadingIcon = when (button.actionType) {
+                        MessageButton.ACTION_JUMP -> Icons.Rounded.Link
+                        MessageButton.ACTION_COPY -> Icons.Rounded.ContentCopy
+                        else -> null
+                    }
+                    OutlinedButton(
+                        onClick = { onButtonClick(button) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        if (leadingIcon != null) {
+                            Icon(
+                                imageVector = leadingIcon,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = button.text,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

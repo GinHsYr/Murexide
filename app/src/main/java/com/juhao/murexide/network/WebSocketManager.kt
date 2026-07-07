@@ -3,6 +3,7 @@ package com.juhao.murexide.network
 import android.util.Log
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
+import com.juhao.murexide.data.parseMessageButtons
 import com.juhao.murexide.proto.chat_ws_go.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -45,6 +46,11 @@ class WebSocketManager private constructor() {
     @Volatile private var connectionVersion = 0
     private var currentUserId: String? = null
     private var currentToken: String? = null
+
+    /** 当前登录用户ID，供上报按钮点击等场景使用 */
+    val loggedInUserId: String?
+        get() = currentUserId
+
     private var currentDeviceId: String? = null
     private var currentPlatform: String? = null
     @Volatile private var lastHeartbeatAckTime = 0L
@@ -375,6 +381,7 @@ class WebSocketManager private constructor() {
             fileSize = if ((msg.content?.file_size ?: 0) > 0) msg.content?.file_size else null,
             cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
             cmdId = msg.cmd?.id,
+            buttons = parseMessageButtons(msg.content?.buttons),
             tags = msg.sender?.tag?.map { tag ->
                 MessageTag(
                     id = tag.id,
@@ -401,7 +408,8 @@ class WebSocketManager private constructor() {
             isRecalled = false,
             isEdited = true,
             quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
-            quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() }
+            quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
+            buttons = parseMessageButtons(msg.content?.buttons)
         )
     }
 

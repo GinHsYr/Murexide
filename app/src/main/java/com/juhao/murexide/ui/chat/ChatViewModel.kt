@@ -61,6 +61,9 @@ class ChatViewModel(
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
+    private val _buttonEvent = MutableSharedFlow<ButtonEvent>()
+    val buttonEvent: SharedFlow<ButtonEvent> = _buttonEvent.asSharedFlow()
+
     private val _recallDialog = MutableStateFlow(RecallDialogState())
     val recallDialog: StateFlow<RecallDialogState> = _recallDialog.asStateFlow()
 
@@ -666,6 +669,56 @@ class ChatViewModel(
         return uri.lastPathSegment ?: "file_${System.currentTimeMillis()}"
     }
 
+    /**
+     * 处理消息气泡按钮点击。
+     * actionType=1 跳转URL / 2 复制文本，交由 UI 处理（返回事件）；
+     * actionType=3 上报点击事件到服务端。
+     */
+    fun onButtonClick(message: MessageItem, button: MessageButton) {
+        when (button.actionType) {
+            MessageButton.ACTION_JUMP -> {
+                val url = button.url?.takeIf { it.isNotBlank() }
+                if (url != null) {
+                    viewModelScope.launch { _buttonEvent.emit(ButtonEvent.OpenUrl(url)) }
+                } else {
+                    viewModelScope.launch { _toastMessage.emit("按钮缺少跳转链接") }
+                }
+            }
+
+            MessageButton.ACTION_COPY -> {
+                val value = button.value ?: button.text
+                viewModelScope.launch { _buttonEvent.emit(ButtonEvent.CopyText(value)) }
+            }
+
+            else -> {
+                // actionType 3 或其它：上报点击事件
+                reportButtonClick(message, button)
+            }
+        }
+    }
+
+    private fun reportButtonClick(message: MessageItem, button: MessageButton) {
+        val userId = wsManager.loggedInUserId
+        if (userId.isNullOrEmpty()) {
+            viewModelScope.launch { _toastMessage.emit("无法获取用户信息，请稍后重试") }
+            return
+        }
+        val value = button.value ?: button.text
+        viewModelScope.launch {
+            repository.reportButtonClick(
+                token = token,
+                msgId = message.msgId,
+                chatId = chatId,
+                chatType = chatType,
+                userId = userId,
+                buttonValue = value
+            ).onFailure { error ->
+                _toastMessage.emit("按钮操作失败: ${error.message}")
+                Log.e(TAG, "button-report failed", error)
+            }
+        }
+    }
+
     fun showRecallDialog(msgId: String) {
         _recallDialog.value = RecallDialogState(isOpen = true, msgId = msgId)
     }
@@ -1052,7 +1105,8 @@ class ChatViewModel(
                             content = message.content,
                             contentType = message.contentType,
                             isEdited = true,
-                            isRecalled = message.isRecalled
+                            isRecalled = message.isRecalled,
+                            buttons = message.buttons
                         )
                     else 
                         msg
@@ -1228,6 +1282,15 @@ class ChatViewModel(
             }
         }
     }
+}
+
+/** 消息气泡按钮触发的一次性事件，由 UI 层消费。 */
+sealed class ButtonEvent {
+    /** 打开链接（actionType=1 跳转按钮）。 */
+    data class OpenUrl(val url: String) : ButtonEvent()
+
+    /** 复制文本到剪贴板（actionType=2 复制按钮）。 */
+    data class CopyText(val text: String) : ButtonEvent()
 }
 
 data class RecallDialogState(
