@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.juhao.murexide.data.CommentItem
@@ -25,8 +26,13 @@ import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.community.InteractionButton
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.MarkdownText
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun PostDetailScreen(
     onBackClick: () -> Unit,
@@ -47,86 +53,141 @@ fun PostDetailScreen(
             viewModel.loadMoreComments()
         }
     }
+    
+    val hazeState = remember { HazeState() }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("文章详情") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thin().copy(
+                                noiseFactor = 0f
+                            ),
+                            block = null
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                )
+                
+                TopAppBar(
+                    title = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(url = uiState.post.senderAvatar, size = 36.dp)
+                            
+                            Spacer(Modifier.width(8.dp))
+                            
+                            Column {
+                                Text(
+                                    uiState.post.senderNickname,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    uiState.post.createTimeText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
         val post = uiState.post
-        when {
-            uiState.isLoadingDetail && post == null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        Box(
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState)
+        ) {
+            when {
+                uiState.isLoadingDetail && post == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-
-            post == null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        uiState.error ?: "加载失败",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    item { PostHeader(post = post, viewModel = viewModel) }
-
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+    
+                post == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "评论 ${uiState.commentTotal}",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            uiState.error ?: "加载失败",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    if (uiState.comments.isEmpty() && !uiState.isLoadingComments) {
+                }
+    
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    ) {
                         item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("暂无评论", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
+                        }
+                    
+                        item { PostHeader(post = post, viewModel = viewModel) }
+    
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            Text(
+                                text = "评论 ${uiState.commentTotal}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+    
+                        if (uiState.comments.isEmpty() && !uiState.isLoadingComments) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("暂无评论", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
-                    }
-
-                    items(uiState.comments, key = { it.id }) { comment ->
-                        CommentRow(comment)
-                    }
-
-                    if (uiState.isLoadingComments) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    strokeWidth = 2.dp
-                                )
+    
+                        items(uiState.comments, key = { it.id }) { comment ->
+                            CommentRow(comment)
+                        }
+    
+                        if (uiState.isLoadingComments) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(28.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
                             }
                         }
                     }
@@ -139,21 +200,6 @@ fun PostDetailScreen(
 @Composable
 private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Avatar(url = post.senderAvatar, size = 40.dp)
-        
-        Spacer(Modifier.width(8.dp))
-        
-        Column {
-            Text(post.senderNickname, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-            Text(
-                post.createTimeText,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
         Text(post.title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
 
         Spacer(Modifier.height(12.dp))
@@ -245,20 +291,17 @@ private fun CommentRow(comment: CommentItem) {
         Avatar(url = comment.senderAvatar, size = 32.dp)
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    comment.senderNickname,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    comment.createTimeText,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                comment.senderNickname,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                comment.createTimeText,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.height(2.dp))
             Text(comment.content, fontSize = 14.sp, lineHeight = 20.sp)
         }
