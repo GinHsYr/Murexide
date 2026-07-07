@@ -159,10 +159,10 @@ fun UnifiedHtmlWebView(
                     setSupportZoom(true)
                     builtInZoomControls = false
                     displayZoomControls = false
-                    cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+                    cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                     loadsImagesAutomatically = true
                     blockNetworkImage = false
-                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                     offscreenPreRaster = false
                 }
                 setBackgroundColor(backgroundColor)
@@ -225,7 +225,7 @@ private fun generateStyledHtml(
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 font-size: 16px;
                 line-height: 1.6;
-                padding: 12px 16px;
+                padding: 8px 12px;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
             }

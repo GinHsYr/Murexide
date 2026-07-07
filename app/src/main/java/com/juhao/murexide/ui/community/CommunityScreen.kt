@@ -275,7 +275,7 @@ fun PostCard(
                 InteractionButton(
                     icon = if (post.isLiked == "1") Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     count = post.likeNum,
-                    tint = if (post.isLiked == "1") Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (post.isLiked == "1") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = { onLikeClick(post.id) }
                 )
     

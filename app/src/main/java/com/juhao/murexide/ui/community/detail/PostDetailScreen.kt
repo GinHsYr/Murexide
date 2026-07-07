@@ -139,35 +139,31 @@ fun PostDetailScreen(
 @Composable
 private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        // 作者
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(url = post.senderAvatar, size = 40.dp)
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(post.senderNickname, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                Text(
-                    post.createTimeText,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp
-                )
-            }
+        Avatar(url = post.senderAvatar, size = 40.dp)
+        
+        Spacer(Modifier.width(8.dp))
+        
+        Column {
+            Text(post.senderNickname, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+            Text(
+                post.createTimeText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // 标题
         Text(post.title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
 
         Spacer(Modifier.height(12.dp))
 
-        // 正文：Markdown 或纯文本
         if (post.contentType == 2) {
             MarkdownText(markdown = post.content, modifier = Modifier.fillMaxWidth())
         } else {
             Text(post.content, fontSize = 15.sp, lineHeight = 22.sp)
         }
 
-        // 绑定的群聊
         post.group?.takeIf { it.groupId.isNotEmpty() }?.let { group ->
             Spacer(Modifier.height(12.dp))
             GroupCard(group)
@@ -175,7 +171,6 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        // 互动
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             InteractionButton(
                 icon = if (post.isLiked == 1) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -192,7 +187,7 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
             InteractionButton(
                 icon = if (post.isCollected == 1) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                 count = post.collectNum,
-                tint = if (post.isCollected == 1) Color(0xFFFFC107) else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (post.isCollected == 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { viewModel.toggleCollect() }
             )
         }

@@ -10,19 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -109,7 +97,7 @@ fun MarkdownText(
                     if (segment.content.isNotBlank()) {
                         val taskRuns = MarkdownRendererCache.getTaskRuns(segment.content)
                         val textContent: @Composable () -> Unit = {
-                            Column(modifier = Modifier.fillMaxWidth()) {
+                            Column {
                                 taskRuns.forEach { run ->
                                     when (run) {
                                         is TaskRun.Markdown -> {
@@ -135,7 +123,6 @@ fun MarkdownText(
                                         is TaskRun.Task -> {
                                             Row(
                                                 modifier = Modifier
-                                                    .fillMaxWidth()
                                                     .padding(vertical = 2.dp),
                                                 verticalAlignment = Alignment.Top
                                             ) {
@@ -152,7 +139,7 @@ fun MarkdownText(
                                                         .padding(top = 2.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Box(modifier = Modifier.fillMaxWidth()) {
+                                                Box {
                                                     MarkdownTextRun(
                                                         content = run.content,
                                                         latexEnabled = latexEnabled,
@@ -249,12 +236,11 @@ private fun MarkdownTextRun(
             highlightKeyword
         )
         maybeSelection {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box {
                 MarkdownText(
                     markdown = highlightedMarkdown,
                     onLinkClicked = onLinkClicked,
-                    persistRenderState = persistRenderState,
-                    modifier = Modifier.fillMaxWidth()
+                    persistRenderState = persistRenderState
                 )
             }
         }
@@ -268,12 +254,11 @@ private fun MarkdownTextRun(
             highlightKeyword
         )
         maybeSelection {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box {
                 MarkdownText(
                     markdown = highlightedMarkdown,
                     onLinkClicked = onLinkClicked,
-                    persistRenderState = persistRenderState,
-                    modifier = Modifier.fillMaxWidth()
+                    persistRenderState = persistRenderState
                 )
             }
         }
@@ -292,7 +277,6 @@ private fun MarkdownTextRun(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         latexSegments.forEach { segment ->
@@ -307,8 +291,7 @@ private fun MarkdownTextRun(
                             MarkdownText(
                                 markdown = highlightedMarkdown,
                                 onLinkClicked = onLinkClicked,
-                                persistRenderState = persistRenderState,
-                                modifier = Modifier.fillMaxWidth()
+                                persistRenderState = persistRenderState
                             )
                         }
                     }
@@ -470,16 +453,13 @@ private fun InlineMarkdownWithLatex(
         }
     }
     Column(
-        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         lines.forEach { line ->
             if (line.isEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
             } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                FlowRow {
                     line.forEach { segment ->
                         when (segment) {
                             is MarkdownInlineSegment.Markdown -> {
@@ -564,7 +544,6 @@ private fun MarkdownInlineImage(
             .build(),
         contentDescription = alt ?: "Markdown图片",
         modifier = Modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick(url) },
         contentScale = ContentScale.FillWidth
@@ -585,17 +564,13 @@ private fun CodeBlockComponent(
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column {
             // 语言标签和复制按钮
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -608,6 +583,8 @@ private fun CodeBlockComponent(
                         fontFamily = FontFamily.Monospace
                     )
                 }
+                
+                Spacer(Modifier.weight(1f))
 
                 IconButton(
                     onClick = {
@@ -637,7 +614,6 @@ private fun CodeBlockComponent(
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
-                        .fillMaxWidth()
                         .horizontalScroll(scrollState)
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 )
@@ -957,7 +933,6 @@ private fun MarkdownDetailsBlock(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
@@ -968,7 +943,6 @@ private fun MarkdownDetailsBlock(
             .padding(12.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -990,7 +964,6 @@ private fun MarkdownDetailsBlock(
             Box(modifier = Modifier.padding(top = 10.dp)) {
                 MarkdownText(
                     markdown = contentMarkdown,
-                    modifier = Modifier.fillMaxWidth(),
                     textColor = textColor,
                     backgroundColor = Color.Transparent,
                     imageReferer = imageReferer,
