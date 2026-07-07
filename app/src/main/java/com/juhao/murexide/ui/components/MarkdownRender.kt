@@ -60,7 +60,6 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.core.net.toUri
 
-
 @Composable
 fun MarkdownText(
     markdown: String,
@@ -86,9 +85,7 @@ fun MarkdownText(
     val segments = MarkdownRendererCache.getSegments(normalizedMarkdown)
 
     Column(
-        modifier = modifier
-            .wrapContentWidth()
-            .background(backgroundColor),
+        modifier = modifier.background(backgroundColor),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         segments.forEach { segment ->
