@@ -43,7 +43,7 @@ import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.UnifiedHtmlWebView
 import com.juhao.murexide.ui.components.MultiImageViewer
-import com.juhao.murexide.ui.components.MarkdownRenderer
+import com.juhao.murexide.ui.components.MarkdownText
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -355,7 +355,9 @@ fun MessageBubble(
                                         MessageItem.CONTENT_TYPE_TEXT,
                                         MessageItem.CONTENT_TYPE_MARKDOWN -> {
                                             if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
-                                                MarkdownRenderer.Render(content = message.content)
+                                                MarkdownText(
+                                                    markdown = message.content
+                                                )
                                             } else {
                                                 val timeId = "time_${message.msgId}"
                                                 val textMeasurer = rememberTextMeasurer()
@@ -501,7 +503,6 @@ fun MessageBubble(
                                             message.fileName?.let { fileName ->
                                                 val progress = downloadProgress ?: 0f
                                                 val isDownloading = downloadProgress != null && downloadProgress < 1f
-                                                // 进度为负表示总长度未知，使用不确定进度动画
                                                 val isIndeterminate = downloadProgress != null && downloadProgress < 0f
                                                 val isComplete = isDownloaded || (downloadProgress != null && progress >= 1f)
     
@@ -645,6 +646,14 @@ fun MessageBubble(
                                                 }
                                             }
                                         }
+
+                                        MessageItem.CONTENT_TYPE_POST -> {
+                                            PostCard(
+                                                message.postId?.toIntOrNull() ?: 0,
+                                                message.postTitle ?: "文章",
+                                                message.postContent ?: "内容"
+                                            )
+                                        }
         
                                         else -> {
                                             Text(
@@ -673,7 +682,7 @@ fun MessageBubble(
 
                                 if ((!hideMsgCard && message.contentType != MessageItem.CONTENT_TYPE_TEXT) || message.isRecalled) {
                                     Row(
-                                        modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start)
+                                        modifier = Modifier.align(if (isMine) Alignment.End else Alignment.Start).padding(top = 2.dp)
                                     ) {
                                         Text(
                                             text = timestampDisplay,

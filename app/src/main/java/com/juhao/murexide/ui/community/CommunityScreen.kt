@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.data.PostItem
 import com.juhao.murexide.data.BaItem
+import com.juhao.murexide.ui.community.detail.PostDetailActivity
 import com.juhao.murexide.ui.components.Avatar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +39,8 @@ fun CommunityScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val currentBaId = uiState.currentBaId
 
@@ -86,7 +89,7 @@ fun CommunityScreen(
                     viewModel.toggleCollect(postId)
                 },
                 onPostClick = { post ->
-                    // TODO: 跳转到文章详情
+                    PostDetailActivity.start(context, post.id)
                 },
                 onRefresh = {
                     viewModel.refresh()

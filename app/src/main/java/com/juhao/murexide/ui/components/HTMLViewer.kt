@@ -94,14 +94,7 @@ fun UnifiedHtmlWebView(
                         }
                         
                         if (url.startsWith("yunhu://")) {
-                            try {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW,
-                                    url.toUri())
-                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                            com.juhao.murexide.utils.UrlSchemeHandler.handle(context, url)
                             return true
                         }
                         

@@ -32,6 +32,20 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ui.community.detail.PostDetailActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Murexide">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="yunhu"
+                    android:host="post-detail" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide" />

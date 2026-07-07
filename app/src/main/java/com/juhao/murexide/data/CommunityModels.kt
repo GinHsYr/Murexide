@@ -66,3 +66,86 @@ data class GroupInfo(
     val avatarUrl: String,
     val headcount: Int
 )
+
+// ==================== 帖子详情 ====================
+
+@Serializable
+data class PostDetailResponse(
+    val code: Int,
+    val data: PostDetailData?,
+    val msg: String
+)
+
+@Serializable
+data class PostDetailData(
+    val ba: BaDetail? = null,
+    val isAdmin: Int = 0,
+    val post: PostDetail
+)
+
+@Serializable
+data class BaDetail(
+    val id: Int,
+    val name: String,
+    val avatar: String,
+    val memberNum: Int = 0,
+    val postNum: Int = 0,
+    val groupNum: Int = 0,
+    val createTimeText: String = "",
+    val isFollowed: String? = null
+)
+
+@Serializable
+data class PostDetail(
+    val id: Int,
+    val baId: Int,
+    val senderId: String,
+    val senderNickname: String,
+    val senderAvatar: String,
+    val title: String,
+    val content: String,
+    val contentType: Int,
+    val createTimeText: String,
+    val likeNum: Int,
+    val commentNum: Int,
+    val collectNum: Int,
+    val isLiked: Int = 0,
+    val isCollected: Int = 0,
+    val isReward: Int = 0,
+    val isVip: Int = 0,
+    val group: GroupInfo? = null
+)
+
+// ==================== 评论 ====================
+
+@Serializable
+data class CommentListResponse(
+    val code: Int,
+    val data: CommentListData?,
+    val msg: String
+)
+
+@Serializable
+data class CommentListData(
+    val comments: List<CommentItem> = emptyList(),
+    val isAdmin: Int = 0,
+    val total: Int = 0
+)
+
+@Serializable
+data class CommentItem(
+    val id: Int,
+    val postId: Int,
+    val parentId: Int = 0,
+    val senderId: String,
+    val content: String,
+    val createTimeText: String,
+    val likeNum: Int = 0,
+    val repliesNum: Int = 0,
+    val amountNum: Int = 0,
+    val senderNickname: String,
+    val senderAvatar: String,
+    val isLiked: String = "0",
+    val isReward: Int = 0,
+    val isVip: Int = 0
+)

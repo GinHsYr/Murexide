@@ -79,6 +79,10 @@ class MessageRepository {
                                     cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
                                     cmdId = msg.cmd?.type?.toLong(),
                                     cmdType = msg.cmd?.type,
+                                    postId = msg.content?.post_id,
+                                    postTitle = msg.content?.post_title,
+                                    postContent = msg.content?.post_content,
+                                    postContentType = msg.content?.post_content_type?.toIntOrNull(),
                                     buttons = parseMessageButtons(msg.content?.buttons),
                                     tags = msg.sender?.tag?.map { tag ->
                                         MessageTag(

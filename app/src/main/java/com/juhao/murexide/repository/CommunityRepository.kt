@@ -124,6 +124,74 @@ class CommunityRepository(
         }
     }
 
+    suspend fun getPostDetail(id: Int): Result<PostDetailData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("id" to id)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/posts/post-detail")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body.string()
+                        val result = json.decodeFromString<PostDetailResponse>(responseBody)
+
+                        if (result.code == 1 && result.data != null) {
+                            Result.success(result.data)
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "获取文章详情失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getCommentList(postId: Int, size: Int = 10, page: Int = 1): Result<CommentListData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf(
+                    "postId" to postId,
+                    "size" to size,
+                    "page" to page
+                )
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/comment/comment-list")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body.string()
+                        val result = json.decodeFromString<CommentListResponse>(responseBody)
+
+                        if (result.code == 1) {
+                            Result.success(result.data ?: CommentListData())
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "获取评论列表失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     suspend fun toggleLike(postId: Int): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
