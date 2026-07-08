@@ -184,11 +184,7 @@ fun UnifiedHtmlWebView(
             val lastLoadedHtml = webView.getTag(tagKey) as? String
             if (lastLoadedHtml != styledHtml) {
                 webView.setTag(tagKey, styledHtml)
-                val encoded = android.util.Base64.encodeToString(
-                    styledHtml.toByteArray(Charsets.UTF_8),
-                    android.util.Base64.NO_PADDING
-                )
-                webView.loadData(encoded, "text/html; charset=utf-8", "base64")
+                webView.loadDataWithBaseURL(null, styledHtml, "text/html", "UTF-8", null)
             }
         }
     )
@@ -223,9 +219,9 @@ private fun generateStyledHtml(
                 background-color: $bgHex;
                 color: $textHex;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                font-size: 16px;
-                line-height: 1.6;
-                padding: 8px 12px;
+                font-size: 14px;
+                line-height: 1.5;
+                padding: 8px;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
             }
