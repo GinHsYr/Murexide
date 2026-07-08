@@ -69,7 +69,7 @@ object UrlSchemeHandler {
                 }
 
                 "ad" -> {
-                    toast(context, "暂不支持观看广告")
+                    toast(context, "不支持观看广告")
                     true
                 }
 

@@ -313,7 +313,7 @@ fun AppearanceScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "气泡透明度",
+                                text = "气泡不透明度",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
