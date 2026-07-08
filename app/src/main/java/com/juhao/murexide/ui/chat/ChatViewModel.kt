@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.group.info
 import com.juhao.murexide.proto.group.info_send

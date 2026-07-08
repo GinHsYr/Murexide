@@ -70,6 +70,7 @@ fun MessageBubble(
     showMenuMsgId: String? = null,
     showMenuChanged: (String?) -> Unit = {},
     onImageClick: (MessageItem) -> Unit = {},
+    onMarkdownImageClick: (String) -> Unit = {},
     onAvatarClick: () -> Unit = {},
     bubbleCornerRadius: Float = 16f,
     bubbleOpacity: Float = 0.9f,
@@ -356,7 +357,10 @@ fun MessageBubble(
                                         MessageItem.CONTENT_TYPE_MARKDOWN -> {
                                             if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
                                                 MarkdownText(
-                                                    markdown = message.content
+                                                    markdown = message.content,
+                                                    onImageClick = { url ->
+                                                        onMarkdownImageClick(url)
+                                                    }
                                                 )
                                             } else {
                                                 val timeId = "time_${message.msgId}"

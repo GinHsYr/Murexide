@@ -51,6 +51,7 @@ data class MessageItem(
     val quoteMsgId: String? = null,
     val quoteMsgText: String? = null,
     val quoteImageUrl: String? = null,
+    val stickerUrl: String? = null,
     val imageUrl: String? = null,
     val audioUrl: String? = null,
     val audioTime: Int? = null,

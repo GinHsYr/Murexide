@@ -1028,6 +1028,11 @@ fun ChatScreen(
                                     viewModel.toggleMessageSelection(msg)
                                 }
                             },
+                            onMarkdownImageClick = { url ->
+                                viewerImages = listOf(url)
+                                viewerInitialPage = 0
+                                viewerVisible = true
+                            },
                             onAvatarClick = {
                                 ConversationDetailActivity.start(
                                     context = context,

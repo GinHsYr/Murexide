@@ -70,6 +70,7 @@ class MessageRepository {
                                     quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
                                     quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
                                     quoteImageUrl = msg.content?.quote_image_url?.takeIf { it.isNotEmpty() },
+                                    stickerUrl = msg.content?.sticker_url?.takeIf { it.isNotEmpty() },
                                     imageUrl = msg.content?.image_url?.takeIf { it.isNotEmpty() }, 
                                     audioTime = if ((msg.content?.audio_time ?: 0) > 0) msg.content?.audio_time?.toInt() else null,
                                     videoUrl = msg.content?.video_url?.takeIf { it.isNotEmpty() },
