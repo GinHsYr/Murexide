@@ -58,7 +58,7 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem("conversations", "消息", Icons.Rounded.ChatBubbleOutline),
+    NavItem("conversations", "消息", Icons.Rounded.ChatBubble),
     NavItem("contacts", "通讯录", Icons.Rounded.Contacts),
     NavItem("community", "社区", Icons.Rounded.People),
     NavItem("discover", "发现", Icons.Rounded.Explore),
