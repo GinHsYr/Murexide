@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,7 +50,7 @@ fun CommunityScreen(
                 title = { Text("社区") },
                 actions = {
                     IconButton(onClick = { /* TODO: 搜索 */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
+                        Icon(Icons.Rounded.Search, contentDescription = "搜索")
                     }
                 }
             )
@@ -59,7 +59,7 @@ fun CommunityScreen(
             FloatingActionButton(
                 onClick = { /* TODO: 发布文章 */ }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "发布")
+                Icon(Icons.Rounded.Add, contentDescription = "发布")
             }
         }
     ) { innerPadding ->
@@ -273,7 +273,7 @@ fun PostCard(
             ) {
                 // 点赞
                 InteractionButton(
-                    icon = if (post.isLiked == "1") Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    icon = if (post.isLiked == "1") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     count = post.likeNum,
                     tint = if (post.isLiked == "1") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = { onLikeClick(post.id) }
@@ -281,7 +281,7 @@ fun PostCard(
     
                 // 评论
                 InteractionButton(
-                    icon = Icons.Default.ChatBubbleOutline,
+                    icon = Icons.Rounded.ChatBubbleOutline,
                     count = post.commentNum,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = { /* TODO: 打开评论 */ }
@@ -289,7 +289,7 @@ fun PostCard(
     
                 // 收藏
                 InteractionButton(
-                    icon = if (post.isCollected == 1) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                    icon = if (post.isCollected == 1) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
                     count = post.collectNum,
                     tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = { onCollectClick(post.id) }

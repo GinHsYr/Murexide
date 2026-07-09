@@ -244,7 +244,7 @@ fun MainScreen(token: String) {
                             title = { Text("发现") },
                             actions = {
                                 IconButton(onClick = { /* TODO: 搜索 */ }) {
-                                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                                    Icon(Icons.Rounded.Search, contentDescription = "搜索")
                                 }
                             }
                         )
