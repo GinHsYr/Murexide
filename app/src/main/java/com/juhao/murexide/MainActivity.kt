@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(token: String) {
     val navController = rememberNavController()
@@ -251,7 +252,7 @@ fun MainScreen(token: String) {
                     }
                 ) { innerPadding ->
                     Column(
-                        modifier = modifier
+                        modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
                             .padding(top = 16.dp),
