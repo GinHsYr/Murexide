@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.collectLatest
 
@@ -31,6 +32,7 @@ fun EditProfileScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
 
     var nickname by remember { mutableStateOf("") }
@@ -74,6 +76,7 @@ fun EditProfileScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text("编辑资料") },
@@ -82,6 +85,7 @@ fun EditProfileScreen(
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                     }
                 },
+                scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(
                         onClick = {

@@ -61,6 +61,7 @@ private val navItems = listOf(
     NavItem("conversations", "消息", Icons.Rounded.ChatBubbleOutline),
     NavItem("contacts", "通讯录", Icons.Rounded.Contacts),
     NavItem("community", "社区", Icons.Rounded.People),
+    NavItem("discover", "发现", Icons.Rounded.Explore),
     NavItem("mine", "我的", Icons.Rounded.Person),
 )
 
@@ -234,6 +235,30 @@ fun MainScreen(token: String) {
                 CommunityScreen(
                     token = token
                 )
+            }
+            
+            composable("discover") {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("发现") },
+                            actions = {
+                                IconButton(onClick = { /* TODO: 搜索 */ }) {
+                                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Column(
+                        modifier = modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(top = 16.dp),
+                    ) {
+                        Text("发现")
+                    }
+                }
             }
 
             composable("mine") {
