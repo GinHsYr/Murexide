@@ -335,7 +335,7 @@ fun MessageBubble(
                                                     )
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            if (message.quoteImageUrl != null) {
+                                            if (message.quoteImageUrl != null && !hideImages) {
                                                 val builder = ImageRequest.Builder(context)
                                                     .data(message.quoteImageUrl)
     

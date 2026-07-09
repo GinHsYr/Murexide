@@ -89,7 +89,7 @@ private fun BoardContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 300.dp)
+            .heightIn(max = 240.dp)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
