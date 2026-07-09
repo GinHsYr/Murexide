@@ -156,7 +156,9 @@ fun PostDetailScreen(
                             Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
                         }
                     
-                        item { PostHeader(post = post, viewModel = viewModel) }
+                        item(key = "post_header_${post.id}") { 
+                            PostHeader(post = post, viewModel = viewModel) 
+                        }
     
                         item {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
