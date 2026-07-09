@@ -15,36 +15,37 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import java.net.HttpURLConnection
-import java.net.URL
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.juhao.murexide.network.NetworkClient
 
 @Composable
 fun UnifiedHtmlWebView(
     htmlContent: String,
     modifier: Modifier = Modifier,
+    bgColor: Color = MaterialTheme.colorScheme.surface,
     onImageClick: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val isDarkTheme = isSystemInDarkTheme()
-    val backgroundColor = MaterialTheme.colorScheme.surface.toArgb()
+    val backgroundColor = bgColor.toArgb()
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val linkColor = MaterialTheme.colorScheme.primary.toArgb()
     val codeBackgroundColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
-    
+
     val styledHtml = remember(htmlContent, backgroundColor, textColor, linkColor, codeBackgroundColor, isDarkTheme) {
         generateStyledHtml(htmlContent, backgroundColor, textColor, linkColor, codeBackgroundColor, isDarkTheme)
     }
-    
+
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -75,29 +76,29 @@ fun UnifiedHtmlWebView(
             }
         }
     }
-    
+
     AndroidView(
         modifier = modifier.fillMaxWidth(),
         factory = { ctx ->
             WebView(ctx).apply {
                 setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                
+
                 webViewClient = object : WebViewClient() {
                     @Deprecated("Deprecated in Java")
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                         if (url == null) return true
-                        
+
                         if (url.startsWith("image://")) {
                             val imageUrl = url.removePrefix("image://")
                             onImageClick?.invoke(imageUrl)
                             return true
                         }
-                        
+
                         if (url.startsWith("yunhu://")) {
                             com.juhao.murexide.utils.UrlSchemeHandler.handle(context, url)
                             return true
                         }
-                        
+
                         try {
                             val finalUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
                                 "https://$url"
@@ -113,29 +114,34 @@ fun UnifiedHtmlWebView(
                         }
                         return true
                     }
-                    
+
                     override fun shouldInterceptRequest(
                         view: WebView?,
                         request: WebResourceRequest?
                     ): WebResourceResponse? {
                         val url = request?.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                        
+
                         if (url.startsWith("https://chat-img.jwznb.com")) {
                             try {
-                                val connection = URL(url).openConnection() as HttpURLConnection
-                                connection.setRequestProperty("Referer", "https://myapp.jwznb.com")
-                                connection.connect()
-                                val contentType = connection.contentType
-                                val encoding = connection.contentEncoding ?: "UTF-8"
-                                val inputStream = connection.inputStream
-                                return WebResourceResponse(contentType, encoding, inputStream)
+                                val req = okhttp3.Request.Builder()
+                                    .url(url)
+                                    .header("Referer", "https://myapp.jwznb.com")
+                                    .build()
+                                val resp = NetworkClient.okHttpClient.newCall(req).execute()
+                                val bodyStream = resp.body.byteStream()
+                                if (resp.isSuccessful) {
+                                    val contentType = (resp.header("Content-Type") ?: "image/*")
+                                        .substringBefore(';').trim()
+                                    return WebResourceResponse(contentType, null, bodyStream)
+                                }
+                                resp.close()
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
-                    
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         view?.evaluateJavascript(
@@ -150,7 +156,7 @@ fun UnifiedHtmlWebView(
                         )
                     }
                 }
-                
+
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -166,7 +172,7 @@ fun UnifiedHtmlWebView(
                     offscreenPreRaster = false
                 }
                 setBackgroundColor(backgroundColor)
-                
+
                 if (onImageClick != null) {
                     addJavascriptInterface(object {
                         @JavascriptInterface
@@ -175,7 +181,7 @@ fun UnifiedHtmlWebView(
                         }
                     }, "ImageClickHandler")
                 }
-                
+
                 webViewRef = this
             }
         },
@@ -202,7 +208,7 @@ private fun generateStyledHtml(
     val textHex = String.format("#%06X", textColor and 0xFFFFFF)
     val linkHex = String.format("#%06X", linkColor and 0xFFFFFF)
     val codeBgHex = String.format("#%06X", codeBackgroundColor and 0xFFFFFF)
-    
+
     return """
     <!DOCTYPE html>
     <html>
@@ -221,15 +227,15 @@ private fun generateStyledHtml(
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 font-size: 14px;
                 line-height: 1.5;
-                padding: 8px;
+                padding: 4px;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
             }
             p, div, span, h1, h2, h3, h4, h5, h6, li, blockquote {
-                color: $textHex !important;
+                color: $textHex;
             }
             a {
-                color: $linkHex !important;
+                color: $linkHex;
                 text-decoration: none;
                 word-break: break-all;
             }
@@ -243,11 +249,10 @@ private fun generateStyledHtml(
                 margin: 8px 0;
                 border-radius: 8px;
                 cursor: pointer;
-                background-color: ${if (isDark) "#2a2a2a" else "#f0f0f0"};
             }
             pre {
-                background-color: $codeBgHex !important;
-                color: $textHex !important;
+                background-color: $codeBgHex;
+                color: $textHex;
                 padding: 12px 16px;
                 border-radius: 8px;
                 overflow-x: auto;
@@ -258,15 +263,15 @@ private fun generateStyledHtml(
                 border: 1px solid ${if (isDark) "#3a3a3a" else "#e0e0e0"};
             }
             code {
-                background-color: $codeBgHex !important;
-                color: $textHex !important;
+                background-color: $codeBgHex;
+                color: $textHex;
                 padding: 2px 6px;
                 border-radius: 4px;
                 font-family: 'Courier New', monospace;
                 font-size: 0.9em;
             }
             pre code {
-                background-color: transparent !important;
+                background-color: transparent;
                 padding: 0;
             }
             blockquote {
@@ -275,7 +280,7 @@ private fun generateStyledHtml(
                 padding: 8px 12px;
                 background-color: ${if (isDark) "#2a2a2a" else "#f5f5f5"};
                 border-radius: 0 4px 4px 0;
-                color: $textHex !important;
+                color: $textHex;
             }
             table {
                 border-collapse: collapse;
@@ -287,10 +292,10 @@ private fun generateStyledHtml(
                 border: 1px solid ${if (isDark) "#3a3a3a" else "#e0e0e0"};
                 padding: 8px 12px;
                 text-align: left;
-                color: $textHex !important;
+                color: $textHex;
             }
             th {
-                background-color: $codeBgHex !important;
+                background-color: $codeBgHex;
                 font-weight: 600;
             }
             ul, ol {
@@ -304,7 +309,7 @@ private fun generateStyledHtml(
                 margin: 16px 0 8px 0;
                 font-weight: 600;
                 line-height: 1.3;
-                color: $textHex !important;
+                color: $textHex;
             }
             h1 { font-size: 24px; }
             h2 { font-size: 20px; }

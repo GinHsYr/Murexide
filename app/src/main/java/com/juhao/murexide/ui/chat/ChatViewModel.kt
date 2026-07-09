@@ -28,6 +28,7 @@ import com.juhao.murexide.proto.group.info_send
 import com.juhao.murexide.repository.ChatBackgroundRepository
 import com.juhao.murexide.repository.StickerRepository
 import com.juhao.murexide.repository.InstructionRepository
+import com.juhao.murexide.repository.BoardRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import kotlinx.coroutines.Dispatchers
 import okhttp3.MediaType.Companion.toMediaType
@@ -43,6 +44,7 @@ class ChatViewModel(
     private val stickerRepository: StickerRepository = StickerRepository(),
     private val instructionRepository: InstructionRepository = InstructionRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
+    private val boardRepository: BoardRepository = BoardRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
 
@@ -86,6 +88,60 @@ class ChatViewModel(
         if (chatType == 2) { // 群聊
             loadGroupInfo()
         }
+        if (chatType == 2 || chatType == 3) { // 群聊/机器人私聊均可有看板
+            loadBoard()
+        }
+    }
+
+    /** 加载群看板 */
+    private fun loadBoard() {
+        _uiState.update { it.copy(boardPanel = it.boardPanel.copy(isLoading = true)) }
+        viewModelScope.launch(Dispatchers.IO) {
+            boardRepository.getBoard(token, chatId, chatType).onSuccess { boards ->
+                _uiState.update {
+                    it.copy(
+                        boardPanel = it.boardPanel.copy(
+                            boards = boards,
+                            isLoaded = true,
+                            isLoading = false
+                        )
+                    )
+                }
+            }.onFailure { e ->
+                Log.e(TAG, "Failed to load board", e)
+                _uiState.update {
+                    it.copy(boardPanel = it.boardPanel.copy(isLoaded = true, isLoading = false))
+                }
+            }
+        }
+    }
+
+    /** 收到 WS 看板更新：按 botId upsert 到当前列表 */
+    private fun applyBoardUpdate(event: WebSocketManager.WsEvent.BoardUpdate) {
+        _uiState.update { state ->
+            val existing = state.boardPanel.boards
+            val item = BoardItem(
+                botId = event.botId,
+                botName = event.botName,
+                content = event.content,
+                contentType = event.contentType,
+                lastUpdateTime = event.lastUpdateTime
+            )
+            val updated = if (existing.any { it.botId == event.botId }) {
+                existing.map { if (it.botId == event.botId) item else it }
+            } else {
+                existing + item
+            }.filter { it.content.isNotBlank() }
+                .sortedByDescending { it.lastUpdateTime }
+            state.copy(boardPanel = state.boardPanel.copy(boards = updated))
+        }
+    }
+
+    /** 切换看板面板展开/折叠 */
+    fun toggleBoard() {
+        _uiState.update {
+            it.copy(boardPanel = it.boardPanel.copy(isExpanded = !it.boardPanel.isExpanded))
+        }
     }
 
     private fun loadBackground() {
@@ -116,8 +172,17 @@ class ChatViewModel(
                         val body = response.body.bytes()
                         val groupInfo = info.ADAPTER.decode(body)
                         if (groupInfo.status?.code == 1) {
-                            val memberCount = groupInfo.data_?.member
-                            _uiState.update { it.copy(memberCount = memberCount) }
+                            val data = groupInfo.data_
+                            val memberCount = data?.member
+                            val ownerId = data?.owner?.takeIf { it.isNotEmpty() }
+                            val adminIds = data?.admin?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+                            _uiState.update {
+                                it.copy(
+                                    memberCount = memberCount,
+                                    ownerId = ownerId,
+                                    adminIds = adminIds
+                                )
+                            }
                         }
                     }
                 }
@@ -153,6 +218,12 @@ class ChatViewModel(
                     is WebSocketManager.WsEvent.MessageDeleted -> {
                         Log.d(TAG, "Message deleted: msgId=${event.msgId}")
                         deleteMessage(event.msgId)
+                    }
+                    is WebSocketManager.WsEvent.BoardUpdate -> {
+                        Log.d(TAG, "Board update: chatId=${event.chatId}, expected=$chatId")
+                        if (event.chatId == chatId) {
+                            applyBoardUpdate(event)
+                        }
                     }
                     else -> {}
                 }

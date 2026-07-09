@@ -73,6 +73,15 @@ class WebSocketManager private constructor() {
         data class EditMessage(val message: MessageItem) : WsEvent()
         data class StreamContent(val msgId: String, val content: String) : WsEvent()
         data class MessageDeleted(val msgId: String) : WsEvent()
+        data class BoardUpdate(
+            val chatId: String,
+            val chatType: Int,
+            val botId: String,
+            val botName: String,
+            val content: String,
+            val contentType: Int,
+            val lastUpdateTime: Long
+        ) : WsEvent()
         object Connected : WsEvent()
         object Disconnected : WsEvent()
     }
@@ -344,7 +353,22 @@ class WebSocketManager private constructor() {
                 }
                 "bot_board_message" -> {
                     val boardMsg = bot_board_message.ADAPTER.decode(data)
-                    Log.d(TAG, "Bot board message from: ${boardMsg.data_?.board?.bot_name}")
+                    boardMsg.data_?.board?.let { b ->
+                        Log.d(TAG, "Bot board message from: ${b.bot_name}, chatId=${b.chat_id}")
+                        scope.launch {
+                            _messageFlow.emit(
+                                WsEvent.BoardUpdate(
+                                    chatId = b.chat_id,
+                                    chatType = b.chat_type,
+                                    botId = b.bot_id,
+                                    botName = b.bot_name,
+                                    content = b.content,
+                                    contentType = b.content_type,
+                                    lastUpdateTime = b.last_update_time
+                                )
+                            )
+                        }
+                    }
                 }
                 else -> {
                     Log.w(TAG, "Unknown binary command: $cmd")

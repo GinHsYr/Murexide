@@ -80,13 +80,16 @@ fun MessageBubble(
     isDownloaded: Boolean = false,
     onDownloadClick: (MessageItem) -> Unit = {},
     onButtonClick: (MessageItem, MessageButton) -> Unit = { _, _ -> },
-    privateMode: Boolean = false,
-    anonymousNameProvider: ((String) -> String)? = null
+    hideSenderInfo: Boolean = false,
+    hideMyInfo: Boolean = false,
+    hideImages: Boolean = false,
+    anonymousNameProvider: ((String) -> String)? = null,
+    roleLabel: String? = null
 ) {
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
-    val isMine = message.isMine
+    val isMine = if (hideMyInfo) false else message.isMine
     val context = LocalContext.current
 
     var showImageViewer by remember { mutableStateOf(false) }
@@ -203,7 +206,7 @@ fun MessageBubble(
                 }
             
                 if (!isMine && showAvatar) {
-                    if (privateMode) {
+                    if (hideSenderInfo) {
                         Surface(
                             modifier = Modifier.size(36.dp),
                             shape = RoundedCornerShape(18.dp),
@@ -256,7 +259,7 @@ fun MessageBubble(
                                         modifier = Modifier.padding(bottom = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val displayName = if (privateMode && anonymousNameProvider != null) {
+                                        val displayName = if (hideSenderInfo && anonymousNameProvider != null) {
                                             anonymousNameProvider(message.senderId)
                                         } else {
                                             message.senderName
@@ -277,6 +280,25 @@ fun MessageBubble(
                                                     text = "机器人",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        if (roleLabel != null) {
+                                            val roleColor = if (roleLabel == "群主") {
+                                                Color(0xFFE6A23C)
+                                            } else {
+                                                MaterialTheme.colorScheme.tertiary
+                                            }
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(50.dp),
+                                                color = roleColor.copy(alpha = 0.2f)
+                                            ) {
+                                                Text(
+                                                    text = roleLabel,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = roleColor,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -334,7 +356,7 @@ fun MessageBubble(
                                                 Spacer(modifier = Modifier.width(8.dp))
                                             }
                                             Text(
-                                                text = if (privateMode) processQuoteText(quoteText) else quoteText,
+                                                text = if (hideSenderInfo) processQuoteText(quoteText) else quoteText,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
@@ -433,71 +455,111 @@ fun MessageBubble(
                                                     imageList = allImages
                                                     currentImageIndex = allImages.indexOf(imageUrl).coerceAtLeast(0)
                                                     showImageViewer = true
-                                                }
+                                                },
+                                                bgColor = if (isMine)
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                                else
+                                                    MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                                             )
                                         }
-        
+
                                         MessageItem.CONTENT_TYPE_IMAGE,
                                         MessageItem.CONTENT_TYPE_STICKER -> {
-                                            message.imageUrl?.let { url ->
-                                                val builder = ImageRequest.Builder(context)
-                                                    .data(url)
-        
-                                                if (url.contains("chat-img.jwznb.com") ||
-                                                    url.contains("jwznb.com") ||
-                                                    url.contains("myapp.jwznb.com")) {
-                                                    builder.setHeader("Referer", "https://myapp.jwznb.com")
-                                                }
-        
-                                                Box {
-                                                    AsyncImage(
-                                                        model = builder.build(),
-                                                        contentDescription = null,
-                                                        contentScale = ContentScale.FillWidth,
-                                                        modifier = Modifier
-                                                            .then(
-                                                                if (isLastFromSender || message.quoteMsgText != null)
-                                                                    Modifier.clip(
-                                                                        RoundedCornerShape(
-                                                                            topStart = bubbleCornerRadius.dp,
-                                                                            topEnd = bubbleCornerRadius.dp
-                                                                        )
-                                                                    )
-                                                                 else Modifier
-                                                            )
-                                                            .combinedClickable(
-                                                                onClick = { onImageClick(message) },
-                                                                onLongClick = { onLongPress(message) }
-                                                            )
+                                            if (hideImages) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(120.dp),
+                                                    color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                                                    shape = RoundedCornerShape(
+                                                        topStart = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp,
+                                                        topEnd = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp
                                                     )
-        
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                        modifier = Modifier
-                                                            .align(Alignment.BottomEnd)
-                                                            .padding(end = 6.dp, bottom = 6.dp)
-                                                            .background(
-                                                                color = Color.Black.copy(alpha = 0.3f),
-                                                                shape = RoundedCornerShape(50.dp)
-                                                            )
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center
                                                     ) {
-                                                        if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
-                                                            Icon(
-                                                                imageVector = Icons.Rounded.Mood,
-                                                                contentDescription = "mood",
-                                                                modifier = Modifier.size(12.dp),
-                                                                tint = Color.White
+                                                        Icon(
+                                                            Icons.Rounded.ImageNotSupported,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(48.dp),
+                                                            tint = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                            text = if (message.contentType == MessageItem.CONTENT_TYPE_STICKER)
+                                                                "表情包已隐藏"
+                                                            else
+                                                                "图片已隐藏",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                // 正常显示图片（原有代码保持不变）
+                                                message.imageUrl?.let { url ->
+                                                    val builder = ImageRequest.Builder(context)
+                                                        .data(url)
+
+                                                    if (url.contains("chat-img.jwznb.com") ||
+                                                        url.contains("jwznb.com") ||
+                                                        url.contains("myapp.jwznb.com")) {
+                                                        builder.setHeader("Referer", "https://myapp.jwznb.com")
+                                                    }
+
+                                                    Box {
+                                                        AsyncImage(
+                                                            model = builder.build(),
+                                                            contentDescription = null,
+                                                            contentScale = ContentScale.FillWidth,
+                                                            modifier = Modifier
+                                                                .then(
+                                                                    if (isLastFromSender || message.quoteMsgText != null)
+                                                                        Modifier.clip(
+                                                                            RoundedCornerShape(
+                                                                                topStart = bubbleCornerRadius.dp,
+                                                                                topEnd = bubbleCornerRadius.dp
+                                                                            )
+                                                                        )
+                                                                    else Modifier
+                                                                )
+                                                                .combinedClickable(
+                                                                    onClick = { onImageClick(message) },
+                                                                    onLongClick = { onLongPress(message) }
+                                                                )
+                                                        )
+
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                            modifier = Modifier
+                                                                .align(Alignment.BottomEnd)
+                                                                .padding(end = 6.dp, bottom = 6.dp)
+                                                                .background(
+                                                                    color = Color.Black.copy(alpha = 0.3f),
+                                                                    shape = RoundedCornerShape(50.dp)
+                                                                )
+                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        ) {
+                                                            if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
+                                                                Icon(
+                                                                    imageVector = Icons.Rounded.Mood,
+                                                                    contentDescription = "mood",
+                                                                    modifier = Modifier.size(12.dp),
+                                                                    tint = Color.White
+                                                                )
+                                                            }
+                                                            Text(
+                                                                text = timestampDisplay,
+                                                                fontSize = 10.sp,
+                                                                lineHeight = 16.sp,
+                                                                maxLines = 1,
+                                                                color = Color.White
                                                             )
                                                         }
-                                                        Text(
-                                                            text = timestampDisplay,
-                                                            fontSize = 10.sp,
-                                                            lineHeight = 16.sp,
-                                                            maxLines = 1,
-                                                            color = Color.White
-                                                        )
                                                     }
                                                 }
                                             }

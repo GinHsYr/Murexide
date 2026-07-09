@@ -23,6 +23,12 @@ class SettingsStorage(private val context: Context) {
         private val BUBBLE_CORNER_RADIUS_KEY = floatPreferencesKey("bubble_corner_radius")
         private val BUBBLE_OPACITY_KEY = floatPreferencesKey("bubble_opacity")
         private val SHOW_MY_BUBBLE_AVATAR_KEY = booleanPreferencesKey("show_my_bubble_avatar")
+
+        // ====== 截图隐私设置 ======
+        private val SCREENSHOT_HIDE_SENDER_INFO_KEY = booleanPreferencesKey("screenshot_hide_sender_info")
+        private val SCREENSHOT_HIDE_MY_INFO_KEY = booleanPreferencesKey("screenshot_hide_my_info")
+        private val SCREENSHOT_HIDE_SESSION_INFO_KEY = booleanPreferencesKey("screenshot_hide_session_info")
+        private val SCREENSHOT_HIDE_IMAGES_KEY = booleanPreferencesKey("screenshot_hide_images")
     }
 
     // 主题模式
@@ -169,5 +175,67 @@ class SettingsStorage(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[SHOW_MY_BUBBLE_AVATAR_KEY] = show
         }
+    }
+
+    // ====== 截图隐私设置 ======
+
+    // 隐藏发送者信息（发送者名称、头像）
+    val screenshotHideSenderInfoFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_HIDE_SENDER_INFO_KEY] ?: false
+    }
+
+    suspend fun setScreenshotHideSenderInfo(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SCREENSHOT_HIDE_SENDER_INFO_KEY] = enabled
+        }
+    }
+
+    suspend fun getScreenshotHideSenderInfo(): Boolean {
+        return screenshotHideSenderInfoFlow.first()
+    }
+
+    // 隐藏我的信息（我的名称、头像也显示为对方）
+    val screenshotHideMyInfoFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_HIDE_MY_INFO_KEY] ?: false
+    }
+
+    suspend fun setScreenshotHideMyInfo(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SCREENSHOT_HIDE_MY_INFO_KEY] = enabled
+        }
+    }
+
+    suspend fun getScreenshotHideMyInfo(): Boolean {
+        return screenshotHideMyInfoFlow.first()
+    }
+
+    // 隐藏会话信息（会话名称、会话头像）
+    val screenshotHideSessionInfoFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_HIDE_SESSION_INFO_KEY] ?: false
+    }
+
+    suspend fun setScreenshotHideSessionInfo(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SCREENSHOT_HIDE_SESSION_INFO_KEY] = enabled
+        }
+    }
+
+    suspend fun getScreenshotHideSessionInfo(): Boolean {
+        return screenshotHideSessionInfoFlow.first()
+    }
+
+    // 隐藏图片及表情包
+    val screenshotHideImagesFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_HIDE_IMAGES_KEY] ?: false
+    }
+
+    suspend fun setScreenshotHideImages(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SCREENSHOT_HIDE_IMAGES_KEY] = enabled
+        }
+    }
+
+    suspend fun getScreenshotHideImages(): Boolean {
+        return screenshotHideImagesFlow.first()
     }
 }

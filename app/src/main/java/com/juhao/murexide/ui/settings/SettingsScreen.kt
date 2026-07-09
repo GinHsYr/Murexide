@@ -136,6 +136,15 @@ fun SettingsScreen(
                         }
                     }
                 )
+                SettingsItem(
+                    icon = Icons.Rounded.Screenshot,
+                    title = "截图设置",
+                    subtitle = "隐藏信息等",
+                    onClick = {
+                        val intent = Intent(context, ScreenshotSettingsActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
                 SettingsSwitchItem(
                     icon = Icons.Rounded.Animation,
                     title = "聊天页头像跟随",

@@ -143,6 +143,8 @@ data class ChatUiState(
     val chatAvatar: String = "",
     val isAdmin: Boolean = false,
     val memberCount: Long? = null,
+    val ownerId: String? = null,
+    val adminIds: Set<String> = emptySet(),
     val isSending: Boolean = false,
     val backgroundUrl: String? = null,
     val isUploading: Boolean = false,
@@ -156,5 +158,6 @@ data class ChatUiState(
     val pendingCommandId: Long? = null,
     val pendingCommandName: String? = null,
     val pendingCommandHint: String? = null,
-    val editingMessage: MessageItem? = null
+    val editingMessage: MessageItem? = null,
+    val boardPanel: BoardPanelState = BoardPanelState()
 )

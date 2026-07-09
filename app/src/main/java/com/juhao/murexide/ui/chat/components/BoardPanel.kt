@@ -1,0 +1,144 @@
+package com.juhao.murexide.ui.chat.components
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.juhao.murexide.data.BoardItem
+import com.juhao.murexide.ui.components.MarkdownText
+import com.juhao.murexide.ui.components.UnifiedHtmlWebView
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun BoardPanel(
+    boards: List<BoardItem>,
+    modifier: Modifier = Modifier,
+    onImageClick: ((String) -> Unit)? = null
+) {
+    if (boards.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { boards.size })
+    val scope = rememberCoroutineScope()
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (boards.size > 1) {
+            SecondaryScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                edgePadding = 8.dp,
+                containerColor = Color.Transparent,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                boards.forEachIndexed { index, board ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = {
+                            Text(
+                                text = board.botName.ifBlank { "看板" },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 13.sp
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            BoardContent(board = boards[page], onImageClick = onImageClick)
+        }
+    }
+}
+
+@Composable
+private fun BoardContent(
+    board: BoardItem,
+    onImageClick: ((String) -> Unit)?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 300.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Rounded.Campaign,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.width(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = board.botName.ifBlank { "看板" },
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (board.lastUpdateTime > 0) {
+                Text(
+                    text = formatBoardTime(board.lastUpdateTime),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        when (board.contentType) {
+            BoardItem.CONTENT_TYPE_MARKDOWN -> MarkdownText(
+                markdown = board.content,
+                onImageClick = onImageClick
+            )
+            BoardItem.CONTENT_TYPE_HTML -> UnifiedHtmlWebView(
+                htmlContent = board.content,
+                onImageClick = onImageClick
+            )
+            else -> Text(
+                text = board.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+private fun formatBoardTime(ts: Long): String {
+    val millis = if (ts < 1_000_000_000_000L) ts * 1000 else ts
+    return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(millis))
+}

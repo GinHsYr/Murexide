@@ -42,6 +42,8 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.graphics.createBitmap
+import com.juhao.murexide.datastore.SettingsStorage
+import com.juhao.murexide.ui.settings.ScreenshotSettingsActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,13 +58,17 @@ fun ScreenshotBottomSheet(
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<View?>(null) }
-    
-    var privateMode by remember { mutableStateOf(false) }
+    val settingsStorage = remember { SettingsStorage(context) }
+
+    val hideSenderInfo by settingsStorage.screenshotHideSenderInfoFlow.collectAsState(initial = false)
+    val hideMyInfo by settingsStorage.screenshotHideMyInfoFlow.collectAsState(initial = false)
+    val hideSessionInfo by settingsStorage.screenshotHideSessionInfoFlow.collectAsState(initial = false)
+    val hideImages by settingsStorage.screenshotHideImagesFlow.collectAsState(initial = false)
 
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
-    
+
     val screenshotImageLoader = remember {
         ImageLoader.Builder(context)
             .allowHardware(false)
@@ -93,7 +99,10 @@ fun ScreenshotBottomSheet(
                                         messages = messages,
                                         chatName = chatName,
                                         chatAvatar = chatAvatar,
-                                        privateMode = privateMode
+                                        hideSenderInfo = hideSenderInfo,
+                                        hideMyInfo = hideMyInfo,
+                                        hideSessionInfo = hideSessionInfo,
+                                        hideImages = hideImages
                                     )
                                 }
                             }
@@ -108,21 +117,22 @@ fun ScreenshotBottomSheet(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 ScreenshotActionCard(
-                    icon = Icons.Rounded.VisibilityOff,
-                    label = "隐藏信息",
+                    icon = Icons.Rounded.Settings,
+                    label = "隐私设置",
                     onClick = {
-                        privateMode = !privateMode
-                    },
-                    enabled = privateMode
+                        val intent = Intent(context, ScreenshotSettingsActivity::class.java)
+                        context.startActivity(intent)
+                    }
                 )
                 VerticalDivider(
                     modifier = Modifier
                         .height(40.dp)
                         .padding(horizontal = 10.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                     thickness = 1.dp
                 )
                 ScreenshotActionCard(
@@ -168,8 +178,11 @@ private fun ScreenshotContent(
     messages: List<MessageItem>,
     chatName: String,
     chatAvatar: String,
-    privateMode: Boolean
-) {    
+    hideSenderInfo: Boolean = false,
+    hideMyInfo: Boolean = false,
+    hideSessionInfo: Boolean = false,
+    hideImages: Boolean = false
+) {
     val anonymousCache = remember { mutableMapOf<String, String>() }
     var counter by remember { mutableIntStateOf(0) }
 
@@ -183,6 +196,7 @@ private fun ScreenshotContent(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // 会话头部
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,7 +204,7 @@ private fun ScreenshotContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                if (privateMode) {
+                if (hideSessionInfo) {
                     Surface(
                         modifier = Modifier.size(36.dp),
                         shape = RoundedCornerShape(18.dp),
@@ -204,10 +218,10 @@ private fun ScreenshotContent(
                     Avatar(url = chatAvatar, size = 36.dp)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 Column {
                     Text(
-                        text = if (privateMode) "隐藏会话" else chatName,
+                        text = if (hideSessionInfo) "隐藏会话" else chatName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -219,7 +233,7 @@ private fun ScreenshotContent(
                     )
                 }
             }
-    
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -256,7 +270,9 @@ private fun ScreenshotContent(
                         isOlderSameSender = isOlderSameSender,
                         isNewerSameSender = isNewerSameSender,
                         showAvatar = isFirstFromSender,
-                        privateMode = privateMode,
+                        hideSenderInfo = hideSenderInfo,
+                        hideMyInfo = hideMyInfo,
+                        hideImages = hideImages,
                         anonymousNameProvider = { senderId ->
                             anonymousCache.getOrPut(senderId) {
                                 counter++
@@ -266,7 +282,7 @@ private fun ScreenshotContent(
                     )
                 }
             }
-    
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
