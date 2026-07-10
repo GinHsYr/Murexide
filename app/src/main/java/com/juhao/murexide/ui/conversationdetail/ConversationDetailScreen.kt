@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.ui.components.*
+import com.juhao.murexide.ui.theme.ThemeState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,6 +33,8 @@ fun ConversationDetailScreen(
     
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
+    
+    val themeStyle by ThemeState.themeStyle
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

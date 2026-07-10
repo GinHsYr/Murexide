@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.clickable
 import com.juhao.murexide.repository.UserInfo
 import com.juhao.murexide.ui.components.*
+import com.juhao.murexide.ui.theme.ThemeState
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,9 +45,11 @@ fun MineScreen(
     )
 ) {
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
+    
+    val themeStyle by ThemeState.themeStyle
 
     val avatarLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -59,15 +62,27 @@ fun MineScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("我的") },
-                scrollBehavior = scrollBehavior,
-                actions = {
-                    StyledIconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("我的") },
+                    scrollBehavior = scrollBehavior,
+                    actions = {
+                        StyledIconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("我的") },
+                    scrollBehavior = scrollBehavior,
+                    actions = {
+                        StyledIconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                        }
+                    }
+                )
+            }
         }
     ) {
         when (val state = uiState) {
