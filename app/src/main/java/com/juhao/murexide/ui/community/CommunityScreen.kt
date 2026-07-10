@@ -1,5 +1,6 @@
 package com.juhao.murexide.ui.community
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.juhao.murexide.ui.theme.ThemeState
 import com.juhao.murexide.data.PostItem
 import com.juhao.murexide.data.BaItem
 import com.juhao.murexide.ui.community.detail.PostDetailActivity
@@ -207,15 +209,25 @@ fun PostCard(
     onCollectClick: (Int) -> Unit,
     onPostClick: (PostItem) -> Unit
 ) {
+    val themeStyle by ThemeState.themeStyle
+    
     Column(
         modifier = Modifier
-            .clickable { onPostClick(post) }
-            .padding(horizontal = 4.dp)
+            .then(
+                if (themeStyle == "md3") 
+                    Modifier
+                else
+                    Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clip(RoundedCornerShape(24.dp))
+            )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .clickable { onPostClick(post) }
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             // 作者信息
             Row(
@@ -297,7 +309,11 @@ fun PostCard(
             }
         }
         
-        HorizontalDivider()
+        if (themeStyle == "md3") {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
     }
 }
 

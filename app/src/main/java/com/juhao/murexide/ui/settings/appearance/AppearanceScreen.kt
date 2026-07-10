@@ -195,210 +195,192 @@ fun AppearanceScreen(
             
             // 气泡预览区域
             SettingsGroup(title = "消息气泡预览") {
-                Surface(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = RoundedCornerShape(16.dp)
-                        ),
-                    shape = RoundedCornerShape(16.dp)
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        MessageBubble(
-                            message = previewMessages[0],
-                            isLastFromSender = true,
-                            isFirstFromSender = false,
-                            isOlderSameSender = false,
-                            isNewerSameSender = true,
-                            showAvatar = false,
-                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                            bubbleOpacity = bubbleOpacity,
-                            bubbleCornerRadius = bubbleCornerRadius
-                        )
-                        
-                        MessageBubble(
-                            message = previewMessages[1],
-                            isLastFromSender = false,
-                            isFirstFromSender = true,
-                            isOlderSameSender = true,
-                            isNewerSameSender = false,
-                            showAvatar = true,
-                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                            bubbleOpacity = bubbleOpacity,
-                            bubbleCornerRadius = bubbleCornerRadius
-                        )
-                        
-                        MessageBubble(
-                            message = previewMessages[2],
-                            isLastFromSender = true,
-                            isFirstFromSender = true,
-                            isOlderSameSender = false,
-                            isNewerSameSender = false,
-                            showAvatar = showMyBubbleAvatar,
-                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                            bubbleOpacity = bubbleOpacity,
-                            bubbleCornerRadius = bubbleCornerRadius
-                        )
-                    }
+                    MessageBubble(
+                        message = previewMessages[0],
+                        isLastFromSender = true,
+                        isFirstFromSender = false,
+                        isOlderSameSender = false,
+                        isNewerSameSender = true,
+                        showAvatar = false,
+                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                        bubbleOpacity = bubbleOpacity,
+                        bubbleCornerRadius = bubbleCornerRadius
+                    )
+                    
+                    MessageBubble(
+                        message = previewMessages[1],
+                        isLastFromSender = false,
+                        isFirstFromSender = true,
+                        isOlderSameSender = true,
+                        isNewerSameSender = false,
+                        showAvatar = true,
+                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                        bubbleOpacity = bubbleOpacity,
+                        bubbleCornerRadius = bubbleCornerRadius
+                    )
+                    
+                    MessageBubble(
+                        message = previewMessages[2],
+                        isLastFromSender = true,
+                        isFirstFromSender = true,
+                        isOlderSameSender = false,
+                        isNewerSameSender = false,
+                        showAvatar = showMyBubbleAvatar,
+                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                        bubbleOpacity = bubbleOpacity,
+                        bubbleCornerRadius = bubbleCornerRadius
+                    )
                 }
             }
 
             // 气泡样式设置
             SettingsGroup(title = "气泡样式") {
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 // 圆角 Slider
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                CustomItemCell {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.RoundedCorner,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "气泡圆角",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.RoundedCorner,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "气泡圆角",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "${bubbleCornerRadius.toInt()}dp",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Slider(
+                            value = bubbleCornerRadius,
+                            onValueChange = { bubbleCornerRadius = it },
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    settingsStorage.setBubbleCornerRadius(bubbleCornerRadius)
+                                }
+                            },
+                            valueRange = 0f..24f,
+                            steps = 23,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "${bubbleCornerRadius.toInt()}dp",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                textAlign = TextAlign.Center
+                                text = "0dp",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "24dp",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Slider(
-                        value = bubbleCornerRadius,
-                        onValueChange = { bubbleCornerRadius = it },
-                        onValueChangeFinished = {
-                            scope.launch {
-                                settingsStorage.setBubbleCornerRadius(bubbleCornerRadius)
-                            }
-                        },
-                        valueRange = 0f..24f,
-                        steps = 23,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "0dp",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "24dp",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
-                
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
+                                
                 // 透明度 Slider
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                CustomItemCell {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.Opacity,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "气泡不透明度",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.Opacity,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "气泡不透明度",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "${(bubbleOpacity * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Slider(
+                            value = bubbleOpacity,
+                            onValueChange = { bubbleOpacity = it },
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    settingsStorage.setBubbleOpacity(bubbleOpacity)
+                                }
+                            },
+                            valueRange = 0.4f..1f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "${(bubbleOpacity * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                textAlign = TextAlign.Center
+                                text = "40%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "100%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Slider(
-                        value = bubbleOpacity,
-                        onValueChange = { bubbleOpacity = it },
-                        onValueChangeFinished = {
-                            scope.launch {
-                                settingsStorage.setBubbleOpacity(bubbleOpacity)
-                            }
-                        },
-                        valueRange = 0.4f..1f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "40%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "100%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
-                
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                
-                Spacer(modifier = Modifier.height(4.dp))
                 
                 // 显示头像开关
                 SettingsSwitchItem(
