@@ -19,17 +19,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.clickable
 import com.juhao.murexide.repository.UserInfo
-import com.juhao.murexide.ui.components.Avatar
-import com.juhao.murexide.ui.components.CustomItemCell
-import com.juhao.murexide.ui.components.SettingsGroup
-import com.juhao.murexide.ui.components.SettingsItemCell
+import com.juhao.murexide.ui.components.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.StrokeCap
-
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -67,7 +63,7 @@ fun MineScreen(
                 title = { Text("我的") },
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    IconButton(onClick = onSettingsClick) {
+                    StyledIconButton(onClick = onSettingsClick) {
                         Icon(Icons.Rounded.Settings, contentDescription = "设置")
                     }
                 }
@@ -190,7 +186,7 @@ private fun MineContent(
     ) {
         SettingsGroup {
             CustomItemCell(
-                modifier = Modifier.clickable { onEditProfileClick() }
+                onClick = onEditProfileClick
             ) {
                 Box(contentAlignment = Alignment.BottomEnd) {
                     Avatar(

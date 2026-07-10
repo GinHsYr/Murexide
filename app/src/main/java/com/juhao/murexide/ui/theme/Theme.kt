@@ -83,6 +83,7 @@ fun MurexideTheme(
 
     LaunchedEffect(Unit) {
         ThemeState.themeMode.value = settingsStorage.getThemeMode()
+        ThemeState.themeStyle.value = settingsStorage.getThemeStyle()
         ThemeState.themeColor.value = settingsStorage.getThemeColor()
     }
 

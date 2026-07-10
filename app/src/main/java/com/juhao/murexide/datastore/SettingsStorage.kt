@@ -13,7 +13,9 @@ class SettingsStorage(private val context: Context) {
     
     companion object {
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+        private val THEME_STYLE_KEY = stringPreferencesKey("theme_style")
         private val THEME_COLOR_KEY = stringPreferencesKey("theme_color")
+        
         private val SQUARE_AVATAR_KEY = booleanPreferencesKey("square_avatar")
         private val AVATAR_FOLLOW_KEY = booleanPreferencesKey("avatar_follow")
         private val BIG_SCREEN_KEY = booleanPreferencesKey("big_screen")
@@ -44,6 +46,21 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun getThemeMode(): String {
         return themeModeFlow.first()
+    }
+    
+    // 主题样式
+    val themeStyleFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[THEME_STYLE_KEY] ?: "md3"
+    }
+
+    suspend fun setThemeStyle(style: String) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_STYLE_KEY] = style
+        }
+    }
+
+    suspend fun getThemeStyle(): String {
+        return themeStyleFlow.first()
     }
 
     // 主题颜色

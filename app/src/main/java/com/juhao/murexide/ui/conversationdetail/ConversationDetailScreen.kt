@@ -17,10 +17,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.juhao.murexide.data.ConversationDetail
-import com.juhao.murexide.ui.components.Avatar
-import com.juhao.murexide.ui.components.CustomItemCell
-import com.juhao.murexide.ui.components.SettingsGroup
-import com.juhao.murexide.ui.components.SettingsItemCell
+import com.juhao.murexide.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,21 +30,33 @@ fun ConversationDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("会话详情") },
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("会话详情") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("会话详情") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         Box(

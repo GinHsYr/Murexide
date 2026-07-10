@@ -32,7 +32,7 @@ fun EditProfileScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
 
     var nickname by remember { mutableStateOf("") }
@@ -81,7 +81,7 @@ fun EditProfileScreen(
             TopAppBar(
                 title = { Text("编辑资料") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    StyledIconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                     }
                 },

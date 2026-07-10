@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 fun AppearanceScreen(
     onBack: () -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
         
     val context = LocalContext.current
@@ -36,6 +36,7 @@ fun AppearanceScreen(
     val scope = rememberCoroutineScope()
 
     val themeMode by ThemeState.themeMode
+    val themeStyle by ThemeState.themeStyle
     val themeColor by ThemeState.themeColor
 
     var squareAvatar by remember { mutableStateOf(false) }
@@ -90,15 +91,27 @@ fun AppearanceScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("外观设置") },
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("外观设置") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("外观设置") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -129,6 +142,25 @@ fun AppearanceScreen(
                         ThemeState.themeMode.value = selected
                         scope.launch {
                             settingsStorage.setThemeMode(selected)
+                        }
+                    }
+                )
+                SettingsDropdownItem(
+                    icon = Icons.Rounded.Draw,
+                    title = "主题样式",
+                    subtitle = when (themeStyle) {
+                        "md3" -> "Material 3"
+                        else -> "Material 3 Expressive"
+                    },
+                    options = listOf(
+                        "md3" to "Material 3",
+                        "md3e" to "Material 3 Expressive"
+                    ),
+                    selectedValue = themeStyle,
+                    onOptionSelected = { selected ->
+                        ThemeState.themeStyle.value = selected
+                        scope.launch {
+                            settingsStorage.setThemeStyle(selected)
                         }
                     }
                 )

@@ -30,7 +30,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
         
     val context = LocalContext.current
@@ -94,15 +94,27 @@ fun SettingsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("设置") },
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("设置") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("设置") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         Column(

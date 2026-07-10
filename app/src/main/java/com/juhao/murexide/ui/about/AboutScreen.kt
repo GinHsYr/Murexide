@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import com.juhao.murexide.R
 import com.juhao.murexide.ui.components.*
+import com.juhao.murexide.ui.theme.ThemeState
 import com.juhao.murexide.utils.getAppVersionInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,22 +27,35 @@ import com.juhao.murexide.utils.getAppVersionInfo
 fun AboutScreen(
     onBack: () -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val themeStyle by ThemeState.themeStyle
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("关于") },
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("关于") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("关于") },
+                    scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         Column(

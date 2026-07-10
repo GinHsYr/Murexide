@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.juhao.murexide.R
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.datastore.SettingsStorage
-import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.horizontalScroll
@@ -84,7 +84,7 @@ fun ConversationListScreen(
                     IconButton(onClick = {}) {
                         Icon(Icons.Rounded.Search, contentDescription = "搜索")
                     }
-                    IconButton(onClick = {}) {
+                    StyledIconButton(onClick = {}) {
                         Icon(Icons.Rounded.Add, contentDescription = "添加")
                     }
                 }

@@ -4,8 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +14,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.juhao.murexide.ui.theme.ThemeState
 
 /**
  * 设置组容器 (Card 样式)
@@ -24,20 +24,60 @@ fun SettingsGroup(
     title: String = "",
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column {
-        if (title != "") {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
+    val themeStyle by ThemeState.themeStyle
+    
+    if (themeStyle == "md3") {
+        Column {
+            if (title != "") {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                )
+            }
+    
+            Column(content = content)
+            
+            Spacer(modifier = Modifier.height(8.dp))
         }
-
-        Column(content = content)
-        
-        Spacer(modifier = Modifier.height(8.dp))
+    } else {
+        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (!title.isNullOrEmpty()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                )
+            }
+    
+            val cornerRadius = 24.dp
+            val smallRadius = 4.dp
+    
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items.forEachIndexed { index, item ->
+                    val shape = when {
+                        items.size == 1 -> RoundedCornerShape(cornerRadius)
+                        index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = smallRadius, bottomEnd = smallRadius)
+                        index == items.size - 1 -> RoundedCornerShape(topStart = smallRadius, topEnd = smallRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
+                        else -> RoundedCornerShape(smallRadius)
+                    }
+    
+                    Surface(
+                        shape = shape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(content = content)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -49,73 +89,51 @@ fun SettingsItem(
     icon: ImageVector,
     title: String,
     subtitle: String? = null,
-    showDivider: Boolean = false,
     isEnabled: Boolean = true,
     isDestructive: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-    val alpha = if (isEnabled) 1f else 0.38f
-    
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(
-                    if (isEnabled) {
-                        Modifier.clickable(onClick = onClick)
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isDestructive) MaterialTheme.colorScheme.error 
-                   else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp)
+    CustomItemCell(
+        modifier = Modifier, 
+        onClick = onClick,
+        isEnabled = isEnabled
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isDestructive) MaterialTheme.colorScheme.error 
+               else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp)
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isDestructive) MaterialTheme.colorScheme.error 
+                   else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
             )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isDestructive) MaterialTheme.colorScheme.error 
-                       else MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Normal
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
-
-            Icon(
-                Icons.AutoMirrored.Rounded.NavigateNext,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.size(20.dp)
-            )
         }
 
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 54.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-        }
+        Icon(
+            Icons.AutoMirrored.Rounded.NavigateNext,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -131,21 +149,10 @@ fun SettingsItemCell(
     isEnabled: Boolean = true,
     isDestructive: Boolean = false
 ) {
-    val alpha = if (isEnabled) 1f else 0.38f
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(alpha)
-            .then(
-                if (isEnabled) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    CustomItemCell(
+        modifier = Modifier, 
+        onClick = onClick,
+        isEnabled = isEnabled
     ) {
         Icon(
             imageVector = icon,
@@ -191,21 +198,17 @@ fun SettingsSwitchItem(
     isError: Boolean = false,
     isEnabled: Boolean = true
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isEnabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    CustomItemCell(
+        modifier = Modifier, 
+        onClick = { onCheckedChange(!checked) },
+        isEnabled = isEnabled
     ) {
         Icon(
             imageVector = icon,
             contentDescription = title,
             modifier = Modifier.size(24.dp),
-            tint = when {
-                isError -> MaterialTheme.colorScheme.error
-                !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (isError) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
             }
         )
 
@@ -215,17 +218,14 @@ fun SettingsSwitchItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isEnabled) MaterialTheme.colorScheme.onSurface
-                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = if (isEnabled) 1f else 0.38f
-                    )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -247,6 +247,7 @@ fun SettingsSwitchItem(
 fun SettingsDropdownItem(
     icon: ImageVector,
     title: String,
+    isEnabled: Boolean = true,
     subtitle: String? = null,
     options: List<Pair<String, String>>,
     selectedValue: String,
@@ -254,12 +255,10 @@ fun SettingsDropdownItem(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { expanded = true }
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    CustomItemCell(
+        modifier = Modifier, 
+        onClick = { expanded = true },
+        isEnabled = isEnabled
     ) {
         Icon(
             imageVector = icon,
@@ -339,7 +338,7 @@ fun CustomItemCell(
                     Modifier
                 }
             )
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content
     )

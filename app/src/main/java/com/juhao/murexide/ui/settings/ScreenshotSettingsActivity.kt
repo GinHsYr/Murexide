@@ -17,8 +17,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.datastore.SettingsStorage
-import com.juhao.murexide.ui.components.SettingsGroup
-import com.juhao.murexide.ui.components.SettingsSwitchItem
+import com.juhao.murexide.ui.components.*
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -42,7 +41,7 @@ fun ScreenshotPrivacyScreen(
     val context = LocalContext.current
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val state = rememberScrollState()
 
     var hideSenderInfo by remember { mutableStateOf(false) }
@@ -60,15 +59,27 @@ fun ScreenshotPrivacyScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text("截图设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
+            if (themeStyle == "md3") {
+                TopAppBar(
+                    title = { Text("截图设置") },
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            } else {
+                LargeTopAppBar(
+                    title = { Text("截图设置") },
+                    navigationIcon = {
+                        StyledIconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            }
         }
     ) { padding ->
         Column(
