@@ -158,7 +158,7 @@ fun UnifiedHtmlWebView(
                 }
 
                 settings.apply {
-                    javaScriptEnabled = true
+                    javaScriptEnabled = false
                     domStorageEnabled = true
                     allowFileAccess = false
                     allowContentAccess = false
