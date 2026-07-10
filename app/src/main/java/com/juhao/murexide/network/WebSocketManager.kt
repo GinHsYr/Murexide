@@ -385,6 +385,7 @@ class WebSocketManager private constructor() {
             senderId = msg.sender?.chat_id ?: "",
             senderName = msg.sender?.name ?: "",
             senderAvatar = msg.sender?.avatar_url ?: "",
+            senderType = msg.sender?.chat_type ?: 1,
             chatId = msg.chat_id,
             chatType = msg.chat_type,
             content = msg.content?.text ?: "",
@@ -396,6 +397,7 @@ class WebSocketManager private constructor() {
             isEdited = msg.edit_time > 0,
             quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
             quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
+            quoteImageUrl = msg.content?.quote_image_url?.takeIf { it.isNotEmpty() },
             imageUrl = msg.content?.image_url?.takeIf { it.isNotEmpty() },
             audioUrl = msg.content?.audio_url?.takeIf { it.isNotEmpty() },
             audioTime = if ((msg.content?.audio_time ?: 0) > 0) msg.content?.audio_time?.toInt() else null,
@@ -405,6 +407,11 @@ class WebSocketManager private constructor() {
             fileSize = if ((msg.content?.file_size ?: 0) > 0) msg.content?.file_size else null,
             cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
             cmdId = msg.cmd?.id,
+            cmdType = msg.cmd?.type,
+            postId = msg.content?.post_id,
+            postTitle = msg.content?.post_title,
+            postContent = msg.content?.post_content,
+            postContentType = msg.content?.post_content_type?.toIntOrNull(),
             buttons = parseMessageButtons(msg.content?.buttons),
             tags = msg.sender?.tag?.map { tag ->
                 MessageTag(
