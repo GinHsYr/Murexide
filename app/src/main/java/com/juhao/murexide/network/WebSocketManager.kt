@@ -407,7 +407,6 @@ class WebSocketManager private constructor() {
             fileSize = if ((msg.content?.file_size ?: 0) > 0) msg.content?.file_size else null,
             cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
             cmdId = msg.cmd?.id,
-            cmdType = msg.cmd?.type,
             postId = msg.content?.post_id,
             postTitle = msg.content?.post_title,
             postContent = msg.content?.post_content,
