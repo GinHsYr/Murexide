@@ -148,7 +148,7 @@ fun AppearanceScreen(
                     }
                 )
                 SettingsDropdownItem(
-                    icon = Icons.Rounded.Draw,
+                    icon = Icons.Rounded.Style,
                     title = "主题样式",
                     subtitle = when (themeStyle) {
                         "md3" -> "Material 3"
