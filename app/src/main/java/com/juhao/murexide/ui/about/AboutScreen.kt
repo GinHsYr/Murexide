@@ -28,7 +28,10 @@ fun AboutScreen(
     onBack: () -> Unit
 ) {
     val themeStyle by ThemeState.themeStyle
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    
+    val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
+        else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 

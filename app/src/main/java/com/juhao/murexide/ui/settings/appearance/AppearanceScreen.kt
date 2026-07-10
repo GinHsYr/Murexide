@@ -28,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 fun AppearanceScreen(
     onBack: () -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
         
     val context = LocalContext.current
@@ -38,6 +37,9 @@ fun AppearanceScreen(
     val themeMode by ThemeState.themeMode
     val themeStyle by ThemeState.themeStyle
     val themeColor by ThemeState.themeColor
+    
+    val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
+        else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     var squareAvatar by remember { mutableStateOf(false) }
     var showSticky by remember { mutableStateOf(true) }

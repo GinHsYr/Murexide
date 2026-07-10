@@ -31,10 +31,12 @@ fun ConversationDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
     
     val themeStyle by ThemeState.themeStyle
+    
+    val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
+        else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

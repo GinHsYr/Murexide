@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.juhao.murexide.data.InstructionItem
+import com.juhao.murexide.ui.components.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -128,7 +129,7 @@ private fun FormFieldView(
         when (field.type) {
             "switch" -> {
                 val checked = switchValues[field.id] ?: (field.default == "true")
-                Switch(
+                StyledSwitch(
                     checked = checked,
                     onCheckedChange = { switchValues[field.id] = it }
                 )

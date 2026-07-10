@@ -42,10 +42,13 @@ fun ScreenshotPrivacyScreen(
     val context = LocalContext.current
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val state = rememberScrollState()
     
     val themeStyle by ThemeState.themeStyle
+        
+    val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
+        else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        
+    val state = rememberScrollState()
 
     var hideSenderInfo by remember { mutableStateOf(false) }
     var hideMyInfo by remember { mutableStateOf(false) }

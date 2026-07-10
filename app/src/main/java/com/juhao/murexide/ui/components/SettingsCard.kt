@@ -54,13 +54,11 @@ fun SettingsGroup(
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
-            }
+            Column(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                content = content
+            )
         }
     }
 }
@@ -215,7 +213,7 @@ fun SettingsSwitchItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Switch(
+        StyledSwitch(
             checked = checked,
             onCheckedChange = null,
             enabled = isEnabled

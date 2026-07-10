@@ -31,7 +31,6 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit = {}
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val scrollState = rememberScrollState()
         
     val context = LocalContext.current
@@ -40,6 +39,9 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     
     val themeStyle by ThemeState.themeStyle
+    
+    val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
+        else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
