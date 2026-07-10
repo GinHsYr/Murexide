@@ -43,6 +43,8 @@ fun ScreenshotPrivacyScreen(
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val state = rememberScrollState()
+    
+    val themeStyle by ThemeState.themeStyle
 
     var hideSenderInfo by remember { mutableStateOf(false) }
     var hideMyInfo by remember { mutableStateOf(false) }

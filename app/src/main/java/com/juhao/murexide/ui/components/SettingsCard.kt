@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.theme.ThemeState
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
  * 设置组容器 (Card 样式)
@@ -43,7 +44,7 @@ fun SettingsGroup(
             Spacer(modifier = Modifier.height(8.dp))
         }
     } else {
-        Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             if (!title.isNullOrEmpty()) {
                 Text(
                     text = title,
@@ -52,30 +53,13 @@ fun SettingsGroup(
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
                 )
             }
-    
-            val cornerRadius = 24.dp
-            val smallRadius = 4.dp
-    
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items.forEachIndexed { index, item ->
-                    val shape = when {
-                        items.size == 1 -> RoundedCornerShape(cornerRadius)
-                        index == 0 -> RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius, bottomStart = smallRadius, bottomEnd = smallRadius)
-                        index == items.size - 1 -> RoundedCornerShape(topStart = smallRadius, topEnd = smallRadius, bottomStart = cornerRadius, bottomEnd = cornerRadius)
-                        else -> RoundedCornerShape(smallRadius)
-                    }
-    
-                    Surface(
-                        shape = shape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(content = content)
-                    }
-                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
             }
         }
     }
@@ -209,7 +193,6 @@ fun SettingsSwitchItem(
             modifier = Modifier.size(24.dp),
             tint = if (isError) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant
-            }
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -325,21 +308,45 @@ fun CustomItemCell(
     isEnabled: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
+    val themeStyle by ThemeState.themeStyle
     val alpha = if (isEnabled) 1f else 0.38f
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .alpha(alpha)
-            .then(
-                if (onClick != null && isEnabled) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
+    if (themeStyle == "md3") {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .alpha(alpha)
+                .then(
+                    if (onClick != null && isEnabled) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    } else {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.fillMaxWidth().alpha(alpha)
+        ) {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (onClick != null && isEnabled) {
+                            Modifier.clickable(onClick = onClick)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
             )
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content
-    )
+        }
+    }
 }

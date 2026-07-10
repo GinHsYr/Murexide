@@ -38,6 +38,8 @@ fun SettingsScreen(
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
     
+    val themeStyle by ThemeState.themeStyle
+    
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
