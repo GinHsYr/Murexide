@@ -241,8 +241,6 @@ fun AppearanceScreen(
 
             // 气泡样式设置
             SettingsGroup(title = "气泡样式") {
-                Spacer(modifier = Modifier.height(4.dp))
-                
                 // 圆角 Slider
                 CustomItemCell {
                     Column(

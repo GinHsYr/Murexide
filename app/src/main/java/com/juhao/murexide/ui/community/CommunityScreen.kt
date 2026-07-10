@@ -221,8 +221,8 @@ fun PostCard(
                 else
                     Modifier
                         .padding(horizontal = 12.dp, vertical = 4.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             )
     ) {
         Column(
