@@ -606,6 +606,7 @@ fun MessageBubble(
     
                                                 Row(
                                                     modifier = Modifier
+                                                        .width(IntrinsicSize.Max)
                                                         .then(
                                                             if (isLastFromSender || message.quoteMsgText != null)
                                                                 Modifier.clip(
