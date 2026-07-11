@@ -74,7 +74,7 @@ fun MessageBubble(
     onImageClick: (MessageItem) -> Unit = {},
     onMarkdownImageClick: (String) -> Unit = {},
     onAvatarClick: () -> Unit = {},
-    bubbleCornerRadius: Float = 16f,
+    bubbleCornerRadius: Float = 18f,
     bubbleOpacity: Float = 0.9f,
     showMyBubbleAvatarSetting: Boolean = true,
     avatarAlignment: Alignment.Vertical = Alignment.Bottom,
@@ -255,7 +255,11 @@ fun MessageBubble(
                                     MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                             )
                         ) {
-                            Column(modifier = Modifier.padding(if (hideMsgCard) 0.dp else 8.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .width(IntrinsicSize.Max)
+                                    .padding(if (hideMsgCard) 0.dp else 8.dp)
+                            ) {
                                 if (!isMine && isLastFromSender && !hideMsgCard) {
                                     Row(
                                         modifier = Modifier.padding(bottom = 4.dp),
@@ -272,7 +276,7 @@ fun MessageBubble(
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
-                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Spacer(modifier = Modifier.weight(1f))
                                         if (message.senderType == 3) {
                                             Surface(
                                                 shape = RoundedCornerShape(50.dp),
@@ -342,12 +346,14 @@ fun MessageBubble(
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(8.dp)
+                                            modifier = Modifier
+                                                .height(IntrinsicSize.Max)
+                                                .padding(8.dp)
                                         ) {
                                             Box(
                                                 modifier = Modifier
                                                     .width(3.dp)
-                                                    .height(22.dp)
+                                                    .fillMaxHeight()
                                                     .background(
                                                         MaterialTheme.colorScheme.primary,
                                                         RoundedCornerShape(2.dp)

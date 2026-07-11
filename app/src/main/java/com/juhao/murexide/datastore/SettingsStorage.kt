@@ -50,7 +50,7 @@ class SettingsStorage(private val context: Context) {
     
     // 主题样式
     val themeStyleFlow: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[THEME_STYLE_KEY] ?: "md3"
+        preferences[THEME_STYLE_KEY] ?: "md3e"
     }
 
     suspend fun setThemeStyle(style: String) {
@@ -155,7 +155,7 @@ class SettingsStorage(private val context: Context) {
     
     // ====== 气泡圆角 ======
     val bubbleCornerRadiusFlow: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[BUBBLE_CORNER_RADIUS_KEY] ?: 16f
+        preferences[BUBBLE_CORNER_RADIUS_KEY] ?: 18f
     }
 
     suspend fun setBubbleCornerRadius(radius: Float) {

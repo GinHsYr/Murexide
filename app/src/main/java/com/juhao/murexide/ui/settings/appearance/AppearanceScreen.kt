@@ -151,12 +151,12 @@ fun AppearanceScreen(
                     icon = Icons.Rounded.Style,
                     title = "主题样式",
                     subtitle = when (themeStyle) {
-                        "md3" -> "Material 3"
-                        else -> "Material 3 Expressive"
+                        "md3e" -> "Material 3 Expressive"
+                        else -> "Material 3"
                     },
                     options = listOf(
-                        "md3" to "Material 3",
-                        "md3e" to "Material 3 Expressive"
+                        "md3e" to "Material 3 Expressive",
+                        "md3" to "Material 3"
                     ),
                     selectedValue = themeStyle,
                     onOptionSelected = { selected ->
