@@ -256,12 +256,7 @@ fun MessageBubble(
                             )
                         ) {
                             Column(
-                                modifier = Modifier
-                                    .then(
-                                        if (message.contentType == MessageItem.CONTENT_TYPE_HTML || message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) Modifier
-                                        else Modifier.width(IntrinsicSize.Max)
-                                    )
-                                    .padding(if (hideMsgCard) 0.dp else 8.dp)
+                                modifier = Modifier.padding(if (hideMsgCard) 0.dp else 8.dp)
                             ) {
                                 if (!isMine && isLastFromSender && !hideMsgCard) {
                                     Row(
@@ -282,10 +277,6 @@ fun MessageBubble(
                                         )
                                         
                                         Spacer(modifier = Modifier.width(2.dp))
-                                        
-                                        if (message.contentType != MessageItem.CONTENT_TYPE_MARKDOWN) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
                                         
                                         if (message.senderType == 3) {
                                             Surface(
@@ -556,7 +547,7 @@ fun MessageBubble(
                                                             contentDescription = null,
                                                             contentScale = ContentScale.FillWidth,
                                                             modifier = Modifier
-                                                                .width(240.dp)
+                                                                .widthIn(max = 300.dp)
                                                                 .then(
                                                                     if (isLastFromSender || message.quoteMsgText != null)
                                                                         Modifier.clip(
