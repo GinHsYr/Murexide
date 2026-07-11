@@ -558,7 +558,9 @@ private fun CodeBlockComponent(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
-        Column {
+        Column(
+            modifier = Modifier.width(IntrinsicSize.Max)
+        ) {
             // 语言标签和复制按钮
             Row(
                 modifier = Modifier

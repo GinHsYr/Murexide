@@ -257,7 +257,10 @@ fun MessageBubble(
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .width(IntrinsicSize.Max)
+                                    .then(
+                                        if (message.contentType == MessageItem.CONTENT_TYPE_HTML) Modifier
+                                        else Modifier.width(IntrinsicSize.Max)
+                                    )
                                     .padding(if (hideMsgCard) 0.dp else 8.dp)
                             ) {
                                 if (!isMine && isLastFromSender && !hideMsgCard) {
@@ -270,13 +273,17 @@ fun MessageBubble(
                                         } else {
                                             message.senderName
                                         }
+                                        
                                         Text(
                                             text = displayName,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
+                                        
+                                        Spacer(modifier = Modifier.width(2.dp))
                                         Spacer(modifier = Modifier.weight(1f))
+                                        
                                         if (message.senderType == 3) {
                                             Surface(
                                                 shape = RoundedCornerShape(50.dp),
@@ -290,10 +297,12 @@ fun MessageBubble(
                                                 )
                                             }
                                         }
+                                        
                                         if (message.tags.isNotEmpty()){
                                             val tag = message.tags[0]
 
                                             Spacer(modifier = Modifier.width(2.dp))
+                                            
                                             Surface(
                                                 shape = RoundedCornerShape(50.dp),
                                                 color = Color(tag.color.toColorInt())
@@ -307,13 +316,16 @@ fun MessageBubble(
                                             }
                                             Spacer(modifier = Modifier.width(2.dp))
                                         }
+                                        
                                         if (roleLabel != null) {
                                             val roleColor = if (roleLabel == "群主") {
                                                 Color(0xFFE6A23C)
                                             } else {
                                                 MaterialTheme.colorScheme.tertiary
                                             }
+                                            
                                             Spacer(modifier = Modifier.width(2.dp))
+                                            
                                             Surface(
                                                 shape = RoundedCornerShape(50.dp),
                                                 color = roleColor.copy(alpha = 0.2f)
@@ -541,6 +553,7 @@ fun MessageBubble(
                                                             contentDescription = null,
                                                             contentScale = ContentScale.FillWidth,
                                                             modifier = Modifier
+                                                                .width(240.dp)
                                                                 .then(
                                                                     if (isLastFromSender || message.quoteMsgText != null)
                                                                         Modifier.clip(
@@ -707,6 +720,8 @@ fun MessageBubble(
                                                             }
                                                         }
                                                     }
+                                                    
+                                                    Spacer(modifier = Modifier.width(12.dp))
     
                                                     if (isComplete) {
                                                         Icon(
