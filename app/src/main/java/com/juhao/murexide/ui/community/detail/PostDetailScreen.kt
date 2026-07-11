@@ -225,7 +225,10 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
             InteractionButton(
                 icon = if (post.isLiked == 1) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 count = post.likeNum,

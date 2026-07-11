@@ -162,7 +162,7 @@ private fun InstructionTypeTag(type: Int) {
         else -> "普通"
     }
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.secondaryContainer
     ) {
         Text(

@@ -143,6 +143,7 @@ data class ChatUiState(
     val chatAvatar: String = "",
     val isAdmin: Boolean = false,
     val memberCount: Long? = null,
+    val myGroupNickname: String? = null,
     val ownerId: String? = null,
     val adminIds: Set<String> = emptySet(),
     val isSending: Boolean = false,
@@ -152,12 +153,12 @@ data class ChatUiState(
     val uploadImagePath: String? = null,
     val selectionMode: Boolean = false,
     val selectedMessages: Set<MessageItem> = emptySet(),
-    val downloadingFiles: Map<String, Float> = emptyMap(),
     val downloadedFiles: Set<String> = emptySet(),
     val instructionPanel: InstructionPanelState = InstructionPanelState(),
     val pendingCommandId: Long? = null,
     val pendingCommandName: String? = null,
     val pendingCommandHint: String? = null,
     val editingMessage: MessageItem? = null,
-    val boardPanel: BoardPanelState = BoardPanelState()
+    val boardPanel: BoardPanelState = BoardPanelState(),
+    val permissionLevel: Int = 0,      // 群主 100 / 管理员 2 / 普通 0
 )

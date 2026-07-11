@@ -28,6 +28,7 @@ class ChatActivity : ComponentActivity() {
                 ChatScreen(
                     chatType = chatType,
                     chatName = chatName,
+                    chatId = chatId,
                     chatAvatar = chatAvatar,
                     onBackClick = { finish() },
                     viewModel = viewModel(

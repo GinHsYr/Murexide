@@ -24,10 +24,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 @Composable
 fun SettingsGroup(
     title: String = "",
+    disableCornerShape: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val themeStyle by ThemeState.themeStyle
-    
+
     if (themeStyle == "md3") {
         Column {
             if (title != "") {
@@ -39,14 +40,14 @@ fun SettingsGroup(
                     modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
                 )
             }
-    
+
             Column(content = content)
-            
+
             Spacer(modifier = Modifier.height(8.dp))
         }
     } else {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            if (!title.isNullOrEmpty()) {
+            if (title.isNotEmpty()) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
@@ -56,7 +57,12 @@ fun SettingsGroup(
             }
 
             Column(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (!disableCornerShape) Modifier.clip(RoundedCornerShape(24.dp))
+                        else Modifier
+                    ),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 content = content
             )
@@ -77,15 +83,15 @@ fun SettingsItem(
     onClick: () -> Unit = {}
 ) {
     CustomItemCell(
-        modifier = Modifier, 
+        modifier = Modifier,
         onClick = onClick,
         isEnabled = isEnabled
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isDestructive) MaterialTheme.colorScheme.error 
-               else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (isDestructive) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(22.dp)
         )
 
@@ -95,8 +101,8 @@ fun SettingsItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isDestructive) MaterialTheme.colorScheme.error 
-                   else MaterialTheme.colorScheme.onSurface,
+                color = if (isDestructive) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             )
             if (subtitle != null) {
@@ -134,7 +140,7 @@ fun SettingsItemCell(
     isDestructive: Boolean = false
 ) {
     CustomItemCell(
-        modifier = Modifier, 
+        modifier = Modifier,
         onClick = onClick,
         isEnabled = isEnabled
     ) {
@@ -142,8 +148,8 @@ fun SettingsItemCell(
             imageVector = icon,
             contentDescription = title,
             modifier = Modifier.size(24.dp),
-            tint = if (isDestructive) MaterialTheme.colorScheme.error 
-                   else MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (isDestructive) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -152,8 +158,8 @@ fun SettingsItemCell(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isDestructive) MaterialTheme.colorScheme.error 
-                       else MaterialTheme.colorScheme.onSurface
+                color = if (isDestructive) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurface
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
@@ -166,14 +172,14 @@ fun SettingsItemCell(
                 )
             }
         }
-        
+
         if (endIcon != null) {
             Icon(
                 imageVector = endIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (isDestructive) MaterialTheme.colorScheme.error 
-                       else MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (isDestructive) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -193,7 +199,7 @@ fun SettingsSwitchItem(
     isEnabled: Boolean = true
 ) {
     CustomItemCell(
-        modifier = Modifier, 
+        modifier = Modifier,
         onClick = { onCheckedChange(!checked) },
         isEnabled = isEnabled
     ) {
@@ -202,7 +208,7 @@ fun SettingsSwitchItem(
             contentDescription = title,
             modifier = Modifier.size(24.dp),
             tint = if (isError) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -249,7 +255,7 @@ fun SettingsDropdownItem(
     var expanded by remember { mutableStateOf(false) }
 
     CustomItemCell(
-        modifier = Modifier, 
+        modifier = Modifier,
         onClick = { expanded = true },
         isEnabled = isEnabled
     ) {
@@ -341,7 +347,9 @@ fun CustomItemCell(
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth().alpha(alpha)
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(alpha)
         ) {
             Row(
                 modifier = modifier

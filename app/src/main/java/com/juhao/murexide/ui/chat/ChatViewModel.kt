@@ -36,7 +36,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 class ChatViewModel(
-    private val token: String,
+    val token: String,
     val chatId: String,
     private val chatType: Int,
     private val repository: MessageRepository = MessageRepository(),
@@ -71,7 +71,6 @@ class ChatViewModel(
     private val _stickerPanel = MutableStateFlow(StickerPanelState())
     val stickerPanel: StateFlow<StickerPanelState> = _stickerPanel.asStateFlow()
 
-    // 当前待填写的自定义输入指令（type 5），非空时显示表单对话框
     private val _instructionForm = MutableStateFlow<InstructionItem?>(null)
     val instructionForm: StateFlow<InstructionItem?> = _instructionForm.asStateFlow()
 
@@ -180,7 +179,9 @@ class ChatViewModel(
                                 it.copy(
                                     memberCount = memberCount,
                                     ownerId = ownerId,
-                                    adminIds = adminIds
+                                    adminIds = adminIds,
+                                    myGroupNickname = data?.my_group_nickname,
+                                    permissionLevel = data?.permisson_level ?: 0
                                 )
                             }
                         }
@@ -1234,24 +1235,6 @@ class ChatViewModel(
         }
     }
 
-    /*fun forwardSelectedMessages(targetChatId: String) {
-        val selectedIds = _uiState.value.selectedMessageIds
-        if (selectedIds.isEmpty()) return
-        
-        viewModelScope.launch {
-            repository.forwardMessages(
-                token = token,
-                messageIds = selectedIds.toList(),
-                targetChatId = targetChatId
-            ).onSuccess {
-                exitSelectionMode()
-                _toastMessage.emit("转发成功")
-            }.onFailure { error ->
-                _toastMessage.emit("转发失败: ${error.message}")
-            }
-        }
-    }*/
-
     fun recallSelectedMessages() {
         val selected = _uiState.value.selectedMessages
         if (selected.isEmpty()) return
@@ -1289,43 +1272,26 @@ class ChatViewModel(
         val fileName = message.fileName ?: "file_${System.currentTimeMillis()}"
 
         viewModelScope.launch {
-            // 开始下载：添加进度，移除旧的已下载标记
-            _uiState.update {
-                it.copy(
-                    downloadingFiles = it.downloadingFiles + (message.msgId to 0f),
-                    downloadedFiles = it.downloadedFiles - message.msgId
-                )
-            }
+            _downloadingFiles.update { it + (message.msgId to 0f) }
+            _uiState.update { it.copy(downloadedFiles = it.downloadedFiles - message.msgId) }
 
             downloadFileWithProgress(
                 url = fileUrl,
                 fileName = fileName,
                 context = context,
                 onProgress = { progress ->
-                    _uiState.update {
-                        it.copy(
-                            downloadingFiles = it.downloadingFiles + (message.msgId to progress)
-                        )
-                    }
+                    _downloadingFiles.update { it + (message.msgId to progress) }
                 },
                 onComplete = { savedPath ->
-                    _uiState.update {
-                        it.copy(
-                            downloadingFiles = it.downloadingFiles - message.msgId,
-                            downloadedFiles = it.downloadedFiles + message.msgId
-                        )
-                    }
+                    _downloadingFiles.update { it - message.msgId }
+                    _uiState.update { it.copy(downloadedFiles = it.downloadedFiles + message.msgId) }
                     viewModelScope.launch {
                         _toastMessage.emit("文件已保存到: $savedPath")
                     }
                 },
                 onError = { error ->
-                    _uiState.update {
-                        it.copy(
-                            downloadingFiles = it.downloadingFiles - message.msgId,
-                            downloadedFiles = it.downloadedFiles - message.msgId
-                        )
-                    }
+                    _downloadingFiles.update { it - message.msgId }
+                    _uiState.update { it.copy(downloadedFiles = it.downloadedFiles - message.msgId) }
                     viewModelScope.launch {
                         _toastMessage.emit("下载失败: $error")
                     }
@@ -1333,6 +1299,8 @@ class ChatViewModel(
             )
         }
     }
+
+    fun updateNickName(value: String) = _uiState.update { it.copy(myGroupNickname = value) }
     
     fun deleteFriend(
         onSuccess: () -> Unit = {},
@@ -1347,19 +1315,15 @@ class ChatViewModel(
                 _toastMessage.emit("操作成功")
                 onSuccess()
             }.onFailure {
-                _toastMessage.emit("操作失败")
+                _toastMessage.emit(it.message ?: "操作失败")
                 onFailure()
             }
         }
     }
 }
 
-/** 消息气泡按钮触发的一次性事件，由 UI 层消费。 */
 sealed class ButtonEvent {
-    /** 打开链接（actionType=1 跳转按钮）。 */
     data class OpenUrl(val url: String) : ButtonEvent()
-
-    /** 复制文本到剪贴板（actionType=2 复制按钮）。 */
     data class CopyText(val text: String) : ButtonEvent()
 }
 

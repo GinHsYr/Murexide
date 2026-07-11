@@ -9,6 +9,8 @@ import com.juhao.murexide.proto.friend.address_book_list_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -71,10 +73,10 @@ class FriendRepository {
     suspend fun deleteFriend(token: String, id: String, type: Int = 1): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                val params = mapOf(
-                    "chatId" to id,
-                    "chatType" to type
-                )
+                val params = buildJsonObject {
+                    put("chatId", id)
+                    put("chatType", type)
+                }
                 val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
 
                 val httpRequest = Request.Builder()

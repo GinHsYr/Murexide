@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -86,6 +87,7 @@ fun CommunityScreen(
             PostsList(
                 posts = uiState.posts,
                 isLoading = uiState.isLoadingPosts,
+                isLoadingMore = uiState.isLoadingMore,
                 onLikeClick = { postId ->
                     viewModel.toggleLike(postId)
                 },
@@ -95,8 +97,8 @@ fun CommunityScreen(
                 onPostClick = { post ->
                     PostDetailActivity.start(context, post.id)
                 },
-                onRefresh = {
-                    viewModel.refresh()
+                onLoadMore = {
+                    viewModel.loadMorePosts()
                 }
             )
         }
@@ -157,10 +159,11 @@ fun BaSelector(
 fun PostsList(
     posts: List<PostItem>,
     isLoading: Boolean,
+    isLoadingMore: Boolean,
     onLikeClick: (Int) -> Unit,
     onCollectClick: (Int) -> Unit,
     onPostClick: (PostItem) -> Unit,
-    onRefresh: () -> Unit
+    onLoadMore: () -> Unit
 ) {
     if (isLoading && posts.isEmpty()) {
         Box(
@@ -177,7 +180,22 @@ fun PostsList(
             Text("暂无文章", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
-        LazyColumn {
+        val listState = rememberLazyListState()
+
+        val shouldLoadMore by remember {
+            derivedStateOf {
+                val layoutInfo = listState.layoutInfo
+                val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = layoutInfo.totalItemsCount
+                totalItems > 0 && lastVisible >= totalItems - 3
+            }
+        }
+
+        LaunchedEffect(shouldLoadMore) {
+            if (shouldLoadMore) onLoadMore()
+        }
+
+        LazyColumn(state = listState) {
             items(posts) { post ->
                 PostCard(
                     post = post,
@@ -187,10 +205,12 @@ fun PostsList(
                 )
             }
 
-            if (isLoading) {
+            if (isLoadingMore) {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -327,15 +347,14 @@ fun InteractionButton(
     onClick: () -> Unit
 ) {
     Row(
+        modifier = Modifier.clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier
-                .size(20.dp)
-                .clickable { onClick() },
+            modifier = Modifier.size(20.dp),
             tint = tint
         )
         if (count > 0) {

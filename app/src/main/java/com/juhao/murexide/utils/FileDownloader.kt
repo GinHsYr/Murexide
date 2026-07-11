@@ -87,7 +87,7 @@ object FileDownloader {
         val uniqueName = getUniqueDisplayName(resolver, fileName)
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, uniqueName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+            mimeTypeForName(fileName)?.let { put(MediaStore.MediaColumns.MIME_TYPE, it) }
             put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
         }
 
@@ -98,7 +98,55 @@ object FileDownloader {
             copyWithProgress(inputStream, outputStream, contentLength, onProgress)
         } ?: throw IOException("无法写入文件")
 
+        fixSuffixAfterExtension(resolver, uri, fileName)
+
         return uri.toString()
+    }
+
+    private fun mimeTypeForName(fileName: String): String? {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        if (ext.isEmpty()) return null
+        return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun fixSuffixAfterExtension(
+        resolver: android.content.ContentResolver,
+        uri: Uri,
+        requestedName: String
+    ) {
+        val (_, ext) = splitName(requestedName)
+        if (ext.isEmpty()) return
+
+        val actual = queryDisplayName(resolver, uri) ?: return
+        val pattern = Regex("^(.*)" + Regex.escape(ext) + "\\s*\\((\\d+)\\)$")
+        val match = pattern.matchEntire(actual) ?: return
+        val stem = match.groupValues[1]
+        val index = match.groupValues[2]
+
+        val corrected = getUniqueDisplayName(resolver, "$stem($index)$ext")
+        if (corrected == actual) return
+        try {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, corrected)
+            }
+            resolver.update(uri, values, null, null)
+        } catch (_: Exception) { }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun queryDisplayName(
+        resolver: android.content.ContentResolver,
+        uri: Uri
+    ): String? {
+        val projection = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
+        resolver.query(uri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                if (idx >= 0) return cursor.getString(idx)
+            }
+        }
+        return null
     }
 
     private fun saveToDownloadLegacy(
@@ -151,7 +199,6 @@ object FileDownloader {
         }
 
         outputStream.flush()
-        // 确保进度条走满
         onProgress(1f)
     }
 
@@ -185,9 +232,8 @@ object FileDownloader {
         displayName: String
     ): Boolean {
         val projection = arrayOf(MediaStore.MediaColumns._ID)
-        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND " +
-            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-        val args = arrayOf(displayName, "%${Environment.DIRECTORY_DOWNLOADS}%")
+        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+        val args = arrayOf(displayName)
         resolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             projection, selection, args, null
@@ -197,10 +243,6 @@ object FileDownloader {
         return false
     }
 
-    /**
-     * Legacy：若目标文件已存在，则在扩展名之前追加 (n)，
-     * 例如 main.lua -> main(1).lua。
-     */
     private fun getUniqueFile(dir: File, fileName: String): File {
         var file = File(dir, fileName)
         if (!file.exists()) return file

@@ -16,6 +16,10 @@ class CommunityViewModel(
 
     private val repository = CommunityRepository(token)
 
+    private companion object {
+        const val PAGE_SIZE = 20
+    }
+
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
@@ -48,24 +52,65 @@ class CommunityViewModel(
 
     fun loadPosts(baId: Int? = null) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingPosts = true)
+            val targetBaId = if (baId != null && baId > 0) baId else 0
+            // 加载第一页并重置分页状态
+            _uiState.value = _uiState.value.copy(
+                isLoadingPosts = true,
+                currentBaId = targetBaId,
+                currentPage = 1
+            )
 
-            val result = if (baId != null && baId > 0) {
-                _uiState.value = _uiState.value.copy(currentBaId = baId)
-                repository.getPostList(baId)
+            val result = if (targetBaId > 0) {
+                repository.getPostList(targetBaId, size = PAGE_SIZE, page = 1)
             } else {
-                _uiState.value = _uiState.value.copy(currentBaId = 0)
-                repository.getRecommendPosts()
+                repository.getRecommendPosts(size = PAGE_SIZE, page = 1)
             }
 
-            result.onSuccess { list ->
+            result.onSuccess { data ->
                 _uiState.value = _uiState.value.copy(
-                    posts = list,
+                    posts = data.posts,
+                    total = data.total,
+                    hasMore = data.posts.size < data.total && data.posts.isNotEmpty(),
                     isLoadingPosts = false
                 )
             }.onFailure { e ->
                 _uiState.value = _uiState.value.copy(
                     isLoadingPosts = false,
+                    hasMore = false,
+                    error = e.message
+                )
+            }
+        }
+    }
+
+    fun loadMorePosts() {
+        val state = _uiState.value
+        // 并发/边界保护
+        if (state.isLoadingPosts || state.isLoadingMore || !state.hasMore) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+            val nextPage = state.currentPage + 1
+            val baId = state.currentBaId
+
+            val result = if (baId > 0) {
+                repository.getPostList(baId, size = PAGE_SIZE, page = nextPage)
+            } else {
+                repository.getRecommendPosts(size = PAGE_SIZE, page = nextPage)
+            }
+
+            result.onSuccess { data ->
+                val merged = _uiState.value.posts + data.posts
+                _uiState.value = _uiState.value.copy(
+                    posts = merged,
+                    total = data.total,
+                    currentPage = nextPage,
+                    hasMore = data.posts.isNotEmpty() && merged.size < data.total,
+                    isLoadingMore = false
+                )
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
                     error = e.message
                 )
             }
@@ -138,6 +183,10 @@ data class CommunityUiState(
     val posts: List<PostItem> = emptyList(),
     val isLoadingBa: Boolean = false,
     val isLoadingPosts: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
-    val currentBaId: Int = 0
+    val currentBaId: Int = 0,
+    val currentPage: Int = 1,
+    val total: Int = 0,
+    val hasMore: Boolean = false
 )

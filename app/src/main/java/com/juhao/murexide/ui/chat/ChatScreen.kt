@@ -66,7 +66,9 @@ import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.draw.clip
+import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
+import com.juhao.murexide.ui.conversationdetail.GroupSettingsActivity
 import com.juhao.murexide.ui.webview.WebViewActivity
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -83,6 +85,7 @@ fun ChatScreen(
     chatType: Int,
     chatName: String,
     chatAvatar: String,
+    chatId: String,
     onBackClick: () -> Unit = {},
     bigScreenMode: Boolean = false,
     viewModel: ChatViewModel
@@ -98,6 +101,8 @@ fun ChatScreen(
 
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showEditNickNameDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val recallDialog by viewModel.recallDialog.collectAsState()
 
@@ -539,6 +544,43 @@ fun ChatScreen(
                                                     )
                                                 }
                                             )
+                                            if (chatType == 2 && uiState.permissionLevel >= 2) {
+                                                DropdownMenuItem(
+                                                    text = { Text("群聊设置") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        GroupSettingsActivity.start(
+                                                            context = context,
+                                                            groupId = chatId,
+                                                            groupName = chatName,
+                                                            groupAvatar = chatAvatar
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Rounded.Edit,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                            if (chatType == 2) {
+                                                DropdownMenuItem(
+                                                    text = { Text("我的群名称") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        showEditNickNameDialog = true
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Rounded.DriveFileRenameOutline,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                            }
                                             DropdownMenuItem(
                                                 text = { Text("会话详情") },
                                                 onClick = {
@@ -565,21 +607,23 @@ fun ChatScreen(
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        when (chatType) {
+                                                        text = when (chatType) {
                                                             1 -> "删除好友"
                                                             2 -> "退出群聊"
                                                             else -> "删除机器人"
-                                                        }
+                                                        },
+                                                        color = MaterialTheme.colorScheme.error
                                                     )
                                                 },
                                                 onClick = {
                                                     showMoreMenu = false
-                                                    viewModel.deleteFriend()
+                                                    showDeleteConfirm = true
                                                 },
                                                 leadingIcon = {
                                                     Icon(
                                                         Icons.AutoMirrored.Rounded.Logout,
-                                                        contentDescription = null
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.error
                                                     )
                                                 }
                                             )
@@ -1214,6 +1258,77 @@ fun ChatScreen(
             item = item,
             onDismiss = { viewModel.dismissInstructionForm() },
             onSubmit = { formJson -> viewModel.submitInstructionForm(item, formJson) }
+        )
+    }
+
+    val conversationDetailRepository = ConversationDetailRepository()
+
+    if (showEditNickNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditNickNameDialog = false },
+            icon = { Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = null) },
+            title = { Text("我的群名称") },
+            text = {
+                OutlinedTextField(
+                    value = uiState.myGroupNickname ?: "",
+                    onValueChange = viewModel::updateNickName,
+                    label = { Text("群名称（为空复原）") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showEditNickNameDialog = false
+                    scope.launch {
+                        conversationDetailRepository.editMyGroupNickname(
+                            viewModel.token,
+                            chatId,
+                            uiState.myGroupNickname ?: ""
+                        ).onSuccess {
+                            Toast.makeText(context, "修改成功", Toast.LENGTH_SHORT).show()
+                        }.onFailure {
+                            Toast.makeText(context, "修改失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditNickNameDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val actionText = when (chatType) {
+            1 -> "删除该好友"
+            2 -> "退出该群聊"
+            else -> "删除该机器人"
+        }
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            icon = { Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(actionText) },
+            text = {
+                Text("确定要${actionText}吗？")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.deleteFriend(onSuccess = { onBackClick() })
+                }) {
+                    Text(actionText, color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("取消")
+                }
+            }
         )
     }
 }

@@ -4,12 +4,15 @@ import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.bot.bot_info
 import com.juhao.murexide.proto.bot.bot_info_send
+import com.juhao.murexide.proto.group.edit_group
+import com.juhao.murexide.proto.group.edit_group_send
 import com.juhao.murexide.proto.group.info
 import com.juhao.murexide.proto.group.info_send
 import com.juhao.murexide.proto.user.get_user
 import com.juhao.murexide.proto.user.get_user_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -33,12 +36,86 @@ class ConversationDetailRepository {
         }
     }
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     private fun buildRequest(path: String, token: String, body: ByteArray): Request =
         Request.Builder()
             .url("$baseUrl$path")
             .post(body.toRequestBody("application/octet-stream".toMediaType()))
             .header("token", token)
             .build()
+
+    /** 编辑群聊信息（需群主/管理员权限）。 */
+    suspend fun editGroup(
+        token: String,
+        groupId: String,
+        name: String,
+        introduction: String,
+        avatarUrl: String,
+        directJoin: Boolean,
+        historyMsg: Boolean,
+        isPrivate: Boolean,
+        hideGroupMembers: Boolean,
+        categoryName: String = "",
+        categoryId: Long = 0L
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val body = edit_group_send(
+                group_id = groupId,
+                name = name,
+                introduction = introduction,
+                avatar_url = avatarUrl,
+                direct_join = if (directJoin) 1 else 0,
+                history_msg = if (historyMsg) 1 else 0,
+                category_name = categoryName,
+                category_id = categoryId,
+                private_ = if (isPrivate) 1 else 0,
+                hide_group_members = if (hideGroupMembers) 1L else 0L
+            ).encode()
+
+            client.newCall(buildRequest("/v1/group/edit-group", token, body)).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                }
+                val result = edit_group.ADAPTER.decode(response.body.bytes())
+                if (result.status?.code == 1) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception(result.status?.msg ?: "保存失败"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** 设置我在该群的群昵称。 */
+    suspend fun editMyGroupNickname(
+        token: String,
+        groupId: String,
+        nickname: String
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val params = mapOf("groupId" to groupId, "nickname" to nickname)
+            val requestBody = json.encodeToString(params)
+                .toRequestBody("application/json".toMediaType())
+            val httpRequest = Request.Builder()
+                .url("$baseUrl/v1/group/edit-my-group-nickname")
+                .post(requestBody)
+                .header("token", token)
+                .build()
+
+            client.newCall(httpRequest).execute().use { response ->
+                if (response.isSuccessful) {
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception("HTTP error: ${response.code}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     private suspend fun getUserDetail(token: String, chatId: String): Result<ConversationDetail> =
         withContext(Dispatchers.IO) {
@@ -108,9 +185,14 @@ class ConversationDetailRepository {
                             ownerId = d?.owner?.takeIf { it.isNotEmpty() },
                             groupCode = d?.group_code?.takeIf { it.isNotEmpty() },
                             categoryName = d?.category_name?.takeIf { it.isNotEmpty() },
+                            categoryId = d?.category_id,
                             myGroupNickname = d?.my_group_nickname?.takeIf { it.isNotEmpty() },
                             isPrivate = (d?.private_ ?: 0) == 1,
-                            doNotDisturb = (d?.do_not_disturb ?: 0) == 1
+                            doNotDisturb = (d?.do_not_disturb ?: 0) == 1,
+                            permissionLevel = d?.permisson_level ?: 0,
+                            directJoin = (d?.direct_join ?: 0) == 1,
+                            historyMsg = (d?.history_msg ?: 0) == 1,
+                            hideGroupMembers = (d?.hide_group_members ?: 0L) == 1L
                         )
                     )
                 }

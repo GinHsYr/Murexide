@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +50,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun MessageBubble(
@@ -283,6 +285,23 @@ fun MessageBubble(
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
+                                        }
+                                        if (message.tags.isNotEmpty()){
+                                            val tag = message.tags[0]
+
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(50.dp),
+                                                color = Color(tag.color.toColorInt())
+                                            ) {
+                                                Text(
+                                                    text = tag.text,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = getTextColor(tag.color),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(2.dp))
                                         }
                                         if (roleLabel != null) {
                                             val roleColor = if (roleLabel == "群主") {
@@ -954,4 +973,9 @@ private fun processQuoteText(quoteText: String): String {
     } else {
         quoteText
     }
+}
+
+fun getTextColor(colorString: String): Color {
+    val color = Color(colorString.toColorInt())
+    return if (color.luminance() > 0.5) Color.Black else Color.White
 }

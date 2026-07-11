@@ -183,6 +183,7 @@ fun MainScreen(token: String) {
                                     chatAvatar = currentConversation!!.avatarUrl,
                                     chatName = currentConversation!!.name,
                                     chatType = currentConversation!!.chatType,
+                                    chatId = currentConversation!!.chatId,
                                     onBackClick = { currentConversation = null },
                                     bigScreenMode = true,
                                     viewModel = viewModel(

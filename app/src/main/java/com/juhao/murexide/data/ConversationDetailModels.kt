@@ -15,9 +15,15 @@ data class ConversationDetail(
     val ownerId: String? = null,
     val groupCode: String? = null,
     val categoryName: String? = null,
+    val categoryId: Long? = null,
     val myGroupNickname: String? = null,
     val isPrivate: Boolean = false,
     val doNotDisturb: Boolean = false,
+    // 群聊设置（权限与开关）
+    val permissionLevel: Int = 0,      // 群主 100 / 管理员 2 / 普通 0
+    val directJoin: Boolean = false,   // 进群免审核
+    val historyMsg: Boolean = false,   // 新成员可见历史消息
+    val hideGroupMembers: Boolean = false, // 隐藏群成员
     // 用户
     val nameId: Long? = null,
     val registerTime: String? = null,

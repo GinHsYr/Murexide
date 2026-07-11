@@ -52,7 +52,7 @@ class CommunityRepository(
         }
     }
 
-    suspend fun getPostList(baId: Int, size: Int = 20, page: Int = 1): Result<List<PostItem>> {
+    suspend fun getPostList(baId: Int, size: Int = 20, page: Int = 1): Result<PostListData> {
         return withContext(Dispatchers.IO) {
             try {
                 val params = mapOf(
@@ -75,7 +75,7 @@ class CommunityRepository(
                         val result = json.decodeFromString<PostListResponse>(responseBody)
 
                         if (result.code == 1) {
-                            Result.success(result.data?.posts ?: emptyList())
+                            Result.success(result.data ?: PostListData(emptyList(), 0))
                         } else {
                             Result.failure(Exception(result.msg.ifEmpty { "获取文章列表失败" }))
                         }
@@ -89,7 +89,7 @@ class CommunityRepository(
         }
     }
 
-    suspend fun getRecommendPosts(size: Int = 20, page: Int = 1): Result<List<PostItem>> {
+    suspend fun getRecommendPosts(size: Int = 20, page: Int = 1): Result<PostListData> {
         return withContext(Dispatchers.IO) {
             try {
                 val params = mapOf(
@@ -110,7 +110,7 @@ class CommunityRepository(
                         val result = json.decodeFromString<PostListResponse>(responseBody)
 
                         if (result.code == 1) {
-                            Result.success(result.data?.posts ?: emptyList())
+                            Result.success(result.data ?: PostListData(emptyList(), 0))
                         } else {
                             Result.failure(Exception(result.msg.ifEmpty { "获取推荐文章失败" }))
                         }

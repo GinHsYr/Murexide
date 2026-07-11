@@ -195,7 +195,7 @@ class QiniuUploader(
                     return@withContext false
                 }
 
-                val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     Bitmap.CompressFormat.WEBP_LOSSY
                 } else {
                     Bitmap.CompressFormat.WEBP
@@ -219,7 +219,6 @@ class QiniuUploader(
     private suspend fun prepareFile(file: File): Pair<File, String> {
         return when (uploadType) {
             1 -> {
-                // 图片处理
                 if (enableWebp) {
                     val webpFile = File(appContext.cacheDir, "${file.nameWithoutExtension}.webp")
                     if (convertToWebp(file, webpFile)) {
