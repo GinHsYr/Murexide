@@ -362,6 +362,15 @@ private fun MarkdownText(
     val flavour = remember { GFMFlavourDescriptor() }
     val parser = remember(flavour) { MarkdownParser(flavour) }
     val referenceLinkHandler = remember { PersistentReferenceLinkHandler() }
+    
+    val customComponents = markdownComponents(
+        table = { content ->
+            Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                content()
+            }
+        }
+    )
+    
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
     ) {
@@ -376,7 +385,8 @@ private fun MarkdownText(
                 markdownState = markdownState,
                 modifier = modifier,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = customComponents
             )
         } else {
             val markdownState = rememberMarkdownState(
@@ -392,7 +402,8 @@ private fun MarkdownText(
                 markdownState = markdownState,
                 modifier = modifier,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = customComponents
             )
         }
     }
