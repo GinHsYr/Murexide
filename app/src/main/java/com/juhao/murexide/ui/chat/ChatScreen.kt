@@ -162,50 +162,44 @@ fun ChatScreen(
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
+    
+    val displayItems by remember {
+        derivedStateOf {
+            computeDisplayItems(
+                messages = uiState.messages,
+                chatType = chatType,
+                ownerId = uiState.ownerId,
+                adminIds = uiState.adminIds
+            )
+        }
+    }
 
     val floatingAvatarState by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty() || uiState.messages.isEmpty() || !avatarFollowEnabled) {
+            if (visibleItems.isEmpty() || displayItems.isEmpty() || !avatarFollowEnabled) {
                 Triple(false, "", false)
             } else {
-                val topVisibleItem = visibleItems.minByOrNull { it.index }
-                if (topVisibleItem == null) {
-                    Triple(false, "", false)
+                val topVisibleIndex = visibleItems.first().index
+                val displayItem = displayItems.getOrNull(topVisibleIndex) ?: return@derivedStateOf Triple(false, "", false)
+                val message = displayItem.message
+    
+                val itemHeightDp = with(density) { visibleItems.first().size.toDp() }.value
+                val visibleHeightDp = with(density) {
+                    (visibleItems.first().size + visibleItems.first().offset.coerceAtMost(0)).toDp()
+                }.value
+    
+                val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+    
+                val hasOtherSameSender =
+                    (displayItem.isNewerSameSender && !displayItem.isLastFromSender) || displayItem.isOlderSameSender
+    
+                if (hasEnoughSpace) {
+                    Triple(true, message.senderAvatar, message.isMine)
+                } else if (hasOtherSameSender && message.senderAvatar.isNotEmpty()) {
+                    Triple(true, message.senderAvatar, message.isMine)
                 } else {
-                    val firstVisibleIndex = topVisibleItem.index
-                    val message = uiState.messages.getOrNull(firstVisibleIndex)
-
-                    if (message == null) {
-                        Triple(false, "", false)
-                    } else {
-                        val itemHeightDp = with(density) { topVisibleItem.size.toDp() }.value
-                        val visibleHeightDp = with(density) {
-                            (topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)).toDp()
-                        }.value
-
-                        val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
-
-                        val currentIndex =
-                            uiState.messages.indexOfFirst { it.msgId == message.msgId }
-                        val newerMessage =
-                            if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
-                        val olderMessage =
-                            if (currentIndex < uiState.messages.size - 1) uiState.messages[currentIndex + 1] else null
-                        val isLastFromSender =
-                            olderMessage == null || olderMessage.senderId != message.senderId
-                        val hasOtherSameSender =
-                            (newerMessage != null && newerMessage.senderId == message.senderId && !isLastFromSender) ||
-                                    (olderMessage != null && olderMessage.senderId == message.senderId)
-
-                        if (hasEnoughSpace) {
-                            Triple(true, message.senderAvatar, message.isMine)
-                        } else if (hasOtherSameSender && message.senderAvatar.isNotEmpty()) {
-                            Triple(true, message.senderAvatar, message.isMine)
-                        } else {
-                            Triple(false, "", false)
-                        }
-                    }
+                    Triple(false, "", false)
                 }
             }
         }
@@ -217,13 +211,9 @@ fun ChatScreen(
 
     val topVisibleMessage by remember {
         derivedStateOf {
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isNotEmpty()) {
-                val topIndex = visibleItems.minByOrNull { it.index }?.index
-                topIndex?.let { uiState.messages.getOrNull(it) }
-            } else {
-                null
-            }
+            listState.layoutInfo.visibleItemsInfo
+                .firstOrNull()
+                ?.let { displayItems.getOrNull(it.index)?.message }
         }
     }
 
@@ -365,6 +355,10 @@ fun ChatScreen(
             }
         )
     }
+    
+    val topBarTransitionSpec = remember {
+        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -392,10 +386,7 @@ fun ChatScreen(
 
                 AnimatedContent(
                     targetState = selectionMode,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(200)) togetherWith
-                                fadeOut(animationSpec = tween(200))
-                    },
+                    transitionSpec = topBarTransitionSpec,
                     label = "top_bar_transition"
                 ) { isSelectionMode ->
                     if (isSelectionMode) {
@@ -1052,56 +1043,37 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(
-                        items = uiState.messages,
-                        key = { it.msgId }
-                    ) { message ->
-                        val index = uiState.messages.indexOf(message)
-
-                        val newerMessage = uiState.messages.getOrNull(index - 1)
-                        val olderMessage = uiState.messages.getOrNull(index + 1)
-
-                        val isFirstFromSender =
-                            newerMessage == null || newerMessage.contentType == MessageItem.CONTENT_TYPE_TIP || newerMessage.senderId != message.senderId
-                        val isLastFromSender =
-                            olderMessage == null || olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP || olderMessage.senderId != message.senderId
-                        val isOlderSameSender =
-                            olderMessage != null && olderMessage.contentType != MessageItem.CONTENT_TYPE_TIP && olderMessage.senderId == message.senderId
-                        val isNewerSameSender =
-                            newerMessage != null && newerMessage.contentType != MessageItem.CONTENT_TYPE_TIP && newerMessage.senderId == message.senderId
-
+                        items = displayItems,
+                        key = { it.message.msgId }
+                    ) { item ->
+                        val message = item.message
+                        
                         val isTopVisibleItem = message.msgId == topVisibleMessageId
 
                         val shouldShowItemAvatar = if (isTopVisibleItem) {
-                            !showFloatingAvatar && ((isLastFromSender && avatarFollowEnabled) || isFirstFromSender)
+                            !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
                         } else {
-                            isFirstFromSender
+                            item.isFirstFromSender
                         }
 
                         val avatarAlignment =
                             if (isTopVisibleItem && shouldShowItemAvatar && avatarFollowEnabled) {
-                                if (isLastFromSender) Alignment.Top else Alignment.Bottom
+                                if (item.isLastFromSender) Alignment.Top else Alignment.Bottom
                             } else {
                                 Alignment.Bottom
                             }
 
-                        val roleLabel = when {
-                            chatType != 2 || message.senderType == 3 -> null
-                            message.senderId == uiState.ownerId -> "群主"
-                            message.senderId in uiState.adminIds -> "管理员"
-                            else -> null
-                        }
-
                         MessageBubble(
                             message = message,
-                            roleLabel = roleLabel,
+                            roleLabel = item.roleLabel,
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
                             onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },
                             isAdmin = uiState.isAdmin,
-                            isLastFromSender = isLastFromSender,
-                            isFirstFromSender = isFirstFromSender,
-                            isOlderSameSender = isOlderSameSender,
-                            isNewerSameSender = isNewerSameSender,
+                            isLastFromSender = item.isLastFromSender,
+                            isFirstFromSender = item.isFirstFromSender,
+                            isOlderSameSender = item.isOlderSameSender,
+                            isNewerSameSender = item.isNewerSameSender,
                             showAvatar = shouldShowItemAvatar,
                             showTags = showMsgTagsSetting,
                             showMyBubbleAvatarSetting = showMyBubbleAvatarSetting,
@@ -1127,7 +1099,7 @@ fun ChatScreen(
                                             .mapNotNull { it.imageUrl }
                                             .filter { it.isNotEmpty() }
                                             .reversed()
-        
+                            
                                         if (allImages.isNotEmpty()) {
                                             val index = allImages.indexOf(url)
                                             viewerImages = allImages

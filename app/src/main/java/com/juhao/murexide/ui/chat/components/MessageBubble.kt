@@ -233,10 +233,12 @@ fun MessageBubble(
                     Spacer(modifier = Modifier.width(44.dp))
                 }
     
-                val hideMsgCard = (message.contentType == MessageItem.CONTENT_TYPE_IMAGE
-                    || message.contentType == MessageItem.CONTENT_TYPE_STICKER
-                    || message.contentType == MessageItem.CONTENT_TYPE_FILE)
-                    && !message.isRecalled
+                val hideMsgCard = remember(message.contentType, message.isRecalled) {
+                    (message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                        || message.contentType == MessageItem.CONTENT_TYPE_STICKER
+                        || message.contentType == MessageItem.CONTENT_TYPE_FILE)
+                        && !message.isRecalled
+                }
     
                 Box(modifier = Modifier.weight(1f, fill = false)) {
                     Column(horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
@@ -306,6 +308,7 @@ fun MessageBubble(
                                                     text = tag.text,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = getTextColor(tag.color),
+                                                    maxLines = 1,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -329,6 +332,7 @@ fun MessageBubble(
                                                     text = roleLabel,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = roleColor,
+                                                    maxLines = 1,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -417,26 +421,31 @@ fun MessageBubble(
                                                     }
                                                 )
                                             } else {
-                                                val timeId = "time_${message.msgId}"
+                                                val timeId = remember { "time_${message.msgId}" }
                                                 val textMeasurer = rememberTextMeasurer()
                                                 
-                                                val timeText = buildString {
-                                                    append(timestampDisplay)
-                                                    if (message.isEdited) append(" 已编辑")
+                                                val timeText = remember(timestampDisplay, message.isEdited) {
+                                                    buildString {
+                                                        append(timestampDisplay)
+                                                        if (message.isEdited) append(" 已编辑")
+                                                    }
                                                 }
                                                 
-                                                val timeWidth = textMeasurer.measure(
-                                                    text = AnnotatedString(timeText),
-                                                    style = MaterialTheme.typography.labelSmall
-                                                ).size.width
-                                                
                                                 val density = LocalDensity.current
-                                                val timeWidthSp = with(density) { timeWidth.toSp() }
+                                                val timeWidthSp = remember(timeText) {
+                                                    val widthPx = textMeasurer.measure(
+                                                        text = AnnotatedString(timeText),
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    ).size.width
+                                                    with(density) { widthPx.toSp() }
+                                                }
                                                 
-                                                val textWithTime = buildAnnotatedString {
-                                                    append(message.content)
-                                                    append(" ")
-                                                    appendInlineContent(timeId, " ")
+                                                val textWithTime = remember(message.content, timeId) {
+                                                    buildAnnotatedString {
+                                                        append(message.content)
+                                                        append(" ")
+                                                        appendInlineContent(timeId, " ")
+                                                    }
                                                 }
                                                 
                                                 val inlineContent = mapOf(

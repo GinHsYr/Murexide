@@ -4,32 +4,14 @@ import android.util.Log
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-@Serializable
-data class MessageButton(
-    val text: String = "",
-    val actionType: Int = 0, // 1-跳转URL，2-复制，3-上报点击事件
-    val url: String? = null,
-    val value: String? = null
-) {
-    companion object {
-        const val ACTION_JUMP = 1
-        const val ACTION_COPY = 2
-        const val ACTION_REPORT = 3
-    }
-}
-
-private val buttonsJson = Json { ignoreUnknownKeys = true }
-
-
-fun parseMessageButtons(raw: String?): List<List<MessageButton>> {
-    if (raw.isNullOrBlank()) return emptyList()
-    return try {
-        buttonsJson.decodeFromString<List<List<MessageButton>>>(raw)
-    } catch (e: Exception) {
-        Log.w("MessageButtons", "解析按钮失败: $raw", e)
-        emptyList()
-    }
-}
+data class MessageDisplayItem(
+    val message: MessageItem,
+    val isFirstFromSender: Boolean,
+    val isLastFromSender: Boolean,
+    val isOlderSameSender: Boolean,
+    val isNewerSameSender: Boolean,
+    val roleLabel: String?
+)
 
 @Serializable
 data class MessageItem(
@@ -97,6 +79,33 @@ data class MessageItem(
         const val CONTENT_TYPE_TIP = 9
         const val CONTENT_TYPE_VIDEO = 10
         const val CONTENT_TYPE_AUDIO = 11
+    }
+}
+
+@Serializable
+data class MessageButton(
+    val text: String = "",
+    val actionType: Int = 0, // 1-跳转URL，2-复制，3-上报点击事件
+    val url: String? = null,
+    val value: String? = null
+) {
+    companion object {
+        const val ACTION_JUMP = 1
+        const val ACTION_COPY = 2
+        const val ACTION_REPORT = 3
+    }
+}
+
+private val buttonsJson = Json { ignoreUnknownKeys = true }
+
+
+fun parseMessageButtons(raw: String?): List<List<MessageButton>> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return try {
+        buttonsJson.decodeFromString<List<List<MessageButton>>>(raw)
+    } catch (e: Exception) {
+        Log.w("MessageButtons", "解析按钮失败: $raw", e)
+        emptyList()
     }
 }
 

@@ -1378,3 +1378,47 @@ data class StickerPanelState(
     val expressions: List<ExpressionItem> = emptyList(),
     val stickerPacks: List<StickerPack> = emptyList()
 )
+
+fun computeDisplayItems(
+    messages: List<MessageItem>,
+    chatType: Int,
+    ownerId: String?,
+    adminIds: Set<String>
+): List<MessageDisplayItem> {
+    return messages.mapIndexed { index, message ->
+        val newer = messages.getOrNull(index - 1)
+        val older = messages.getOrNull(index + 1)
+
+        val isFirstFromSender = newer == null
+                || newer.contentType == MessageItem.CONTENT_TYPE_TIP
+                || newer.senderId != message.senderId
+
+        val isLastFromSender = older == null
+                || older.contentType == MessageItem.CONTENT_TYPE_TIP
+                || older.senderId != message.senderId
+
+        val isOlderSameSender = older != null
+                && older.contentType != MessageItem.CONTENT_TYPE_TIP
+                && older.senderId == message.senderId
+
+        val isNewerSameSender = newer != null
+                && newer.contentType != MessageItem.CONTENT_TYPE_TIP
+                && newer.senderId == message.senderId
+
+        val roleLabel: String? = when {
+            chatType != 2 || message.senderType == 3 -> null
+            message.senderId == ownerId -> "群主"
+            message.senderId in adminIds -> "管理员"
+            else -> null
+        }
+
+        MessageDisplayItem(
+            message = message,
+            isFirstFromSender = isFirstFromSender,
+            isLastFromSender = isLastFromSender,
+            isOlderSameSender = isOlderSameSender,
+            isNewerSameSender = isNewerSameSender,
+            roleLabel = roleLabel
+        )
+    }
+}
