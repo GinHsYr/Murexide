@@ -68,7 +68,6 @@ fun AppearanceScreen(
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 timestamp = System.currentTimeMillis() - 60000,
                 direction = "left",
-                showTags = showMsgTags,
                 tags = listOf(
                     MessageTag(
                         id = 0,
@@ -218,6 +217,7 @@ fun AppearanceScreen(
                         isOlderSameSender = false,
                         isNewerSameSender = true,
                         showAvatar = false,
+                        showTags = showMsgTags,
                         showMyBubbleAvatarSetting = showMyBubbleAvatar,
                         bubbleOpacity = bubbleOpacity,
                         bubbleCornerRadius = bubbleCornerRadius
