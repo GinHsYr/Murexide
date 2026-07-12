@@ -72,7 +72,7 @@ fun AppearanceScreen(
                     MessageTag(
                         id = 0,
                         text = "化学式",
-                        color = "#4F378B"
+                        color = "#0094FF"
                     )
                 )
             ),
