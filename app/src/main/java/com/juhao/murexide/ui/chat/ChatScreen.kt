@@ -356,10 +356,6 @@ fun ChatScreen(
         )
     }
     
-    val topBarTransitionSpec = remember {
-        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -386,7 +382,10 @@ fun ChatScreen(
 
                 AnimatedContent(
                     targetState = selectionMode,
-                    transitionSpec = topBarTransitionSpec,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith
+                                fadeOut(animationSpec = tween(200))
+                    },
                     label = "top_bar_transition"
                 ) { isSelectionMode ->
                     if (isSelectionMode) {

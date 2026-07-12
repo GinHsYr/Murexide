@@ -432,10 +432,11 @@ fun MessageBubble(
                                                 }
                                                 
                                                 val density = LocalDensity.current
+                                                val textStyle = MaterialTheme.typography.labelSmall
                                                 val timeWidthSp = remember(timeText) {
                                                     val widthPx = textMeasurer.measure(
                                                         text = AnnotatedString(timeText),
-                                                        style = MaterialTheme.typography.labelSmall
+                                                        style = textStyle
                                                     ).size.width
                                                     with(density) { widthPx.toSp() }
                                                 }
