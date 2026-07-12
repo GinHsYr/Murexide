@@ -18,6 +18,7 @@ import com.juhao.murexide.ui.components.*
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.theme.ThemeState
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.ui.chat.components.MessageBubble
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -46,6 +47,7 @@ fun AppearanceScreen(
     
     var bubbleCornerRadius by remember { mutableFloatStateOf(16f) }
     val showMyBubbleAvatar by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
+    val showMsgTags by settingsStorage.showMsgTagsFlow.collectAsState(initial = true)
     var bubbleOpacity by remember { mutableFloatStateOf(0.9f) }
 
     LaunchedEffect(Unit) {
@@ -65,7 +67,15 @@ fun AppearanceScreen(
                 content = "你好！",
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 timestamp = System.currentTimeMillis() - 60000,
-                direction = "left"
+                direction = "left",
+                showTags = showMsgTags,
+                tags = listOf(
+                    MessageTag(
+                        id = 0,
+                        text = "化学式",
+                        color = "#4F378B"
+                    )
+                )
             ),
             MessageItem(
                 msgId = "preview_other",
@@ -239,9 +249,7 @@ fun AppearanceScreen(
                 }
             }
 
-            // 气泡样式设置
             SettingsGroup(title = "气泡样式") {
-                // 圆角 Slider
                 CustomItemCell {
                     Column(
                         modifier = Modifier.fillMaxWidth()
@@ -310,8 +318,7 @@ fun AppearanceScreen(
                         }
                     }
                 }
-                                
-                // 透明度 Slider
+
                 CustomItemCell {
                     Column(
                         modifier = Modifier.fillMaxWidth()
@@ -380,7 +387,6 @@ fun AppearanceScreen(
                     }
                 }
                 
-                // 显示头像开关
                 SettingsSwitchItem(
                     icon = Icons.Rounded.Face,
                     title = "显示我的头像",
@@ -392,9 +398,20 @@ fun AppearanceScreen(
                         }
                     }
                 )
+                
+                SettingsSwitchItem(
+                    icon = Icons.Rounded.Tag,
+                    title = "显示用户标签",
+                    subtitle = "在发送者名称旁显示Ta的标签",
+                    checked = showMsgTags,
+                    onCheckedChange = { checked ->
+                        scope.launch {
+                            settingsStorage.setShowMsgTags(checked)
+                        }
+                    }
+                )
             }
 
-            // 会话设置
             SettingsGroup(title = "会话") {
                 SettingsSwitchItem(
                     icon = Icons.Rounded.ChatBubbleOutline,

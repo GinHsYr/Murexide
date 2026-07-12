@@ -175,13 +175,15 @@ class ChatViewModel(
                             val memberCount = data?.member
                             val ownerId = data?.owner?.takeIf { it.isNotEmpty() }
                             val adminIds = data?.admin?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+                            val permissionLevel = data?.permisson_level ?: 0
                             _uiState.update {
                                 it.copy(
                                     memberCount = memberCount,
                                     ownerId = ownerId,
                                     adminIds = adminIds,
                                     myGroupNickname = data?.my_group_nickname,
-                                    permissionLevel = data?.permisson_level ?: 0
+                                    permissionLevel = permissionLevel,
+                                    isAdmin = permissionLevel >= 2
                                 )
                             }
                         }

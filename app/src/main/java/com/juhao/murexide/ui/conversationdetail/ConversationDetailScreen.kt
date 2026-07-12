@@ -196,10 +196,10 @@ private fun GroupSection(detail: ConversationDetail) {
             InfoItem(Icons.Rounded.Category, "分类", it)
         }
         detail.ownerId?.let {
-            InfoItem(Icons.Rounded.Star, "群主", it)
+            InfoItem(Icons.Rounded.Person, "群主", it)
         }
         detail.myGroupNickname?.let {
-            InfoItem(Icons.Rounded.Person, "我的群昵称", it)
+            InfoItem(Icons.Rounded.Edit, "我的群昵称", it)
         }
         InfoItem(
             Icons.Rounded.Lock,

@@ -22,6 +22,7 @@ class SettingsStorage(private val context: Context) {
         private val SHOW_STICKY_KEY = booleanPreferencesKey("show_sticky")
         private val UPDATE_CHANNEL_KEY = stringPreferencesKey("update_channel")
         
+        private val MSG_SHOW_TAGS_KEY = booleanPreferencesKey("msg_show_tags")
         private val BUBBLE_CORNER_RADIUS_KEY = floatPreferencesKey("bubble_corner_radius")
         private val BUBBLE_OPACITY_KEY = floatPreferencesKey("bubble_opacity")
         private val SHOW_MY_BUBBLE_AVATAR_KEY = booleanPreferencesKey("show_my_bubble_avatar")
@@ -151,6 +152,21 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun getUpdateChannel(): String {
         return updateChannelFlow.first()
+    }
+    
+    // 显示标签
+    val showMsgTagsFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[MSG_SHOW_TAGS_KEY] ?: true
+    }
+
+    suspend fun setShowMsgTags(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[MSG_SHOW_TAGS_KEY] = enabled
+        }
+    }
+
+    suspend fun getShowMsgTags(): Boolean {
+        return showMsgTagsFlow.first()
     }
     
     // ====== 气泡圆角 ======

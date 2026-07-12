@@ -115,9 +115,10 @@ fun ChatScreen(
 
     val settingsStorage = remember { SettingsStorage(context) }
     val avatarFollowEnabled by settingsStorage.avatarFollowFlow.collectAsState(initial = false)
-    val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 16f)
+    val bubbleCornerRadius by settingsStorage.bubbleCornerRadiusFlow.collectAsState(initial = 18f)
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
     val showMyBubbleAvatarSetting by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
+    val showMsgTagsSetting by settingsStorage.showMsgTagsFlow.collectAsState(initial = false)
     
     var viewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var viewerInitialPage by remember { mutableIntStateOf(0) }
@@ -558,7 +559,7 @@ fun ChatScreen(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            Icons.Rounded.Edit,
+                                                            Icons.Rounded.Settings,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(24.dp)
                                                         )
@@ -574,7 +575,7 @@ fun ChatScreen(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            Icons.Rounded.DriveFileRenameOutline,
+                                                            Icons.Rounded.Edit,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(24.dp)
                                                         )
@@ -1091,6 +1092,7 @@ fun ChatScreen(
                             isOlderSameSender = isOlderSameSender,
                             isNewerSameSender = isNewerSameSender,
                             showAvatar = shouldShowItemAvatar,
+                            showTags = showMsgTagsSetting,
                             showMyBubbleAvatarSetting = showMyBubbleAvatarSetting,
                             bubbleOpacity = bubbleOpacity,
                             bubbleCornerRadius = bubbleCornerRadius,

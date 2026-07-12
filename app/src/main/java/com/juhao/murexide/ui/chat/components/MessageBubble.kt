@@ -68,6 +68,7 @@ fun MessageBubble(
     isOlderSameSender: Boolean = false,
     isNewerSameSender: Boolean = false,
     showAvatar: Boolean = true,
+    showTags: Boolean = true,
     showMenu: Boolean = false,
     showMenuMsgId: String? = null,
     showMenuChanged: (String?) -> Unit = {},
@@ -292,7 +293,7 @@ fun MessageBubble(
                                             }
                                         }
                                         
-                                        if (message.tags.isNotEmpty()){
+                                        if (showTags && message.tags.isNotEmpty()){
                                             val tag = message.tags[0]
 
                                             Spacer(modifier = Modifier.width(2.dp))
@@ -547,7 +548,7 @@ fun MessageBubble(
                                                             contentDescription = null,
                                                             contentScale = ContentScale.FillWidth,
                                                             modifier = Modifier
-                                                                .widthIn(max = 300.dp)
+                                                                .widthIn(max = 280.dp)
                                                                 .then(
                                                                     if (isLastFromSender || message.quoteMsgText != null)
                                                                         Modifier.clip(
