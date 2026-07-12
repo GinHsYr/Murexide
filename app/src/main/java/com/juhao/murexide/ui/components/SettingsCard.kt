@@ -75,7 +75,7 @@ fun SettingsGroup(
  */
 @Composable
 fun SettingsItem(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     title: String,
     subtitle: String? = null,
     isEnabled: Boolean = true,
@@ -87,15 +87,17 @@ fun SettingsItem(
         onClick = onClick,
         isEnabled = isEnabled
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (isDestructive) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isDestructive) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -131,7 +133,7 @@ fun SettingsItem(
  */
 @Composable
 fun SettingsItemCell(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     endIcon: ImageVector? = null,
     title: String,
     subtitle: String? = null,
@@ -144,15 +146,17 @@ fun SettingsItemCell(
         onClick = onClick,
         isEnabled = isEnabled
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(24.dp),
-            tint = if (isDestructive) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isDestructive) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -174,10 +178,12 @@ fun SettingsItemCell(
         }
 
         if (endIcon != null) {
+            Spacer(modifier = Modifier.width(16.dp))
+            
             Icon(
                 imageVector = endIcon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(22.dp),
                 tint = if (isDestructive) MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -190,7 +196,7 @@ fun SettingsItemCell(
  */
 @Composable
 fun SettingsSwitchItem(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     title: String,
     subtitle: String? = null,
     checked: Boolean,
@@ -203,15 +209,17 @@ fun SettingsSwitchItem(
         onClick = { onCheckedChange(!checked) },
         isEnabled = isEnabled
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(24.dp),
-            tint = if (isError) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = if (isError) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        
+            Spacer(modifier = Modifier.width(16.dp))
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -244,7 +252,7 @@ fun SettingsSwitchItem(
  */
 @Composable
 fun SettingsDropdownItem(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     title: String,
     isEnabled: Boolean = true,
     subtitle: String? = null,
@@ -259,14 +267,16 @@ fun SettingsDropdownItem(
         onClick = { expanded = true },
         isEnabled = isEnabled
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+    
+            Spacer(modifier = Modifier.width(16.dp))
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Text(

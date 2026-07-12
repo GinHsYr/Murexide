@@ -3,14 +3,24 @@ package com.juhao.murexide.ui.chat
 import android.net.Uri
 import android.content.Context
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.juhao.murexide.network.NetworkClient
+import com.juhao.murexide.proto.bot.bot_info
+import com.juhao.murexide.proto.bot.bot_info_send
+import com.juhao.murexide.proto.group.info
+import com.juhao.murexide.proto.group.info_send
+import com.juhao.murexide.repository.ChatBackgroundRepository
+import com.juhao.murexide.repository.StickerRepository
+import com.juhao.murexide.repository.InstructionRepository
+import com.juhao.murexide.repository.BoardRepository
+import com.juhao.murexide.repository.MessageRepository
+import com.juhao.murexide.repository.FriendRepository
+import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
 import com.juhao.murexide.utils.QiniuUploader
 import com.juhao.murexide.network.WebSocketManager
-import com.juhao.murexide.repository.MessageRepository
-import com.juhao.murexide.repository.FriendRepository
-import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -22,14 +32,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.juhao.murexide.network.NetworkClient
-import com.juhao.murexide.proto.group.info
-import com.juhao.murexide.proto.group.info_send
-import com.juhao.murexide.repository.ChatBackgroundRepository
-import com.juhao.murexide.repository.StickerRepository
-import com.juhao.murexide.repository.InstructionRepository
-import com.juhao.murexide.repository.BoardRepository
-import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import kotlinx.coroutines.Dispatchers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -87,7 +89,10 @@ class ChatViewModel(
         if (chatType == 2) { // 群聊
             loadGroupInfo()
         }
-        if (chatType == 2 || chatType == 3) { // 群聊/机器人私聊均可有看板
+        if (chatType == 3) { // 机器人
+            loadBotInfo()
+        }
+        if (chatType == 2 || chatType == 3) {
             loadBoard()
         }
     }
@@ -191,6 +196,38 @@ class ChatViewModel(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load group info", e)
+            }
+        }
+    }
+    
+    private fun loadBotInfo() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val requestProto = bot_info_send(id = chatId)
+                val requestBody = requestProto.encode().toRequestBody("application/octet-stream".toMediaType())
+                
+                val request = Request.Builder()
+                    .url("${NetworkClient.BASE_URL}/v1/bot/bot-info")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                NetworkClient.okHttpClient.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body.bytes()
+                        val botInfo = bot_info.ADAPTER.decode(body)
+                        if (botInfo.status?.code == 1) {
+                            val d = botInfo.data_
+                            _uiState.update {
+                                it.copy(
+                                    usageCount = d?.headcount
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load bot info", e)
             }
         }
     }

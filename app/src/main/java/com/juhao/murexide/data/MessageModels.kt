@@ -141,11 +141,6 @@ data class ChatUiState(
     val hasMore: Boolean = true,
     val chatName: String = "",
     val chatAvatar: String = "",
-    val isAdmin: Boolean = false,
-    val memberCount: Long? = null,
-    val myGroupNickname: String? = null,
-    val ownerId: String? = null,
-    val adminIds: Set<String> = emptySet(),
     val isSending: Boolean = false,
     val backgroundUrl: String? = null,
     val isUploading: Boolean = false,
@@ -160,5 +155,15 @@ data class ChatUiState(
     val pendingCommandHint: String? = null,
     val editingMessage: MessageItem? = null,
     val boardPanel: BoardPanelState = BoardPanelState(),
+    
+    // -----群聊专属-----
+    val isAdmin: Boolean = false,
+    val memberCount: Long? = null,
+    val myGroupNickname: String? = null,
+    val ownerId: String? = null,
+    val adminIds: Set<String> = emptySet(),
     val permissionLevel: Int = 0,      // 群主 100 / 管理员 2 / 普通 0
+    
+    // -----机器人专属-----
+    val usageCount: Long? = null
 )

@@ -454,11 +454,13 @@ fun ChatScreen(
                                                 Icon(Icons.Rounded.ContentCopy, contentDescription = "引用")
                                             }
                                         }
-                                        IconButton(onClick = { 
-                                            viewModel.setReplyTo(it)
-                                            viewModel.exitSelectionMode()
-                                        }) {
-                                            Icon(Icons.Rounded.FormatQuote, contentDescription = "引用")
+                                        if (!it.isRecalled) {
+                                            IconButton(onClick = { 
+                                                viewModel.setReplyTo(it)
+                                                viewModel.exitSelectionMode()
+                                            }) {
+                                                Icon(Icons.Rounded.FormatQuote, contentDescription = "引用")
+                                            }
                                         }
                                     }
                                 }
@@ -499,10 +501,19 @@ fun ChatScreen(
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
-                                            Spacer(modifier = Modifier.height(2.dp))
                                             if (chatType == 2 && uiState.memberCount != null) {
+                                                Spacer(modifier = Modifier.height(2.dp))
                                                 Text(
                                                     text = "${uiState.memberCount} 位成员",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            if (chatType == 3 && uiState.usageCount != null) {
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "${uiState.usageCount} 人使用",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1
