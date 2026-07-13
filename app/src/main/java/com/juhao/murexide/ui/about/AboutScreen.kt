@@ -105,7 +105,9 @@ fun AboutScreen(
                     icon = Icons.Rounded.Person,
                     title = "开发者",
                     subtitle = "JuHao",
-                    onClick = { /* 不执行任何操作 */ }
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/shijuhao".toUri()))
+                    }
                 )
                 
                 SettingsItem(
