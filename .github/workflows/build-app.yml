@@ -153,6 +153,9 @@ jobs:
           
           ### 下载
           [工作流 artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ### 注意
+          此为开发版本，不适合日用。
           EOF
           fi
 
