@@ -64,27 +64,15 @@ fun MineScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            if (themeStyle == "md3") {
-                TopAppBar(
-                    title = { Text("我的") },
-                    scrollBehavior = scrollBehavior,
-                    actions = {
-                        StyledIconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
-                        }
+            StyledTopBar(
+                title = { Text("我的") },
+                scrollBehavior = scrollBehavior,
+                actions = {
+                    StyledIconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
                     }
-                )
-            } else {
-                LargeTopAppBar(
-                    title = { Text("我的") },
-                    scrollBehavior = scrollBehavior,
-                    actions = {
-                        StyledIconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Rounded.Settings, contentDescription = "设置")
-                        }
-                    }
-                )
-            }
+                }
+            )
         }
     ) {
         when (val state = uiState) {

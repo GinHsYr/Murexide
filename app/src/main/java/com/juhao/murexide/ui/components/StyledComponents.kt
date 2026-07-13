@@ -73,3 +73,30 @@ fun StyledIconButton(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StyledTopBar(
+    title: @Composable (() -> Unit),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    navigationIcon: @Composable (() -> Unit) = {},
+    actions: @Composable (RowScope.() -> Unit) = {}
+) {
+    val themeStyle by ThemeState.themeStyle
+
+    if (themeStyle == "md3") {
+        TopAppBar(
+            title = title,
+            scrollBehavior = scrollBehavior,
+            navigationIcon = navigationIcon,
+            actions = actions
+        )
+    } else {
+        LargeTopAppBar(
+            title = title,
+            scrollBehavior = scrollBehavior,
+            navigationIcon = navigationIcon,
+            actions = actions
+        )
+    }
+}

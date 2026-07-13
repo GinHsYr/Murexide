@@ -24,6 +24,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import android.content.Intent
 import com.juhao.murexide.ui.about.AboutActivity
 import com.juhao.murexide.ui.settings.appearance.AppearanceActivity
+import com.juhao.murexide.ui.settings.switchAccount.SwitchAccountActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,27 +100,15 @@ fun SettingsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            if (themeStyle == "md3") {
-                TopAppBar(
-                    title = { Text("设置") },
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        StyledIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                        }
+            StyledTopBar(
+                title = { Text("设置") },
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    StyledIconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                     }
-                )
-            } else {
-                LargeTopAppBar(
-                    title = { Text("设置") },
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        StyledIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                        }
-                    }
-                )
-            }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -240,6 +229,14 @@ fun SettingsScreen(
             }
 
             SettingsGroup(title = "账号") {
+                SettingsItem(
+                    icon = Icons.Rounded.People,
+                    title = "切换账号",
+                    onClick = {
+                        val intent = Intent(context, SwitchAccountActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
                 SettingsItem(
                     icon = Icons.AutoMirrored.Rounded.Logout,
                     title = "退出登录",

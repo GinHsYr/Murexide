@@ -41,27 +41,15 @@ fun ConversationDetailScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            if (themeStyle == "md3") {
-                TopAppBar(
-                    title = { Text("会话详情") },
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        StyledIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                        }
+            StyledTopBar(
+                title = { Text("会话详情") },
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    StyledIconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                     }
-                )
-            } else {
-                LargeTopAppBar(
-                    title = { Text("会话详情") },
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        StyledIconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                        }
-                    }
-                )
-            }
+                }
+            )
         }
     ) { padding ->
         Box(
