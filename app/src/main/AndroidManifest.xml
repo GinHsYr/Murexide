@@ -127,6 +127,10 @@
             android:name=".ui.conversationdetail.GroupSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide" />
+        <activity
+            android:name=".ui.settings.switchAccount.SwitchAccountActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Murexide" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -137,13 +141,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <activity
-            android:name=".ui.settings.switchAccount.SwitchAccountActivity"
-            android:exported="false"
-            android:label="@string/title_activity_switch_account"
-            android:theme="@style/Theme.Murexide"
-            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>
