@@ -55,7 +55,6 @@ import com.juhao.murexide.ui.chat.components.InstructionPanel
 import com.juhao.murexide.ui.chat.components.InstructionFormDialog
 import com.juhao.murexide.ui.chat.components.UploadProgressBar
 import com.juhao.murexide.ui.chat.components.ScreenshotBottomSheet
-import com.juhao.murexide.ui.chat.components.saveBitmapToGallery
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.MessageItem
 import kotlinx.coroutines.FlowPreview
@@ -344,12 +343,7 @@ fun ChatScreen(
             messages = orderedSelected,
             chatName = chatName,
             chatAvatar = chatAvatar,
-            onDismiss = { showScreenshotSheet = false },
-            onSaveImage = { bitmap ->
-                scope.launch {
-                    saveBitmapToGallery(context, bitmap)
-                }
-            }
+            onDismiss = { showScreenshotSheet = false }
         )
     }
     

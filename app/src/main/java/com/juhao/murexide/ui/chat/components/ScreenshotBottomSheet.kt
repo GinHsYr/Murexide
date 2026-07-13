@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -51,11 +52,10 @@ fun ScreenshotBottomSheet(
     messages: List<MessageItem>,
     chatName: String,
     chatAvatar: String,
-    onDismiss: () -> Unit,
-    onSaveImage: (Bitmap) -> Unit
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as? Activity
+    val activity = context as? Activity ?: return
     val scope = rememberCoroutineScope()
     var screenshotView by remember { mutableStateOf<View?>(null) }
     val settingsStorage = remember { SettingsStorage(context) }
@@ -89,7 +89,7 @@ fun ScreenshotBottomSheet(
         ) {
             AndroidView(
                 factory = { _ ->
-                    ComposeView(activity!!).apply {
+                    ComposeView(activity).apply {
                         setContent {
                             CompositionLocalProvider(
                                 LocalImageLoader provides screenshotImageLoader
@@ -121,21 +121,6 @@ fun ScreenshotBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ScreenshotActionCard(
-                    icon = Icons.Rounded.Settings,
-                    label = "截图设置",
-                    onClick = {
-                        val intent = Intent(context, ScreenshotSettingsActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
-                VerticalDivider(
-                    modifier = Modifier
-                        .height(40.dp)
-                        .padding(horizontal = 10.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                    thickness = 1.dp
-                )
-                ScreenshotActionCard(
                     icon = Icons.Rounded.Save,
                     label = "保存图片",
                     onClick = {
@@ -145,27 +130,37 @@ fun ScreenshotBottomSheet(
                                 val bitmap = createBitmap(view.width, view.height)
                                 val canvas = Canvas(bitmap)
                                 view.draw(canvas)
-                                onSaveImage(bitmap)
+                                saveBitmapToGallery(context, bitmap)
                                 onDismiss()
                             }
                         }
                     }
                 )
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(30.dp))
                 ScreenshotActionCard(
                     icon = Icons.Rounded.Share,
                     label = "分享",
                     onClick = {
                         scope.launch {
                             val view = screenshotView ?: return@launch
-                            withContext(Dispatchers.Main) {
-                                val bitmap = createBitmap(view.width, view.height)
-                                val canvas = Canvas(bitmap)
+                            val bitmap = withContext(Dispatchers.Main) {
+                                val bmp = createBitmap(view.width, view.height)
+                                val canvas = Canvas(bmp)
                                 view.draw(canvas)
-                                saveAndShareBitmap(context, bitmap)
-                                onDismiss()
+                                bmp
                             }
+                            saveAndShareBitmap(context, bitmap)
+                            onDismiss()
                         }
+                    }
+                )
+                Spacer(modifier = Modifier.width(30.dp))
+                ScreenshotActionCard(
+                    icon = Icons.Rounded.Settings,
+                    label = "截图设置",
+                    onClick = {
+                        val intent = Intent(context, ScreenshotSettingsActivity::class.java)
+                        context.startActivity(intent)
                     }
                 )
             }
@@ -316,12 +311,17 @@ private fun ScreenshotActionCard(
     }
 }
 
-suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap) =
+private suspend fun saveBitmapToMediaStore(
+    context: Context,
+    bitmap: Bitmap,
+    filenamePrefix: String,
+    onSuccess: suspend (Uri) -> Unit = {}
+) {
     withContext(Dispatchers.IO) {
-        val filename = "chat_screenshot_${System.currentTimeMillis()}.png"
+        val filename = "${filenamePrefix}_${System.currentTimeMillis()}.webp"
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/webp")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
             }
@@ -332,47 +332,33 @@ suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap) =
         )
         uri?.let {
             context.contentResolver.openOutputStream(it)?.use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                bitmap.compress(Bitmap.CompressFormat.WEBP, 90, out)
                 out.flush()
             }
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "截图已保存到相册", Toast.LENGTH_SHORT).show()
-            }
+            onSuccess(it)
         } ?: withContext(Dispatchers.Main) {
             Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
         }
     }
+}
 
-private fun saveAndShareBitmap(context: Context, bitmap: Bitmap) {
-    kotlinx.coroutines.MainScope().launch {
-        withContext(Dispatchers.IO) {
-            val filename = "chat_share_${System.currentTimeMillis()}.png"
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                }
+suspend fun saveBitmapToGallery(context: Context, bitmap: Bitmap) {
+    saveBitmapToMediaStore(context, bitmap, "chat_screenshot") {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "截图已保存到相册", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+suspend fun saveAndShareBitmap(context: Context, bitmap: Bitmap) {
+    saveBitmapToMediaStore(context, bitmap, "chat_share") { uri ->
+        withContext(Dispatchers.Main) {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/webp"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            val uri = context.contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues
-            )
-            uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                    out.flush()
-                }
-                withContext(Dispatchers.Main) {
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(
-                        Intent.createChooser(shareIntent, "分享截图")
-                    )
-                }
-            }
+            context.startActivity(Intent.createChooser(shareIntent, "分享截图"))
         }
     }
 }
