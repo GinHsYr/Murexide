@@ -255,20 +255,10 @@ private fun ScreenshotContent(
                             olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP ||
                             olderMessage.senderId != message.senderId
 
-                    val isOlderSameSender = olderMessage != null &&
-                            olderMessage.contentType != MessageItem.CONTENT_TYPE_TIP &&
-                            olderMessage.senderId == message.senderId
-
-                    val isNewerSameSender = newerMessage != null &&
-                            newerMessage.contentType != MessageItem.CONTENT_TYPE_TIP &&
-                            newerMessage.senderId == message.senderId
-
                     MessageBubble(
                         message = message,
                         isLastFromSender = isLastFromSender,
                         isFirstFromSender = isFirstFromSender,
-                        isOlderSameSender = isOlderSameSender,
-                        isNewerSameSender = isNewerSameSender,
                         showAvatar = isFirstFromSender,
                         hideSenderInfo = hideSenderInfo,
                         hideMyInfo = hideMyInfo,
