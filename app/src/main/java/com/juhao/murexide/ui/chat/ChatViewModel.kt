@@ -1397,14 +1397,6 @@ fun computeDisplayItems(
                 || older.contentType == MessageItem.CONTENT_TYPE_TIP
                 || older.senderId != message.senderId
 
-        val isOlderSameSender = older != null
-                && older.contentType != MessageItem.CONTENT_TYPE_TIP
-                && older.senderId == message.senderId
-
-        val isNewerSameSender = newer != null
-                && newer.contentType != MessageItem.CONTENT_TYPE_TIP
-                && newer.senderId == message.senderId
-
         val roleLabel: String? = when {
             chatType != 2 || message.senderType == 3 -> null
             message.senderId == ownerId -> "群主"
@@ -1416,8 +1408,6 @@ fun computeDisplayItems(
             message = message,
             isFirstFromSender = isFirstFromSender,
             isLastFromSender = isLastFromSender,
-            isOlderSameSender = isOlderSameSender,
-            isNewerSameSender = isNewerSameSender,
             roleLabel = roleLabel
         )
     }

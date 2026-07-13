@@ -42,7 +42,7 @@ fun AppearanceScreen(
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    var squareAvatar by remember { mutableStateOf(false) }
+    val squareAvatar by ThemeState.squareAvatar
     var showSticky by remember { mutableStateOf(true) }
     
     var bubbleCornerRadius by remember { mutableFloatStateOf(16f) }
@@ -51,7 +51,7 @@ fun AppearanceScreen(
     var bubbleOpacity by remember { mutableFloatStateOf(0.9f) }
 
     LaunchedEffect(Unit) {
-        squareAvatar = settingsStorage.getSquareAvatar()
+        ThemeState.squareAvatar.value = settingsStorage.getSquareAvatar()
         showSticky = settingsStorage.getShowSticky()
         bubbleCornerRadius = settingsStorage.getBubbleCornerRadius()
         bubbleOpacity = settingsStorage.getBubbleOpacity()
@@ -431,7 +431,7 @@ fun AppearanceScreen(
                     subtitle = "将好友和群组头像显示为圆角正方形",
                     checked = squareAvatar,
                     onCheckedChange = { checked ->
-                        squareAvatar = checked
+                        ThemeState.squareAvatar.value = checked
                         scope.launch {
                             settingsStorage.setSquareAvatar(checked)
                         }

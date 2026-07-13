@@ -8,8 +8,6 @@ data class MessageDisplayItem(
     val message: MessageItem,
     val isFirstFromSender: Boolean,
     val isLastFromSender: Boolean,
-    val isOlderSameSender: Boolean,
-    val isNewerSameSender: Boolean,
     val roleLabel: String?
 )
 

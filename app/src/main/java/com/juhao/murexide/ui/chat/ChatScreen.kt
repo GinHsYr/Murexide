@@ -191,12 +191,9 @@ fun ChatScreen(
     
                 val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
     
-                val hasOtherSameSender =
-                    (displayItem.isNewerSameSender && !displayItem.isLastFromSender) || displayItem.isOlderSameSender
-    
                 if (hasEnoughSpace) {
                     Triple(true, message.senderAvatar, message.isMine)
-                } else if (hasOtherSameSender && message.senderAvatar.isNotEmpty()) {
+                } else if (!displayItem.isLastFromSender) {
                     Triple(true, message.senderAvatar, message.isMine)
                 } else {
                     Triple(false, "", false)
@@ -1071,8 +1068,6 @@ fun ChatScreen(
                             isAdmin = uiState.isAdmin,
                             isLastFromSender = item.isLastFromSender,
                             isFirstFromSender = item.isFirstFromSender,
-                            isOlderSameSender = item.isOlderSameSender,
-                            isNewerSameSender = item.isNewerSameSender,
                             showAvatar = shouldShowItemAvatar,
                             showTags = showMsgTagsSetting,
                             showMyBubbleAvatarSetting = showMyBubbleAvatarSetting,

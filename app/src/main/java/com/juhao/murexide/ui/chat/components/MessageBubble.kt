@@ -65,8 +65,6 @@ fun MessageBubble(
     isAdmin: Boolean = false,
     isLastFromSender: Boolean = true,
     isFirstFromSender: Boolean = true,
-    isOlderSameSender: Boolean = false,
-    isNewerSameSender: Boolean = false,
     showAvatar: Boolean = true,
     showTags: Boolean = true,
     showMenu: Boolean = false,
@@ -198,8 +196,8 @@ fun MessageBubble(
                     .padding(
                         start = 8.dp,
                         end = 8.dp,
-                        top = if (isOlderSameSender) 0.dp else 4.dp,
-                        bottom = if (isNewerSameSender) 0.dp else 4.dp
+                        top = if (!isLastFromSender) 0.dp else 4.dp,
+                        bottom = if (!isFirstFromSender) 0.dp else 4.dp
                     ),
                 verticalAlignment = avatarAlignment,
                 horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
