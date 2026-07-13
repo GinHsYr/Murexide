@@ -4,17 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.BaItem
 import com.juhao.murexide.data.PostItem
+import com.juhao.murexide.repository.AuthRepository
 import com.juhao.murexide.repository.CommunityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** 社区顶部三个 tab */
+enum class CommunityTab { RECOMMEND, ALL_BA, MANAGE }
+
+/** 「全部分区」左侧侧边分类 */
+enum class BaSide { OFFICIAL, USER }
+
 class CommunityViewModel(
-    token: String
+    private val token: String
 ) : ViewModel() {
 
     private val repository = CommunityRepository(token)
+    private val authRepository = AuthRepository()
 
     private companion object {
         const val PAGE_SIZE = 20
@@ -23,170 +31,199 @@ class CommunityViewModel(
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
+    private var currentUserId: String? = null
+
     init {
-        loadData()
+        loadRecommend()
+        loadAllBa()
+        loadCurrentUserId()
     }
 
-    fun loadData() {
-        loadBaList()
-        loadPosts()
-    }
-
-    private fun loadBaList() {
+    private fun loadCurrentUserId() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingBa = true)
-            val result = repository.getBaList()
-            result.onSuccess { list ->
-                _uiState.value = _uiState.value.copy(
-                    baList = list,
-                    isLoadingBa = false
-                )
-            }.onFailure { e ->
-                _uiState.value = _uiState.value.copy(
-                    isLoadingBa = false,
-                    error = e.message
-                )
+            authRepository.getUserInfo(token).onSuccess { info ->
+                currentUserId = info.id
+                loadManageBa()
             }
         }
     }
 
-    fun loadPosts(baId: Int? = null) {
+    fun selectTab(tab: CommunityTab) {
+        if (_uiState.value.currentTab == tab) return
+        _uiState.value = _uiState.value.copy(currentTab = tab)
+        when (tab) {
+            CommunityTab.RECOMMEND -> if (_uiState.value.posts.isEmpty()) loadRecommend()
+            CommunityTab.ALL_BA -> if (_uiState.value.allBaList.isEmpty()) loadAllBa()
+            CommunityTab.MANAGE -> if (_uiState.value.manageBaList.isEmpty()) loadManageBa()
+        }
+    }
+
+    // ==================== 推荐 ====================
+
+    fun loadRecommend() {
         viewModelScope.launch {
-            val targetBaId = if (baId != null && baId > 0) baId else 0
-            // 加载第一页并重置分页状态
             _uiState.value = _uiState.value.copy(
-                isLoadingPosts = true,
-                currentBaId = targetBaId,
+                isLoadingPosts = _uiState.value.posts.isEmpty(),
+                isRefreshingPosts = _uiState.value.posts.isNotEmpty(),
                 currentPage = 1
             )
-
-            val result = if (targetBaId > 0) {
-                repository.getPostList(targetBaId, size = PAGE_SIZE, page = 1)
-            } else {
-                repository.getRecommendPosts(size = PAGE_SIZE, page = 1)
-            }
-
-            result.onSuccess { data ->
-                _uiState.value = _uiState.value.copy(
-                    posts = data.posts,
-                    total = data.total,
-                    hasMore = data.posts.size < data.total && data.posts.isNotEmpty(),
-                    isLoadingPosts = false
-                )
-            }.onFailure { e ->
-                _uiState.value = _uiState.value.copy(
-                    isLoadingPosts = false,
-                    hasMore = false,
-                    error = e.message
-                )
-            }
+            repository.getRecommendPosts(size = PAGE_SIZE, page = 1)
+                .onSuccess { data ->
+                    _uiState.value = _uiState.value.copy(
+                        posts = data.posts,
+                        total = data.total,
+                        hasMore = data.posts.isNotEmpty() && data.posts.size < data.total,
+                        isLoadingPosts = false,
+                        isRefreshingPosts = false
+                    )
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPosts = false,
+                        isRefreshingPosts = false,
+                        hasMore = false,
+                        error = e.message
+                    )
+                }
         }
     }
 
     fun loadMorePosts() {
         val state = _uiState.value
-        // 并发/边界保护
         if (state.isLoadingPosts || state.isLoadingMore || !state.hasMore) return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
             val nextPage = state.currentPage + 1
-            val baId = state.currentBaId
-
-            val result = if (baId > 0) {
-                repository.getPostList(baId, size = PAGE_SIZE, page = nextPage)
-            } else {
-                repository.getRecommendPosts(size = PAGE_SIZE, page = nextPage)
-            }
-
-            result.onSuccess { data ->
-                val merged = _uiState.value.posts + data.posts
-                _uiState.value = _uiState.value.copy(
-                    posts = merged,
-                    total = data.total,
-                    currentPage = nextPage,
-                    hasMore = data.posts.isNotEmpty() && merged.size < data.total,
-                    isLoadingMore = false
-                )
-            }.onFailure { e ->
-                _uiState.value = _uiState.value.copy(
-                    isLoadingMore = false,
-                    error = e.message
-                )
-            }
+            repository.getRecommendPosts(size = PAGE_SIZE, page = nextPage)
+                .onSuccess { data ->
+                    val merged = _uiState.value.posts + data.posts
+                    _uiState.value = _uiState.value.copy(
+                        posts = merged,
+                        total = data.total,
+                        currentPage = nextPage,
+                        hasMore = data.posts.isNotEmpty() && merged.size < data.total,
+                        isLoadingMore = false
+                    )
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(isLoadingMore = false, error = e.message)
+                }
         }
     }
 
+    // ==================== 全部分区 ====================
+    //
+    // 左侧侧边分类：
+    //  - 官方：原本加载的热门分区（following-ba-list typ=2）
+    //  - 用户自建：全部分区（following-ba-list typ=4）
+    // 若后端后续提供更精确的“官方/自建”区分，可在此调整 typ。
+
+    fun selectBaSide(side: BaSide) {
+        if (_uiState.value.currentBaSide == side) return
+        _uiState.value = _uiState.value.copy(currentBaSide = side)
+        loadAllBa()
+    }
+
+    fun loadAllBa() {
+        val side = _uiState.value.currentBaSide
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingAllBa = true)
+            val typ = when (side) {
+                BaSide.OFFICIAL -> 2 // 热门（官方）
+                BaSide.USER -> 4     // 全部（含用户自建）
+            }
+            repository.getBaList(typ = typ, size = 50, page = 1)
+                .onSuccess { list ->
+                    _uiState.value = _uiState.value.copy(allBaList = list, isLoadingAllBa = false)
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(isLoadingAllBa = false, error = e.message)
+                }
+        }
+    }
+
+    // ==================== 管理（我创建的分区） ====================
+
+    fun loadManageBa() {
+        val userId = currentUserId ?: return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingManageBa = true)
+            repository.getBaListByCreate(userId)
+                .onSuccess { list ->
+                    _uiState.value = _uiState.value.copy(manageBaList = list, isLoadingManageBa = false)
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(isLoadingManageBa = false, error = e.message)
+                }
+        }
+    }
+
+    // ==================== 互动 ====================
+
     fun toggleLike(postId: Int) {
         viewModelScope.launch {
-            val result = repository.toggleLike(postId)
-            result.onSuccess {
-                updatePostLike(postId)
-            }
+            repository.toggleLike(postId).onSuccess { updatePostLike(postId) }
         }
     }
 
     fun toggleCollect(postId: Int) {
         viewModelScope.launch {
-            val result = repository.toggleCollect(postId)
-            result.onSuccess {
-                updatePostCollect(postId)
-            }
+            repository.toggleCollect(postId).onSuccess { updatePostCollect(postId) }
         }
     }
 
     private fun updatePostLike(postId: Int) {
-        val updatedPosts = _uiState.value.posts.map { post ->
+        val updated = _uiState.value.posts.map { post ->
             if (post.id == postId) {
-                val isLiked = post.isLiked == "0"
+                val liked = post.isLiked == "0"
                 post.copy(
-                    isLiked = if (isLiked) "1" else "0",
-                    likeNum = if (isLiked) post.likeNum + 1 else post.likeNum - 1
+                    isLiked = if (liked) "1" else "0",
+                    likeNum = if (liked) post.likeNum + 1 else (post.likeNum - 1).coerceAtLeast(0)
                 )
             } else post
         }
-        _uiState.value = _uiState.value.copy(posts = updatedPosts)
+        _uiState.value = _uiState.value.copy(posts = updated)
     }
 
     private fun updatePostCollect(postId: Int) {
-        val updatedPosts = _uiState.value.posts.map { post ->
+        val updated = _uiState.value.posts.map { post ->
             if (post.id == postId) {
-                val isCollected = post.isCollected == 0
+                val collected = post.isCollected == 0
                 post.copy(
-                    isCollected = if (isCollected) 1 else 0,
-                    collectNum = if (isCollected) post.collectNum + 1 else post.collectNum - 1
+                    isCollected = if (collected) 1 else 0,
+                    collectNum = if (collected) post.collectNum + 1 else (post.collectNum - 1).coerceAtLeast(0)
                 )
             } else post
         }
-        _uiState.value = _uiState.value.copy(posts = updatedPosts)
-    }
-
-    fun selectBa(baId: Int) {
-        val currentId = _uiState.value.currentBaId
-        if (currentId != baId) {
-            loadPosts(baId)
-        }
+        _uiState.value = _uiState.value.copy(posts = updated)
     }
 
     fun refresh() {
-        val currentId = _uiState.value.currentBaId
-        if (currentId == 0) {
-            loadPosts()
-        } else {
-            loadPosts(currentId)
+        when (_uiState.value.currentTab) {
+            CommunityTab.RECOMMEND -> loadRecommend()
+            CommunityTab.ALL_BA -> loadAllBa()
+            CommunityTab.MANAGE -> loadManageBa()
         }
     }
 }
 
 data class CommunityUiState(
-    val baList: List<BaItem> = emptyList(),
+    val currentTab: CommunityTab = CommunityTab.RECOMMEND,
+    // 推荐
     val posts: List<PostItem> = emptyList(),
-    val isLoadingBa: Boolean = false,
     val isLoadingPosts: Boolean = false,
+    val isRefreshingPosts: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: String? = null,
-    val currentBaId: Int = 0,
     val currentPage: Int = 1,
     val total: Int = 0,
-    val hasMore: Boolean = false
+    val hasMore: Boolean = false,
+    // 全部分区
+    val currentBaSide: BaSide = BaSide.OFFICIAL,
+    val allBaList: List<BaItem> = emptyList(),
+    val isLoadingAllBa: Boolean = false,
+    // 管理
+    val manageBaList: List<BaItem> = emptyList(),
+    val isLoadingManageBa: Boolean = false,
+    val error: String? = null
 )

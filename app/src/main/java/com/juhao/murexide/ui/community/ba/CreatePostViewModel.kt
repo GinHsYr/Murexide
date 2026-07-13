@@ -1,0 +1,90 @@
+package com.juhao.murexide.ui.community.ba
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.repository.CommunityRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class CreatePostViewModel(
+    private val tokenStorage: TokenStorage,
+    private val baId: Int
+) : ViewModel() {
+
+    private var repository: CommunityRepository? = null
+
+    private val _uiState = MutableStateFlow(CreatePostUiState())
+    val uiState: StateFlow<CreatePostUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val token = tokenStorage.getToken()
+            if (token == null) {
+                _uiState.update { it.copy(error = "请先登录") }
+            } else {
+                repository = CommunityRepository(token)
+            }
+        }
+    }
+
+    fun onTitleChange(title: String) {
+        _uiState.update { it.copy(title = title) }
+    }
+
+    fun onContentChange(content: String) {
+        _uiState.update { it.copy(content = content) }
+    }
+
+    /** contentType: 1-文本，2-markdown */
+    fun onContentTypeChange(contentType: Int) {
+        _uiState.update { it.copy(contentType = contentType) }
+    }
+
+    fun publish() {
+        val repo = repository ?: return
+        val state = _uiState.value
+        if (state.isPublishing) return
+        if (state.title.isBlank()) {
+            _uiState.update { it.copy(error = "标题不能为空") }
+            return
+        }
+        if (state.content.isBlank()) {
+            _uiState.update { it.copy(error = "内容不能为空") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPublishing = true, error = null) }
+            repo.createPost(
+                baId = baId,
+                title = state.title.trim(),
+                content = state.content.trim(),
+                contentType = state.contentType
+            )
+                .onSuccess { postId ->
+                    _uiState.update { it.copy(isPublishing = false, publishedPostId = postId, published = true) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isPublishing = false, error = e.message ?: "发布失败") }
+                }
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+}
+
+data class CreatePostUiState(
+    val title: String = "",
+    val content: String = "",
+    val contentType: Int = 1,
+    val isPublishing: Boolean = false,
+    val published: Boolean = false,
+    val publishedPostId: Int = 0,
+    val error: String? = null
+)

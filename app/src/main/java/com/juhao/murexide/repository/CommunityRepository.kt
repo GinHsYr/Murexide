@@ -5,6 +5,8 @@ import com.juhao.murexide.network.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -41,6 +43,197 @@ class CommunityRepository(
                             Result.success(result.data?.ba ?: emptyList())
                         } else {
                             Result.failure(Exception(result.msg.ifEmpty { "获取分区列表失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getBaListByCreate(userId: String): Result<List<BaItem>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("userId" to userId)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/ba/list-by-create")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val result = json.decodeFromString<BaCreateListResponse>(response.body.string())
+                        if (result.code == 1) {
+                            Result.success(result.data?.ba ?: emptyList())
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "获取分区失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /** 查看自己发布的文章 */
+    suspend fun getMyPostList(size: Int = 20, page: Int = 1): Result<PostListData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("size" to size, "page" to page)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/posts/my-post-list")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val result = json.decodeFromString<PostListResponse>(response.body.string())
+                        if (result.code == 1) {
+                            Result.success(result.data ?: PostListData(emptyList(), 0))
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "获取我的文章失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getBaInfo(baId: Int): Result<BaDetail> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("id" to baId)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/ba/info")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val responseBody = response.body.string()
+                        val result = json.decodeFromString<BaInfoResponse>(responseBody)
+
+                        if (result.code == 1 && result.data != null) {
+                            Result.success(result.data.ba)
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "获取分区信息失败" }))
+                        }
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun followBa(baId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("baId" to baId, "followSource" to 2)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/ba/user-follow-ba")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val result = json.decodeFromString<BaseResponse>(response.body.string())
+                        if (result.code == 1) Result.success(true)
+                        else Result.failure(Exception(result.msg.ifEmpty { "关注失败" }))
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun unfollowBa(baId: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = mapOf("baId" to baId)
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/ba/user-unfollow-ba")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val result = json.decodeFromString<BaseResponse>(response.body.string())
+                        if (result.code == 1) Result.success(true)
+                        else Result.failure(Exception(result.msg.ifEmpty { "取关失败" }))
+                    } else {
+                        Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun createPost(
+        baId: Int,
+        title: String,
+        content: String,
+        contentType: Int,
+        groupId: String = "",
+        draftId: Int = 0
+    ): Result<Int> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = buildJsonObject {
+                    put("baId", baId)
+                    put("groupId", groupId)
+                    put("title", title)
+                    put("content", content)
+                    put("contentType", contentType)
+                    put("draftId", draftId)
+                }
+                val requestBody = json.encodeToString(params).toRequestBody("application/json".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/community/posts/create")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val result = json.decodeFromString<CreatePostResponse>(response.body.string())
+                        if (result.code == 1) {
+                            Result.success(result.data?.audioUrl ?: 0)
+                        } else {
+                            Result.failure(Exception(result.msg.ifEmpty { "发布失败" }))
                         }
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))

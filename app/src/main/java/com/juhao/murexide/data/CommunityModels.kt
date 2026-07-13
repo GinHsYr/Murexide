@@ -20,10 +20,22 @@ data class BaItem(
     val id: Int,
     val name: String,
     val avatar: String,
-    val memberNum: Int,
-    val postNum: Int,
-    val groupNum: Int,
+    val memberNum: Int = 0,
+    val postNum: Int = 0,
+    val groupNum: Int = 0,
     val isFollowed: String? = null
+)
+
+@Serializable
+data class BaCreateListResponse(
+    val code: Int,
+    val data: BaCreateListData?,
+    val msg: String
+)
+
+@Serializable
+data class BaCreateListData(
+    val ba: List<BaItem> = emptyList()
 )
 
 @Serializable
@@ -148,4 +160,32 @@ data class CommentItem(
     val isLiked: String = "0",
     val isReward: Int = 0,
     val isVip: Int = 0
+)
+
+// ==================== 分区详情 ====================
+
+@Serializable
+data class BaInfoResponse(
+    val code: Int,
+    val data: BaInfoData?,
+    val msg: String
+)
+
+@Serializable
+data class BaInfoData(
+    val ba: BaDetail
+)
+
+// ==================== 发布文章 ====================
+
+@Serializable
+data class CreatePostResponse(
+    val code: Int,
+    val data: CreatePostData? = null,
+    val msg: String
+)
+
+@Serializable
+data class CreatePostData(
+    val audioUrl: Int? = null
 )
