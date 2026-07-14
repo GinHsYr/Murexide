@@ -62,8 +62,8 @@ fun AppearanceScreen(
             MessageItem(
                 msgId = "preview_other",
                 senderId = "other",
-                senderName = "小明",
-                senderAvatar = "https://chat-img.jwznb.com/defalut-avatars/Hedy%20Lamarr.png",
+                senderName = "那狗吧",
+                senderAvatar = "https://chat-img.jwznb.com/defalut-avatars/Nellie%20Bly.png",
                 content = "你好！",
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 timestamp = System.currentTimeMillis() - 60000,
@@ -72,15 +72,15 @@ fun AppearanceScreen(
                     MessageTag(
                         id = 0,
                         text = "化学式",
-                        color = "#0094FF"
+                        color = "#66CCFF"
                     )
                 )
             ),
             MessageItem(
                 msgId = "preview_other",
                 senderId = "other",
-                senderName = "小明",
-                senderAvatar = "https://chat-img.jwznb.com/defalut-avatars/Hedy%20Lamarr.png",
+                senderName = "那狗吧",
+                senderAvatar = "https://chat-img.jwznb.com/defalut-avatars/Nellie%20Bly.png",
                 content = "看看这个气泡效果怎么样？",
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 timestamp = System.currentTimeMillis() - 60000,
