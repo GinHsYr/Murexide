@@ -193,24 +193,26 @@ fun MessageInput(
                 label = "bottombar_button_transition"
             ) { isBlank ->
                 if (isBlank) {
-                    IconButton(
-                        onClick = onInstructionClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Code,
-                            contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
-                        )
-                    }
-        
-                    IconButton(
-                        onClick = onEmojiClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Mood,
-                            contentDescription = if (isEmojiPanelVisible) "键盘" else "表情"
-                        )
+                    Row {
+                        IconButton(
+                            onClick = onInstructionClick,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Code,
+                                contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
+                            )
+                        }
+            
+                        IconButton(
+                            onClick = onEmojiClick,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Mood,
+                                contentDescription = if (isEmojiPanelVisible) "键盘" else "表情"
+                            )
+                        }
                     }
                 } else {
                     IconButton(
