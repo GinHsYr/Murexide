@@ -118,6 +118,7 @@ fun ChatScreen(
     val bubbleOpacity by settingsStorage.bubbleOpacityFlow.collectAsState(initial = 0.9f)
     val showMyBubbleAvatarSetting by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     val showMsgTagsSetting by settingsStorage.showMsgTagsFlow.collectAsState(initial = false)
+    val backgroundOpacity by settingsStorage.backgroundOpacityFlow.collectAsState(initial = 0.5f)
     
     var viewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
     var viewerInitialPage by remember { mutableIntStateOf(0) }
@@ -969,7 +970,7 @@ fun ChatScreen(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(0.5f),
+                        .alpha(backgroundOpacity),
                     contentScale = ContentScale.Crop
                 )
             }

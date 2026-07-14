@@ -25,6 +25,7 @@ class SettingsStorage(private val context: Context) {
         private val MSG_SHOW_TAGS_KEY = booleanPreferencesKey("msg_show_tags")
         private val BUBBLE_CORNER_RADIUS_KEY = floatPreferencesKey("bubble_corner_radius")
         private val BUBBLE_OPACITY_KEY = floatPreferencesKey("bubble_opacity")
+        private val BACKGROUND_OPACITY_KEY = floatPreferencesKey("background_opacity")
         private val SHOW_MY_BUBBLE_AVATAR_KEY = booleanPreferencesKey("show_my_bubble_avatar")
 
         // ====== 截图隐私设置 ======
@@ -184,7 +185,7 @@ class SettingsStorage(private val context: Context) {
         return bubbleCornerRadiusFlow.first()
     }
 
-    // ====== 气泡透明度 ======
+    // ====== 气泡不透明度 ======
     val bubbleOpacityFlow: Flow<Float> = context.dataStore.data.map { preferences ->
         preferences[BUBBLE_OPACITY_KEY] ?: 0.9f
     }
@@ -197,6 +198,21 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun getBubbleOpacity(): Float {
         return bubbleOpacityFlow.first()
+    }
+    
+    // ====== 背景不透明度 ======
+    val backgroundOpacityFlow: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[BACKGROUND_OPACITY_KEY] ?: 0.5f
+    }
+
+    suspend fun setBackgroundOpacity(opacity: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[BACKGROUND_OPACITY_KEY] = opacity
+        }
+    }
+
+    suspend fun getBackgroundOpacity(): Float {
+        return backgroundOpacityFlow.first()
     }
 
     // ====== 显示气泡（我）头像 ======
