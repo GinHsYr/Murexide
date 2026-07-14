@@ -49,7 +49,7 @@ fun AppearanceScreen(
     val showMyBubbleAvatar by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     val showMsgTags by settingsStorage.showMsgTagsFlow.collectAsState(initial = true)
     var bubbleOpacity by remember { mutableFloatStateOf(0.9f) }
-    val backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
+    var backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
 
     LaunchedEffect(Unit) {
         ThemeState.squareAvatar.value = settingsStorage.getSquareAvatar()
@@ -422,7 +422,7 @@ fun AppearanceScreen(
                         Spacer(modifier = Modifier.height(4.dp))
                         
                         Slider(
-                            value = bubbleOpacity,
+                            value = backgroundOpacity,
                             onValueChange = { backgroundOpacity = it },
                             onValueChangeFinished = {
                                 scope.launch {
