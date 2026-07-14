@@ -429,7 +429,7 @@ fun AppearanceScreen(
                                     settingsStorage.setBackgroundOpacity(backgroundOpacity)
                                 }
                             },
-                            valueRange = 0f..0.8f,
+                            valueRange = 0.2f..1f,
                             modifier = Modifier.fillMaxWidth()
                         )
                         
