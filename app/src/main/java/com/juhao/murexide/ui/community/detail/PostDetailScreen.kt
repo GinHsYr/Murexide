@@ -215,7 +215,7 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
         if (post.contentType == 2) {
             MarkdownText(markdown = post.content, modifier = Modifier.fillMaxWidth())
         } else {
-            Text(post.content, fontSize = 15.sp, lineHeight = 22.sp)
+            Text(post.content, style = MaterialTheme.typography.bodyMedium)
         }
 
         post.group?.takeIf { it.groupId.isNotEmpty() }?.let { group ->
@@ -314,7 +314,7 @@ private fun CommentRow(comment: CommentItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(2.dp))
-            Text(comment.content, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(comment.content, style = MaterialTheme.typography.bodyMedium)
         }
         if (comment.likeNum > 0) {
             Row(verticalAlignment = Alignment.CenterVertically) {
