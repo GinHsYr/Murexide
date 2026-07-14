@@ -350,52 +350,52 @@ fun MessageBubble(
                                     val quoteText = message.quoteMsgText
                                     Surface(
                                         modifier = Modifier.padding(bottom = 4.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier
-                                                .height(IntrinsicSize.Max)
-                                                .padding(8.dp)
+                                            modifier = Modifier.height(IntrinsicSize.Max)
                                         ) {
                                             Box(
                                                 modifier = Modifier
                                                     .width(3.dp)
                                                     .fillMaxHeight()
-                                                    .background(
-                                                        MaterialTheme.colorScheme.primary,
-                                                        RoundedCornerShape(2.dp)
-                                                    )
+                                                    .background(MaterialTheme.colorScheme.primary)
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            if (message.quoteImageUrl != null && !hideImages) {
-                                                val builder = ImageRequest.Builder(context)
-                                                    .data(message.quoteImageUrl)
-    
-                                                if (message.quoteImageUrl.contains("chat-img.jwznb.com") ||
-                                                    message.quoteImageUrl.contains("jwznb.com") ||
-                                                    message.quoteImageUrl.contains("myapp.jwznb.com")) {
-                                                    builder.setHeader("Referer", "https://myapp.jwznb.com")
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(8.dp)
+                                            ) {
+                                                if (message.quoteImageUrl != null && !hideImages) {
+                                                    val builder = ImageRequest.Builder(context)
+                                                        .data(message.quoteImageUrl)
+        
+                                                    if (message.quoteImageUrl.contains("chat-img.jwznb.com") ||
+                                                        message.quoteImageUrl.contains("jwznb.com") ||
+                                                        message.quoteImageUrl.contains("myapp.jwznb.com")) {
+                                                        builder.setHeader("Referer", "https://myapp.jwznb.com")
+                                                    }
+        
+                                                    AsyncImage(
+                                                        model = builder.build(),
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .size(40.dp)
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
                                                 }
-    
-                                                AsyncImage(
-                                                    model = builder.build(),
-                                                    contentDescription = null,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier
-                                                        .size(40.dp)
-                                                        .clip(RoundedCornerShape(8.dp))
+                                                Text(
+                                                    text = if (hideSenderInfo) processQuoteText(quoteText) else quoteText,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    color = MaterialTheme.colorScheme.onSurface
                                                 )
-                                                Spacer(modifier = Modifier.width(8.dp))
                                             }
-                                            Text(
-                                                text = if (hideSenderInfo) processQuoteText(quoteText) else quoteText,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
                                         }
                                     }
                                 }

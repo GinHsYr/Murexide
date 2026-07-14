@@ -1,10 +1,11 @@
 package com.juhao.murexide.ui.addchat
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Chat
-import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +81,8 @@ fun AddChatScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Avatar(url = detail.avatarUrl, size = 88.dp)
@@ -127,7 +129,7 @@ fun AddChatScreen(
                                 onClick = { onEnterChat(detail) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(Icons.Rounded.Chat, contentDescription = null)
+                                Icon(Icons.Rounded.ChatBubble, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("进入聊天")
                             }
