@@ -359,11 +359,10 @@ fun MessageBubble(
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .width(3.dp)
+                                                    .width(2.dp)
                                                     .fillMaxHeight()
                                                     .background(MaterialTheme.colorScheme.primary)
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.padding(8.dp)

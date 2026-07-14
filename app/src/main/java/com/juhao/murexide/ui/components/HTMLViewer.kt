@@ -7,7 +7,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -100,7 +101,10 @@ fun UnifiedHtmlWebView(
     }
 
     AndroidView(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 2000.dp)
+            .clipToBounds(),
         factory = { ctx ->
             WebView(ctx).apply {
                 setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
@@ -173,12 +177,14 @@ fun UnifiedHtmlWebView(
                     }
                 }
 
+                isVerticalScrollBarEnabled = false
+                isHorizontalScrollBarEnabled = false
                 settings.apply {
                     javaScriptEnabled = false
                     domStorageEnabled = false
                     allowFileAccess = false
                     allowContentAccess = false
-                    setSupportZoom(true)
+                    setSupportZoom(false)
                     builtInZoomControls = false
                     displayZoomControls = false
                     cacheMode = WebSettings.LOAD_DEFAULT
@@ -186,6 +192,8 @@ fun UnifiedHtmlWebView(
                     blockNetworkImage = false
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                     offscreenPreRaster = false
+                    useWideViewPort = true
+                    loadWithOverviewMode = true
                 }
                 setBackgroundColor(backgroundColor)
 
@@ -339,10 +347,6 @@ private fun generateStyledHtml(
                 border: none;
                 border-top: 1px solid ${if (isDark) "#3a3a3a" else "#e0e0e0"};
                 margin: 12px 0;
-            }
-            ::selection {
-                background-color: ${if (isDark) "#4a4a4a" else "#cce0ff"};
-                color: $textHex;
             }
         </style>
     </head>
