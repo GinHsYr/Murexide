@@ -136,7 +136,7 @@ fun ScreenshotBottomSheet(
                         }
                     }
                 )
-                Spacer(modifier = Modifier.width(30.dp))
+                Spacer(modifier = Modifier.width(25.dp))
                 ScreenshotActionCard(
                     icon = Icons.Rounded.Share,
                     label = "分享",
@@ -154,7 +154,7 @@ fun ScreenshotBottomSheet(
                         }
                     }
                 )
-                Spacer(modifier = Modifier.width(30.dp))
+                Spacer(modifier = Modifier.width(25.dp))
                 ScreenshotActionCard(
                     icon = Icons.Rounded.Settings,
                     label = "截图设置",

@@ -1,12 +1,10 @@
 package com.juhao.murexide.ui.chat.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -186,37 +184,35 @@ fun MessageInput(
 
             Spacer(modifier = Modifier.width(5.dp))
 
-            IconButton(
-                onClick = onInstructionClick,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Code,
-                    contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
-                )
-            }
-
-            IconButton(
-                onClick = onEmojiClick,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Mood,
-                    contentDescription = if (isEmojiPanelVisible) "键盘" else "表情"
-                )
-            }
-
-            AnimatedVisibility(
-                visible = inputText.isNotBlank(),
-                enter = expandHorizontally(
-                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(150)),
-                exit = shrinkHorizontally(
-                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(150))
-            ) {
-                Row {
-                    Spacer(modifier = Modifier.width(5.dp))
+            AnimatedContent(
+                targetState = inputText.isBlank(),
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(200)) togetherWith
+                            fadeOut(animationSpec = tween(200))
+                },
+                label = "bottombar_button_transition"
+            ) { isBlank ->
+                if (isBlank) {
+                    IconButton(
+                        onClick = onInstructionClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Code,
+                            contentDescription = if (isInstructionPanelVisible) "键盘" else "指令"
+                        )
+                    }
+        
+                    IconButton(
+                        onClick = onEmojiClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Mood,
+                            contentDescription = if (isEmojiPanelVisible) "键盘" else "表情"
+                        )
+                    }
+                } else {
                     IconButton(
                         onClick = onSendClick,
                         enabled = !isSending,
