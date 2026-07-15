@@ -262,7 +262,7 @@ fun MessageBubble(
                                 Column(
                                     modifier = Modifier
                                         .padding(
-                                            top = if (!isLastFromSender && message.quoteMsgText == null && noMsgPadding) 0.dp else 8.dp,
+                                            top = if ((!isLastFromSender || isMine) && message.quoteMsgText == null && noMsgPadding) 0.dp else 8.dp,
                                             start = 8.dp,
                                             end = 8.dp
                                         )
