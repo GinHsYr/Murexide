@@ -73,6 +73,7 @@ fun MessageBubble(
     onImageClick: (MessageItem) -> Unit = {},
     onMarkdownImageClick: (String) -> Unit = {},
     onAvatarClick: () -> Unit = {},
+    onAvatarLongClick: () -> Unit = {},
     bubbleCornerRadius: Float = 18f,
     bubbleOpacity: Float = 0.9f,
     showMyBubbleAvatarSetting: Boolean = true,
@@ -220,9 +221,10 @@ fun MessageBubble(
                     } else {
                         Avatar(
                             url = message.senderAvatar,
-                            modifier = Modifier.clickable {
-                                onAvatarClick()
-                            },
+                            modifier = Modifier.combinedClickable(
+                                onClick = { onAvatarClick() },
+                                onLongClick = { onAvatarLongClick() }
+                            ),
                             size = 36.dp
                         )
                     }
@@ -260,7 +262,7 @@ fun MessageBubble(
                                 Column(
                                     modifier = Modifier
                                         .padding(
-                                            top = if (isMine && message.quoteMsgText == null) 0.dp else 8.dp,
+                                            top = if (!isLastFromSender && message.quoteMsgText == null && noMsgPadding) 0.dp else 8.dp,
                                             start = 8.dp,
                                             end = 8.dp
                                         )
@@ -423,6 +425,7 @@ fun MessageBubble(
                                                 if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
                                                     MarkdownText(
                                                         markdown = message.content,
+                                                        enableTextSelection = false,
                                                         onImageClick = { url ->
                                                             onMarkdownImageClick(url)
                                                         }

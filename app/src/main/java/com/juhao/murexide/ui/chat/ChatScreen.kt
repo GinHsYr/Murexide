@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +56,7 @@ import com.juhao.murexide.ui.chat.components.InstructionPanel
 import com.juhao.murexide.ui.chat.components.InstructionFormDialog
 import com.juhao.murexide.ui.chat.components.UploadProgressBar
 import com.juhao.murexide.ui.chat.components.ScreenshotBottomSheet
+import com.juhao.murexide.ui.chat.components.GroupMemberSheet
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.MessageItem
 import kotlinx.coroutines.FlowPreview
@@ -68,6 +70,7 @@ import androidx.compose.ui.draw.clip
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.conversationdetail.GroupSettingsActivity
+import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
 import com.juhao.murexide.ui.webview.WebViewActivity
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -561,6 +564,24 @@ fun ChatScreen(
                                             }
                                             if (chatType == 2) {
                                                 DropdownMenuItem(
+                                                    text = { Text("群成员列表") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        val intent = Intent(context, GroupMemberActivity::class.java).apply {
+                                                            putExtra("group_id", chatId)
+                                                            putExtra("my_permission", uiState.permissionLevel)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            Icons.Rounded.Group,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                                DropdownMenuItem(
                                                     text = { Text("我的群名称") },
                                                     onClick = {
                                                         showMoreMenu = false
@@ -896,7 +917,13 @@ fun ChatScreen(
                                     }
                                 },
                                 isInstructionPanelVisible = instructionPanel.isVisible,
-                                onInstructionClick = { viewModel.toggleInstructionPanel() }
+                                onInstructionClick = { viewModel.toggleInstructionPanel() },
+                                mentionNames = uiState.mentions.keys,
+                                onMentionTriggered = { pos ->
+                                    if (chatType == 2) {
+                                        viewModel.showMentionPicker(pos)
+                                    }
+                                }
                             )
 
                             BackHandler(enabled = expressions.isVisible) {
@@ -1114,6 +1141,11 @@ fun ChatScreen(
                                     chatAvatar = message.senderAvatar
                                 )
                             },
+                            onAvatarLongClick = {
+                                if (chatType == 2 && !message.isMine) {
+                                    viewModel.mentionUser(message.senderId, message.senderName)
+                                }
+                            },
                             downloadProgress = downloadingFiles[message.msgId],
                             isDownloaded = message.msgId in uiState.downloadedFiles,
                             onDownloadClick = { msg ->
@@ -1182,15 +1214,28 @@ fun ChatScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Avatar(
-                            modifier = Modifier.clickable {
-                                ConversationDetailActivity.start(
-                                    context = context,
-                                    chatId = topVisibleMessage?.senderId ?: "0",
-                                    chatType = topVisibleMessage?.senderType ?: 0,
-                                    chatName = topVisibleMessage?.senderName ?: "",
-                                    chatAvatar = topVisibleMessage?.senderAvatar ?: ""
-                                )
-                            },
+                            modifier = Modifier
+                                .combinedClickable(
+                                    onClick = {
+                                        ConversationDetailActivity.start(
+                                            context = context,
+                                            chatId = topVisibleMessage?.senderId ?: "0",
+                                            chatType = topVisibleMessage?.senderType ?: 0,
+                                            chatName = topVisibleMessage?.senderName ?: "",
+                                            chatAvatar = topVisibleMessage?.senderAvatar ?: ""
+                                        )
+                                    },
+                                    onLongClick = {
+                                        topVisibleMessage?.let { message ->
+                                            if (chatType == 2 && !message.isMine) {
+                                                viewModel.mentionUser(
+                                                    message.senderId,
+                                                    message.senderName
+                                                )
+                                            }
+                                        }
+                                    }
+                                ),
                             url = floatingAvatarUrl,
                             size = 36.dp
                         )
@@ -1206,6 +1251,18 @@ fun ChatScreen(
             initialPage = viewerInitialPage,
             isVisible = true,
             onDismiss = { viewerVisible = false }
+        )
+    }
+
+    if (uiState.mentionPicker.isVisible) {
+        GroupMemberSheet(
+            title = "选择要@的成员",
+            members = uiState.groupMembers.members,
+            isLoading = uiState.groupMembers.isLoading,
+            hasMore = uiState.groupMembers.hasMore,
+            onLoadMore = { viewModel.loadGroupMembers() },
+            onMemberClick = { member -> viewModel.selectMention(member) },
+            onDismiss = { viewModel.hideMentionPicker() }
         )
     }
 

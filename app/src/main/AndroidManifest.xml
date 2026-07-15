@@ -88,6 +88,10 @@
             android:exported="false"
             android:theme="@style/Theme.Murexide" />
         <activity
+            android:name=".ui.conversationdetail.groupmember.GroupMemberActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Murexide" />
+        <activity
             android:name=".ui.chat.ChatActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide"

@@ -17,6 +17,7 @@ import com.juhao.murexide.repository.InstructionRepository
 import com.juhao.murexide.repository.BoardRepository
 import com.juhao.murexide.repository.MessageRepository
 import com.juhao.murexide.repository.FriendRepository
+import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
 import com.juhao.murexide.utils.QiniuUploader
@@ -46,6 +47,7 @@ class ChatViewModel(
     private val stickerRepository: StickerRepository = StickerRepository(),
     private val instructionRepository: InstructionRepository = InstructionRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
+    private val groupMemberRepository: GroupMemberRepository = GroupMemberRepository(),
     private val boardRepository: BoardRepository = BoardRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
@@ -382,8 +384,13 @@ class ChatViewModel(
                 "html" -> MessageItem.CONTENT_TYPE_HTML
                 else -> MessageItem.CONTENT_TYPE_TEXT
             }
+            val mentionedIds = state.mentions
+                .filterKeys { name -> state.inputText.contains("@$name") }
+                .values.distinct()
+
             val content = MessageContent(
                 text = state.inputText,
+                mentionedId = mentionedIds,
                 quoteMsgText = state.replyTo?.let {
                     "${it.senderName}: ${it.content}"
                 },
@@ -405,6 +412,7 @@ class ChatViewModel(
                         inputText = "",
                         replyTo = null,
                         isSending = false,
+                        mentions = emptyMap(),
                         pendingCommandId = null,
                         pendingCommandName = null,
                         pendingCommandHint = null
@@ -1340,6 +1348,86 @@ class ChatViewModel(
     }
 
     fun updateNickName(value: String) = _uiState.update { it.copy(myGroupNickname = value) }
+
+    // ---------- 群成员 / @提及 ----------
+
+    /** 分页加载群成员 */
+    fun loadGroupMembers(refresh: Boolean = false) {
+        val state = _uiState.value.groupMembers
+        if (state.isLoading) return
+        if (!refresh && !state.hasMore) return
+
+        val page = if (refresh) 1 else state.page + 1
+        _uiState.update { it.copy(groupMembers = it.groupMembers.copy(isLoading = true)) }
+        viewModelScope.launch(Dispatchers.IO) {
+            groupMemberRepository.listMembers(token, chatId, page = page)
+                .onSuccess { members ->
+                    _uiState.update {
+                        val existing = if (refresh) emptyList() else it.groupMembers.members
+                        val existingIds = existing.map { m -> m.userId }.toSet()
+                        val merged = existing + members.filter { m -> m.userId !in existingIds }
+                        it.copy(
+                            groupMembers = it.groupMembers.copy(
+                                isLoading = false,
+                                members = merged,
+                                page = page,
+                                hasMore = members.isNotEmpty()
+                            )
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    Log.e(TAG, "Failed to load group members", e)
+                    _uiState.update { it.copy(groupMembers = it.groupMembers.copy(isLoading = false)) }
+                    _toastMessage.emit("加载群成员失败: ${e.message}")
+                }
+        }
+    }
+
+    /** 长按头像 @某人：不经弹窗直接插入 */
+    fun mentionUser(userId: String, name: String) {
+        if (chatType != 2 || name.isEmpty()) return
+        _uiState.update { state ->
+            val text = state.inputText
+            val mentionText = "@$name "
+            val newText = if (text.contains("@$name")) text else text + mentionText
+            state.copy(
+                inputText = newText,
+                mentions = state.mentions + (name to userId)
+            )
+        }
+    }
+
+    fun showMentionPicker(triggerPos: Int = -1) {
+        if (chatType != 2) return
+        _uiState.update { it.copy(mentionPicker = MentionPickerState(isVisible = true, triggerPos = triggerPos)) }
+        if (_uiState.value.groupMembers.members.isEmpty()) {
+            loadGroupMembers(refresh = true)
+        }
+    }
+
+    fun hideMentionPicker() {
+        _uiState.update { it.copy(mentionPicker = MentionPickerState()) }
+    }
+
+    fun selectMention(member: GroupMember) {
+        _uiState.update { state ->
+            val pos = state.mentionPicker.triggerPos
+            val text = state.inputText
+            val mentionText = "@${member.name} "
+            val newText = if (pos in text.indices && text.getOrNull(pos) == '@') {
+                text.substring(0, pos) + mentionText + text.substring(pos + 1)
+            } else {
+                text + mentionText
+            }
+            state.copy(
+                inputText = newText,
+                mentions = state.mentions + (member.name to member.userId),
+                mentionPicker = MentionPickerState()
+            )
+        }
+    }
+
     
     fun deleteFriend(
         onSuccess: () -> Unit = {},

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,8 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.R
+import com.juhao.murexide.utils.MentionUtils
 
 @Composable
 fun MessageInput(
@@ -45,9 +49,18 @@ fun MessageInput(
     isEmojiPanelVisible: Boolean = false,
     onEmojiClick: () -> Unit,
     isInstructionPanelVisible: Boolean = false,
-    onInstructionClick: () -> Unit = {}
+    onInstructionClick: () -> Unit = {},
+    mentionNames: Collection<String> = emptyList(),
+    onMentionTriggered: (Int) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+
+    var fieldValue by remember { mutableStateOf(TextFieldValue(inputText)) }
+    LaunchedEffect(inputText) {
+        if (fieldValue.text != inputText) {
+            fieldValue = TextFieldValue(inputText, TextRange(inputText.length))
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -174,8 +187,17 @@ fun MessageInput(
             Spacer(modifier = Modifier.width(5.dp))
 
             OutlinedTextField(
-                value = inputText,
-                onValueChange = onTextChange,
+                value = fieldValue,
+                onValueChange = { new ->
+                    val result = MentionUtils.processEdit(fieldValue, new, mentionNames)
+                    fieldValue = result.value
+                    if (result.value.text != inputText) {
+                        onTextChange(result.value.text)
+                    }
+                    if (result.insertedText == "@") {
+                        onMentionTriggered(result.insertPos)
+                    }
+                },
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("输入消息...") },
                 shape = RoundedCornerShape(24.dp),

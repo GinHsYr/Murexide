@@ -170,6 +170,9 @@ data class ChatUiState(
     val ownerId: String? = null,
     val adminIds: Set<String> = emptySet(),
     val permissionLevel: Int = 0,      // 群主 100 / 管理员 2 / 普通 0
+    val groupMembers: GroupMembersState = GroupMembersState(),
+    val mentionPicker: MentionPickerState = MentionPickerState(),
+    val mentions: Map<String, String> = emptyMap(), // @名称 -> userId
     
     // -----机器人专属-----
     val usageCount: Long? = null
