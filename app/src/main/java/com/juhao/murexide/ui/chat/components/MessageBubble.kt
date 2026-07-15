@@ -573,31 +573,33 @@ fun MessageBubble(
                                                                 )
                                                         )
                                                         
-                                                        Row(
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                            modifier = Modifier
-                                                                .align(Alignment.TopStart)
-                                                                .padding(start = 6.dp, top = 6.dp)
-                                                                .background(
-                                                                    color = Color.Black.copy(alpha = 0.3f),
-                                                                    shape = RoundedCornerShape(50.dp)
+                                                        if (!isMine && isLastFromSender) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                                modifier = Modifier
+                                                                    .align(Alignment.TopStart)
+                                                                    .padding(start = 6.dp, top = 6.dp)
+                                                                    .background(
+                                                                        color = Color.Black.copy(alpha = 0.3f),
+                                                                        shape = RoundedCornerShape(50.dp)
+                                                                    )
+                                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Rounded.Person,
+                                                                    contentDescription = "sender",
+                                                                    modifier = Modifier.size(12.dp),
+                                                                    tint = Color.White
                                                                 )
-                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Rounded.Person,
-                                                                contentDescription = "sender",
-                                                                modifier = Modifier.size(12.dp),
-                                                                tint = Color.White
-                                                            )
-                                                            Text(
-                                                                text = displayName,
-                                                                fontSize = 10.sp,
-                                                                lineHeight = 16.sp,
-                                                                maxLines = 1,
-                                                                color = Color.White
-                                                            )
+                                                                Text(
+                                                                    text = displayName,
+                                                                    fontSize = 10.sp,
+                                                                    lineHeight = 16.sp,
+                                                                    maxLines = 1,
+                                                                    color = Color.White
+                                                                )
+                                                            }
                                                         }
 
                                                         Row(
