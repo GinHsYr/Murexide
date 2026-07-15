@@ -655,6 +655,12 @@ fun MessageBubble(
                                                                 )
                                                             else Modifier
                                                         )
+                                                        .background(
+                                                            if (isMine)
+                                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                                                            else
+                                                                MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+                                                        )
                                                         .combinedClickable(
                                                             onClick = {
                                                                 if (!isDownloading) {
@@ -747,7 +753,7 @@ fun MessageBubble(
                                                         }
                                                     }
                                                     
-                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Spacer(modifier = Modifier.width(24.dp))
     
                                                     if (isComplete) {
                                                         Icon(
