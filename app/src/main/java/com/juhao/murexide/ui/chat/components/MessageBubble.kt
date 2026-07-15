@@ -567,8 +567,8 @@ fun MessageBubble(
                                                                     .widthIn(max = 280.dp)
                                                                     .clip(
                                                                         RoundedCornerShape(
-                                                                            topStart = bubbleCornerRadius.dp,
-                                                                            topEnd = if (isMine && !isLastFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
+                                                                            topStart = if (!isMine && !isLastFromSender && message.quoteMsgText == null) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
+                                                                            topEnd = if (isMine && !isLastFromSender && message.quoteMsgText == null) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
                                                                             bottomStart = if (!isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
                                                                             bottomEnd = if (isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp
                                                                         )
