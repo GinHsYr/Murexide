@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
@@ -215,7 +216,9 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
         if (post.contentType == 2) {
             MarkdownText(markdown = post.content, modifier = Modifier.fillMaxWidth())
         } else {
-            Text(post.content, style = MaterialTheme.typography.bodyMedium)
+            SelectionContainer {
+                Text(post.content, style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
         post.group?.takeIf { it.groupId.isNotEmpty() }?.let { group ->
