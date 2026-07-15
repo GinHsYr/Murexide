@@ -66,20 +66,29 @@ class ConversationDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isAdding = true) }
             friendRepository.apply(token, chatId, chatType)
-                .onSuccess { code ->
-                    when (code) {
+                .onSuccess { rep ->
+                    val detail = state.detail
+                    
+                    when (rep.code) {
                         1 -> _uiState.update {
-                            it.copy(isAdding = false, isAdded = true, message = "添加成功")
+                            if (detail.chatType == 1) {
+                                it.copy(isAdding = false, message = "已发送申请")
+                            } else if (detail.chatType == 2) {
+                                if (detail.directJoin) {
+                                    it.copy(isAdding = false, isAdded = true, message = "已加入群聊")
+                                } else {
+                                    it.copy(isAdding = false, message = "已发送申请")
+                                }
+                            } else {
+                                it.copy(isAdding = false, isAdded = true, message = "已添加")
+                            }
                         }
                         -9 -> _uiState.update {
                             // 已在群聊中，视作已添加
                             it.copy(isAdding = false, isAdded = true, message = "你已在群聊中")
                         }
-                        -1 -> _uiState.update {
-                            it.copy(isAdding = false, message = "对象不存在")
-                        }
                         else -> _uiState.update {
-                            it.copy(isAdding = false, message = "已发送申请")
+                            it.copy(isAdding = false, message = rep.msg)
                         }
                     }
                 }

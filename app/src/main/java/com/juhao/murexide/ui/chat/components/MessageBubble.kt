@@ -635,12 +635,6 @@ fun MessageBubble(
                                                                     )
                                                                 else Modifier
                                                             )
-                                                            .background(
-                                                                if (isMine)
-                                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                                                                else
-                                                                    MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
-                                                            )
                                                             .combinedClickable(
                                                                 onClick = {
                                                                     if (!isDownloading) {

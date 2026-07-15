@@ -75,7 +75,7 @@ class FriendRepository {
      * @param type 1-用户，2-群聊，3-机器人
      * code: 1 正常，-1 不存在，-9 已在群聊中
      */
-    suspend fun apply(token: String, chatId: String, chatType: Int, remark: String = ""): Result<Int> {
+    suspend fun apply(token: String, chatId: String, chatType: Int, remark: String = ""): Result<DeleteFriendResponse> {
         return withContext(Dispatchers.IO) {
             try {
                 val params = buildJsonObject {
@@ -94,7 +94,7 @@ class FriendRepository {
                 client.newCall(httpRequest).execute().use { response ->
                     if (response.isSuccessful) {
                         val result = json.decodeFromString<DeleteFriendResponse>(response.body.string())
-                        Result.success(result.code)
+                        Result.success(result)
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))
                     }
