@@ -72,21 +72,6 @@
             android:exported="false"
             android:theme="@style/Theme.Murexide" />
         <activity
-            android:name=".ui.addchat.AddChatActivity"
-            android:exported="true"
-            android:theme="@style/Theme.Murexide">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="chat-add"
-                    android:scheme="yunhu" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide" />
@@ -117,8 +102,19 @@
             android:theme="@style/Theme.Murexide" />
         <activity
             android:name=".ui.conversationdetail.ConversationDetailActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Murexide" />
+            android:exported="true"
+            android:theme="@style/Theme.Murexide">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="chat-add"
+                    android:scheme="yunhu" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".ui.mine.EditProfileActivity"
             android:exported="false"

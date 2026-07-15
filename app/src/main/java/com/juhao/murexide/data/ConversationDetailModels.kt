@@ -43,5 +43,9 @@ data class ConversationDetail(
 data class ConversationDetailUiState(
     val isLoading: Boolean = true,
     val detail: ConversationDetail? = null,
-    val error: String? = null
+    val error: String? = null,
+    // 添加/进入聊天
+    val isAdded: Boolean? = null,   // null 表示尚未查询完成
+    val isAdding: Boolean = false,
+    val message: String? = null
 )

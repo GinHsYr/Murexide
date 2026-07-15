@@ -5,9 +5,9 @@ import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
-import com.juhao.murexide.ui.addchat.AddChatActivity
 import com.juhao.murexide.ui.community.ba.BaDetailActivity
 import com.juhao.murexide.ui.community.detail.PostDetailActivity
+import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 
 /**
  * 统一处理 yunhu:// 协议链接（见 api 文档 url_scheme）。
@@ -46,7 +46,7 @@ object UrlSchemeHandler {
                     val id = uri.getQueryParameter("id")
                     val type = uri.getQueryParameter("type")
                     if (!id.isNullOrEmpty()) {
-                        AddChatActivity.start(
+                        ConversationDetailActivity.start(
                             context = context,
                             chatId = id,
                             chatType = chatTypeOf(type)

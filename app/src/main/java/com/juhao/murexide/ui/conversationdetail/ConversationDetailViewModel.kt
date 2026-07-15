@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationDetailUiState
 import com.juhao.murexide.repository.ConversationDetailRepository
+import com.juhao.murexide.repository.FriendRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,8 @@ class ConversationDetailViewModel(
     private val chatType: Int,
     fallbackName: String = "",
     fallbackAvatar: String = "",
-    private val repository: ConversationDetailRepository = ConversationDetailRepository()
+    private val repository: ConversationDetailRepository = ConversationDetailRepository(),
+    private val friendRepository: FriendRepository = FriendRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -34,6 +36,7 @@ class ConversationDetailViewModel(
 
     init {
         loadDetail()
+        checkAdded()
     }
 
     fun loadDetail() {
@@ -47,5 +50,46 @@ class ConversationDetailViewModel(
                     _uiState.update { it.copy(isLoading = false, error = error.message ?: "加载失败") }
                 }
         }
+    }
+
+    private fun checkAdded() {
+        viewModelScope.launch {
+            friendRepository.isAdded(token, chatId, chatType)
+                .onSuccess { added -> _uiState.update { it.copy(isAdded = added) } }
+        }
+    }
+
+    fun addChat() {
+        val state = _uiState.value
+        if (state.isAdding) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAdding = true) }
+            friendRepository.apply(token, chatId, chatType)
+                .onSuccess { code ->
+                    when (code) {
+                        1 -> _uiState.update {
+                            it.copy(isAdding = false, isAdded = true, message = "添加成功")
+                        }
+                        -9 -> _uiState.update {
+                            // 已在群聊中，视作已添加
+                            it.copy(isAdding = false, isAdded = true, message = "你已在群聊中")
+                        }
+                        -1 -> _uiState.update {
+                            it.copy(isAdding = false, message = "对象不存在")
+                        }
+                        else -> _uiState.update {
+                            it.copy(isAdding = false, message = "已发送申请")
+                        }
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isAdding = false, message = e.message ?: "添加失败") }
+                }
+        }
+    }
+
+    fun clearMessage() {
+        _uiState.update { it.copy(message = null) }
     }
 }

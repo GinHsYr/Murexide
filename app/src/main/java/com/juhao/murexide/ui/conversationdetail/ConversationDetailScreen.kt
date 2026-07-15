@@ -7,8 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -27,19 +26,31 @@ import java.util.Locale
 @Composable
 fun ConversationDetailScreen(
     viewModel: ConversationDetailViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEnterChat: (ConversationDetail) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
+
     val scrollState = rememberScrollState()
-    
+
     val themeStyle by ThemeState.themeStyle
-    
+
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.message) {
+        val msg = uiState.message
+        if (msg != null) {
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearMessage()
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             StyledTopBar(
                 title = { Text("会话详情") },
@@ -75,6 +86,13 @@ fun ConversationDetailScreen(
                             .verticalScroll(scrollState)
                     ) {
                         DetailHeader(detail)
+
+                        ActionSection(
+                            isAdded = uiState.isAdded,
+                            isAdding = uiState.isAdding,
+                            onAddChat = viewModel::addChat,
+                            onEnterChat = { onEnterChat(detail) }
+                        )
 
                         when (detail.chatType) {
                             2 -> GroupSection(detail)
@@ -229,6 +247,45 @@ private fun BotSection(detail: ConversationDetail) {
             "消息免打扰",
             if (detail.doNotDisturb) "已开启" else "已关闭"
         )
+    }
+}
+
+@Composable
+private fun ActionSection(
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAddChat: () -> Unit,
+    onEnterChat: () -> Unit
+) {
+    if (isAdded == null) return
+    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (isAdded) {
+            Button(
+                onClick = onEnterChat,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.ChatBubble, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("进入聊天")
+            }
+        } else {
+            Button(
+                onClick = onAddChat,
+                enabled = !isAdding,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isAdding) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Rounded.PersonAdd, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("添加")
+                }
+            }
+        }
     }
 }
 
