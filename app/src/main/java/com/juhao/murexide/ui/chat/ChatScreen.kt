@@ -306,7 +306,6 @@ fun ChatScreen(
                 firstMessageId = msgId
 
                 if (isAtBottom && !listState.isScrollInProgress) {
-                    showMenuMsgId = null
                     listState.animateScrollToItem(0)
                     unreadCount = 0
                     pendingCount = 0
