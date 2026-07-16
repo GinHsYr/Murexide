@@ -300,11 +300,6 @@ fun ChatScreen(
                     return@collect
                 }
 
-                if (listState.isScrollInProgress) {
-                    firstMessageId = msgId
-                    return@collect
-                }
-
                 val isAtBottom = listState.layoutInfo.visibleItemsInfo
                     .firstOrNull()?.index == 0
 
@@ -312,10 +307,8 @@ fun ChatScreen(
 
                 if (isAtBottom && !listState.isScrollInProgress) {
                     showMenuMsgId = null
-                    if (!listState.isScrollInProgress) {
-                        listState.animateScrollToItem(0)
-                        unreadCount = 0
-                    }
+                    listState.animateScrollToItem(0)
+                    unreadCount = 0
                     pendingCount = 0
                 } else {
                     if (!message.isMine) {

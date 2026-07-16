@@ -88,6 +88,10 @@ fun MessageBubble(
     anonymousNameProvider: ((String) -> String)? = null,
     roleLabel: String? = null
 ) {
+    LaunchedEffect(Unit) {
+        showMenuChanged(null)
+    }
+
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
