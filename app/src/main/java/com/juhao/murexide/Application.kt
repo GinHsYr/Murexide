@@ -85,6 +85,10 @@ class MyApplication : Application(), ImageLoaderFactory {
                         }
 
                         val currentConversation = UiCache.conversation.value.firstOrNull { it.chatId == msg.chatId && it.chatType == msg.chatType }
+                        
+                        if (currentConversation?.doNotDisturb == 1) {
+                            return@collect
+                        }
 
                         val content = msg.getDisplayContent()
                         val chatName = currentConversation?.displayName ?: "会话"
