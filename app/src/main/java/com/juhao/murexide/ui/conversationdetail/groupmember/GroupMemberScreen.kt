@@ -30,7 +30,7 @@ import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.StyledIconButton
 import com.juhao.murexide.ui.components.StyledTopBar
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +59,7 @@ fun GroupMemberScreen(
         1 to "永久"
     )
 
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
     else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

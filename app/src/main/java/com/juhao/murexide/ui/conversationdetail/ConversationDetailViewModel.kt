@@ -74,7 +74,7 @@ class ConversationDetailViewModel(
                             if (detail?.chatType == 1) {
                                 it.copy(isAdding = false, message = "已发送申请")
                             } else if (detail?.chatType == 2) {
-                                if (detail?.directJoin == true) {
+                                if (detail.directJoin) {
                                     it.copy(isAdding = false, isAdded = true, message = "已加入群聊")
                                 } else {
                                     it.copy(isAdding = false, message = "已发送申请")

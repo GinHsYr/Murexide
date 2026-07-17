@@ -1,6 +1,5 @@
 package com.juhao.murexide.ui.settings.appearance
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,7 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.components.*
 import com.juhao.murexide.datastore.SettingsStorage
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.ui.chat.components.MessageBubble
@@ -35,14 +34,14 @@ fun AppearanceScreen(
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
 
-    val themeMode by ThemeState.themeMode
-    val themeStyle by ThemeState.themeStyle
-    val themeColor by ThemeState.themeColor
+    val themeMode by UiState.themeMode
+    val themeStyle by UiState.themeStyle
+    val themeColor by UiState.themeColor
     
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    val squareAvatar by ThemeState.squareAvatar
+    val squareAvatar by UiState.squareAvatar
     var showSticky by remember { mutableStateOf(true) }
     
     var bubbleCornerRadius by remember { mutableFloatStateOf(16f) }
@@ -52,7 +51,7 @@ fun AppearanceScreen(
     var backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
 
     LaunchedEffect(Unit) {
-        ThemeState.squareAvatar.value = settingsStorage.getSquareAvatar()
+        UiState.squareAvatar.value = settingsStorage.getSquareAvatar()
         showSticky = settingsStorage.getShowSticky()
         bubbleCornerRadius = settingsStorage.getBubbleCornerRadius()
         bubbleOpacity = settingsStorage.getBubbleOpacity()
@@ -152,7 +151,7 @@ fun AppearanceScreen(
                     ),
                     selectedValue = themeMode,
                     onOptionSelected = { selected ->
-                        ThemeState.themeMode.value = selected
+                        UiState.themeMode.value = selected
                         scope.launch {
                             settingsStorage.setThemeMode(selected)
                         }
@@ -171,7 +170,7 @@ fun AppearanceScreen(
                     ),
                     selectedValue = themeStyle,
                     onOptionSelected = { selected ->
-                        ThemeState.themeStyle.value = selected
+                        UiState.themeStyle.value = selected
                         scope.launch {
                             settingsStorage.setThemeStyle(selected)
                         }
@@ -196,7 +195,7 @@ fun AppearanceScreen(
                     ),
                     selectedValue = themeMode,
                     onOptionSelected = { selected ->
-                        ThemeState.themeColor.value = selected
+                        UiState.themeColor.value = selected
                         scope.launch {
                             settingsStorage.setThemeColor(selected)
                         }
@@ -495,7 +494,7 @@ fun AppearanceScreen(
                     subtitle = "将好友和群组头像显示为圆角正方形",
                     checked = squareAvatar,
                     onCheckedChange = { checked ->
-                        ThemeState.squareAvatar.value = checked
+                        UiState.squareAvatar.value = checked
                         scope.launch {
                             settingsStorage.setSquareAvatar(checked)
                         }

@@ -6,7 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.runtime.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 
 @Composable
 fun StyledSwitch(
@@ -15,7 +15,7 @@ fun StyledSwitch(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     
     if (themeStyle == "md3") {
         Switch(
@@ -53,7 +53,7 @@ fun StyledIconButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     
     if (themeStyle == "md3") {
         IconButton(
@@ -82,7 +82,7 @@ fun StyledTopBar(
     navigationIcon: @Composable (() -> Unit) = {},
     actions: @Composable (RowScope.() -> Unit) = {}
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     if (themeStyle == "md3") {
         TopAppBar(

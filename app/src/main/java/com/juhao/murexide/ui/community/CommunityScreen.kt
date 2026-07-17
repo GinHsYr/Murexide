@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.data.PostItem
 import com.juhao.murexide.data.BaItem
 import com.juhao.murexide.ui.community.ba.BaDetailActivity
@@ -377,7 +377,7 @@ fun PostCard(
     onCollectClick: (Int) -> Unit,
     onPostClick: (PostItem) -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     Column(
         modifier = Modifier

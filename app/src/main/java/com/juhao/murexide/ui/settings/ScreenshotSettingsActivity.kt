@@ -18,7 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -43,7 +43,7 @@ fun ScreenshotPrivacyScreen(
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
     
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
         
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import com.juhao.murexide.R
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.utils.getAppVersionInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +27,7 @@ import com.juhao.murexide.utils.getAppVersionInfo
 fun AboutScreen(
     onBack: () -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

@@ -15,6 +15,8 @@ class SettingsStorage(private val context: Context) {
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val THEME_STYLE_KEY = stringPreferencesKey("theme_style")
         private val THEME_COLOR_KEY = stringPreferencesKey("theme_color")
+
+        private val NOTIFICATION_ENABLED_KEY = booleanPreferencesKey("notification_enabled")
         
         private val SQUARE_AVATAR_KEY = booleanPreferencesKey("square_avatar")
         private val AVATAR_FOLLOW_KEY = booleanPreferencesKey("avatar_follow")
@@ -93,6 +95,21 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun getSquareAvatar(): Boolean {
         return squareAvatarFlow.first()
+    }
+
+    // 通知
+    val notificationEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[NOTIFICATION_ENABLED_KEY] ?: true  // 默认开启
+    }
+
+    suspend fun setNotificationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun getNotificationEnabled(): Boolean {
+        return notificationEnabledFlow.first()
     }
     
     // 头像跟随

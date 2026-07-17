@@ -1,10 +1,15 @@
 package com.juhao.murexide.ui.theme
 
 import androidx.compose.runtime.mutableStateOf
+import com.juhao.murexide.data.ConversationItem
 
-object ThemeState {
+object UiState {
     var themeMode = mutableStateOf("system")
     var themeStyle = mutableStateOf("md3")
     var themeColor = mutableStateOf("DYNAMIC")
     var squareAvatar = mutableStateOf(false)
+}
+
+object UiCache {
+    var conversation = mutableStateOf<List<ConversationItem>>(emptyList())
 }

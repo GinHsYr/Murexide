@@ -1,5 +1,6 @@
 package com.juhao.murexide.ui.settings
 
+import android.Manifest
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,11 +18,16 @@ import com.juhao.murexide.utils.UpdateInfo
 import com.juhao.murexide.utils.checkForUpdateWithDetails
 import com.juhao.murexide.utils.getAppVersionInfo
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.datastore.SettingsStorage
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.core.content.ContextCompat
 import com.juhao.murexide.ui.about.AboutActivity
 import com.juhao.murexide.ui.settings.appearance.AppearanceActivity
 import com.juhao.murexide.ui.settings.switchAccount.SwitchAccountActivity
@@ -39,7 +45,7 @@ fun SettingsScreen(
     val settingsStorage = remember { SettingsStorage(context) }
     val scope = rememberCoroutineScope()
     
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -51,6 +57,26 @@ fun SettingsScreen(
     var avatarFollow by remember { mutableStateOf(false) }
     var bigScreen by remember { mutableStateOf(true) }
     var updateChannel by remember { mutableStateOf("stable") }
+
+    val (notificationEnabled, onNotificationToggle) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val enabled = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        Pair(enabled) { _: Boolean ->
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(intent)
+        }
+    } else {
+        val enabledState by settingsStorage.notificationEnabledFlow.collectAsState(initial = true)
+        Pair(enabledState) { checked: Boolean ->
+            scope.launch {
+                settingsStorage.setNotificationEnabled(checked)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         avatarFollow = settingsStorage.getAvatarFollow()
@@ -130,6 +156,17 @@ fun SettingsScreen(
             }
             
             SettingsGroup(title = "行为") {
+                SettingsSwitchItem(
+                    icon = Icons.Rounded.Notifications,
+                    title = "消息通知",
+                    subtitle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (notificationEnabled) "已允许消息通知" else "已关闭消息通知，点击跳转设置"
+                    } else {
+                        "开启或关闭消息通知"
+                    },
+                    checked = notificationEnabled,
+                    onCheckedChange = { onNotificationToggle(it) }
+                )
                 SettingsSwitchItem(
                     icon = Icons.Rounded.LaptopChromebook,
                     title = "大屏模式",

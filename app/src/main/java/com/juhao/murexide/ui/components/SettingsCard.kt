@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
@@ -27,7 +27,7 @@ fun SettingsGroup(
     disableCornerShape: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     if (themeStyle == "md3") {
         Column {
@@ -334,7 +334,7 @@ fun CustomItemCell(
     isEnabled: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     val alpha = if (isEnabled) 1f else 0.38f
 
     if (themeStyle == "md3") {

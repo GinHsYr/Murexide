@@ -20,7 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.clickable
 import com.juhao.murexide.repository.UserInfo
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,7 +48,7 @@ fun MineScreen(
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
     
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
     
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

@@ -13,14 +13,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.juhao.murexide.ui.components.StyledIconButton
 import com.juhao.murexide.ui.components.StyledTopBar
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Greeting(
     onBack: () -> Unit
 ) {
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
     else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 import com.juhao.murexide.network.NetworkClient
+import com.juhao.murexide.ui.theme.UiCache
 import kotlinx.serialization.json.Json
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -123,6 +124,7 @@ class ConversationViewModel(
             fetchStickyList()
             repository.getConversationList(token, currentMd5).onSuccess { conversations ->
                 _uiState.update { state ->
+                    UiCache.conversation.value = conversations
                     if (state is ConversationUiState.Success) {
                         state.copy(conversations = conversations)
                     } else {

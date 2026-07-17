@@ -72,6 +72,7 @@ import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.conversationdetail.GroupSettingsActivity
 import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
 import com.juhao.murexide.ui.webview.WebViewActivity
+import com.juhao.murexide.utils.NotificationHelper
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -220,10 +221,15 @@ fun ChatScreen(
     val topVisibleMessageId = topVisibleMessage?.msgId
 
     LaunchedEffect(Unit) {
+        NotificationHelper.clearNotification(context, chatId)
+    }
+
+    LaunchedEffect(Unit) {
         viewModel.toastMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
+
     LaunchedEffect(Unit) {
         viewModel.buttonEvent.collect { event ->
             when (event) {

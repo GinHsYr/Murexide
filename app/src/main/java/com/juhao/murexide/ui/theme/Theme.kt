@@ -83,13 +83,13 @@ fun MurexideTheme(
     val settingsStorage = remember { SettingsStorage(context) }
 
     LaunchedEffect(Unit) {
-        ThemeState.themeMode.value = settingsStorage.getThemeMode()
-        ThemeState.themeStyle.value = settingsStorage.getThemeStyle()
-        ThemeState.themeColor.value = settingsStorage.getThemeColor()
+        UiState.themeMode.value = settingsStorage.getThemeMode()
+        UiState.themeStyle.value = settingsStorage.getThemeStyle()
+        UiState.themeColor.value = settingsStorage.getThemeColor()
     }
 
-    val themeMode by ThemeState.themeMode
-    val themeColor by ThemeState.themeColor
+    val themeMode by UiState.themeMode
+    val themeColor by UiState.themeColor
 
     val darkTheme = when (themeMode) {
         "system" -> isSystemInDarkTheme()

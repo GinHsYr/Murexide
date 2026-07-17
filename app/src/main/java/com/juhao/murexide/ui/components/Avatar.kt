@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.datastore.SettingsStorage
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 
 @Composable
 fun Avatar(
@@ -26,10 +26,10 @@ fun Avatar(
     val context = LocalContext.current
     val settingsStorage = remember { SettingsStorage(context) }
     
-    val squareAvatar by ThemeState.squareAvatar
+    val squareAvatar by UiState.squareAvatar
 
     LaunchedEffect(Unit) {
-        ThemeState.squareAvatar.value = settingsStorage.getSquareAvatar()
+        UiState.squareAvatar.value = settingsStorage.getSquareAvatar()
     }
     
     var viewerVisible by remember { mutableStateOf(false) }

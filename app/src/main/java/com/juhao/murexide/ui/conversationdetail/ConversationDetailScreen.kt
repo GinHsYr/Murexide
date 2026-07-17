@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.ThemeState
+import com.juhao.murexide.ui.theme.UiState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,7 +33,7 @@ fun ConversationDetailScreen(
 
     val scrollState = rememberScrollState()
 
-    val themeStyle by ThemeState.themeStyle
+    val themeStyle by UiState.themeStyle
 
     val scrollBehavior = if (themeStyle == "md3") TopAppBarDefaults.pinnedScrollBehavior()
         else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
