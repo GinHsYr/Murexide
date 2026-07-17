@@ -242,7 +242,7 @@ class ChatViewModel(
                     is WebSocketManager.WsEvent.NewMessage -> {
                         val match = event.message.chatId == chatId || (event.message.chatType == 1 && event.message.senderId == chatId)
                         Log.d(TAG, "New message: chatId=${event.message.chatId}, expected=$chatId, match=${match}")
-                        if (match && !event.message.isRecalled) {
+                        if (match) {
                             addReceivedMessage(event.message)
                         }
                     }
@@ -1191,6 +1191,10 @@ class ChatViewModel(
     fun addReceivedMessage(message: MessageItem) {
         if (message.msgId in msgIdCache) {
             updateEditedMessage(message)
+            return
+        }
+        
+        if (message.isRecalled) {
             return
         }
 
