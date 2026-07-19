@@ -15,9 +15,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.MainActivity
+import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.datastore.UserAccount
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -26,19 +30,61 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val tokenStorage = TokenStorage(this)
+        val accountStorage = AccountStorage(this)
+        val isAddMode = intent.getBooleanExtra("addMode", false)
 
         setContent {
             var showTokenDialog by remember { mutableStateOf(false) }
+            val lifecycleOwner = LocalLifecycleOwner.current
+
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        if (!isAddMode) {
+                            lifecycleScope.launch {
+                                val currentToken = accountStorage.getCurrentToken()
+                                if (currentToken != null) {
+                                    startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                    finish()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                lifecycleOwner.lifecycle.addObserver(observer)
+
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
 
             MurexideTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     LoginScreen(
                         onLoginSuccess = { token ->
                             lifecycleScope.launch {
-                                tokenStorage.saveToken(token)
-                                Toast.makeText(this@LoginActivity, "登录成功", Toast.LENGTH_SHORT).show()
-                                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                val account = UserAccount(
+                                    username = "用户",
+                                    avatar = "",
+                                    id = System.currentTimeMillis().toString(),
+                                    token = token
+                                )
+                                accountStorage.addAccount(account)
+                                if (!isAddMode) {
+                                    accountStorage.setCurrentUser(account.id)
+                                    Toast.makeText(
+                                        this@LoginActivity,
+                                        "登录成功",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    startActivity(
+                                        Intent(
+                                            this@LoginActivity,
+                                            MainActivity::class.java
+                                        )
+                                    )
+                                }
                                 finish()
                             }
                         },
@@ -53,9 +99,27 @@ class LoginActivity : ComponentActivity() {
                             onConfirm = { token ->
                                 showTokenDialog = false
                                 lifecycleScope.launch {
-                                    tokenStorage.saveToken(token)
-                                    Toast.makeText(this@LoginActivity, "Token登录成功", Toast.LENGTH_SHORT).show()
-                                    startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                    val account = UserAccount(
+                                        username = "用户",
+                                        avatar = "",
+                                        id = System.currentTimeMillis().toString(),
+                                        token = token
+                                    )
+                                    accountStorage.addAccount(account)
+                                    if (!isAddMode) {
+                                        accountStorage.setCurrentUser(account.id)
+                                        Toast.makeText(
+                                            this@LoginActivity,
+                                            "Token登录成功",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        startActivity(
+                                            Intent(
+                                                this@LoginActivity,
+                                                MainActivity::class.java
+                                            )
+                                        )
+                                    }
                                     finish()
                                 }
                             }
@@ -67,8 +131,11 @@ class LoginActivity : ComponentActivity() {
     }
 
     companion object {
-        fun start(context: Context) {
-            context.startActivity(Intent(context, LoginActivity::class.java))
+        fun start(context: Context, isAddMode: Boolean = false) {
+            val intent = Intent(context, LoginActivity::class.java).apply {
+                putExtra("addMode", isAddMode)
+            }
+            context.startActivity(intent)
         }
     }
 }

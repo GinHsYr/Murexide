@@ -1,5 +1,6 @@
 package com.juhao.murexide.ui.mine
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.repository.AuthRepository
@@ -10,6 +11,8 @@ import com.juhao.murexide.data.UserProfileData
 import com.juhao.murexide.utils.QiniuUploader
 import android.content.Context
 import android.net.Uri
+import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.datastore.UserAccount
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -28,6 +31,7 @@ sealed class MineUiState {
 }
 
 class MineViewModel(
+    application: Application,
     private val token: String,
     private val repository: AuthRepository = AuthRepository(),
     private val detailRepository: ConversationDetailRepository = ConversationDetailRepository()
@@ -38,6 +42,8 @@ class MineViewModel(
 
     private val _eventFlow = MutableSharedFlow<MineEvent>()
     val eventFlow: SharedFlow<MineEvent> = _eventFlow
+
+    private val accountStorage = AccountStorage(application)
 
     sealed class MineEvent {
         data class ShowToast(val message: String) : MineEvent()
@@ -57,6 +63,13 @@ class MineViewModel(
 
                 detailRepository.getDetail(token, userInfo.id, 1).onSuccess { detail ->
                     val current = _uiState.value
+                    accountStorage.validateAccount(
+                        UserAccount(
+                            username = detail.name,
+                            avatar = detail.avatarUrl,
+                            id = detail.chatId
+                        )
+                    )
                     if (current is MineUiState.Success) {
                         _uiState.value = current.copy(
                             onlineDay = detail.onlineDay,

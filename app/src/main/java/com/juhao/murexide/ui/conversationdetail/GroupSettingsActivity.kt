@@ -9,7 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.runBlocking
 
@@ -22,8 +22,8 @@ class GroupSettingsActivity : ComponentActivity() {
         val groupName = intent.getStringExtra("group_name") ?: ""
         val groupAvatar = intent.getStringExtra("group_avatar") ?: ""
 
-        val tokenStorage = TokenStorage(this)
-        val token = runBlocking { tokenStorage.getToken() } ?: return finish()
+        val accountStorage = AccountStorage(this)
+        val token = runBlocking { accountStorage.getCurrentToken() } ?: return finish()
 
         setContent {
             MurexideTheme {

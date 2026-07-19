@@ -37,7 +37,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.contact.ContactListScreen
 import com.juhao.murexide.ui.conversation.ConversationListScreen
@@ -46,6 +45,7 @@ import com.juhao.murexide.ui.mine.MineScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
 import com.juhao.murexide.ui.community.CommunityScreen
@@ -71,10 +71,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val tokenStorage = TokenStorage(this)
+        val accountStorage = AccountStorage(this)
 
         lifecycleScope.launch {
-            val token = tokenStorage.getToken()
+            val token = accountStorage.getCurrentToken()
             if (token == null) {
                 LoginActivity.start(this@MainActivity)
                 finish()

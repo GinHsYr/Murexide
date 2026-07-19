@@ -7,7 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.login.LoginActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
@@ -17,7 +17,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val tokenStorage = TokenStorage(this)
+        val accountStorage = AccountStorage(this)
 
         setContent {
             MurexideTheme {
@@ -25,7 +25,7 @@ class SettingsActivity : ComponentActivity() {
                     onBack = { finish() },
                     onLogout = {
                         lifecycleScope.launch {
-                            tokenStorage.clearToken()
+                            accountStorage.removeCurrentUser()
                             Toast.makeText(this@SettingsActivity, "已登出", Toast.LENGTH_SHORT).show()
                             val intent = Intent(this@SettingsActivity, LoginActivity::class.java)
                             intent.flags =

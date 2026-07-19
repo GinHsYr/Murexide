@@ -3,7 +3,7 @@ package com.juhao.murexide.ui.community.myposts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.PostItem
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.repository.CommunityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MyPostsViewModel(
-    private val tokenStorage: TokenStorage
+    private val accountStorage: AccountStorage
 ) : ViewModel() {
 
     private var repository: CommunityRepository? = null
@@ -23,7 +23,7 @@ class MyPostsViewModel(
 
     init {
         viewModelScope.launch {
-            val token = tokenStorage.getToken()
+            val token = accountStorage.getCurrentToken()
             if (token == null) {
                 _uiState.update { it.copy(isLoading = false, error = "请先登录") }
                 return@launch

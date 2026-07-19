@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.GroupMember
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.repository.GroupRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +44,7 @@ class GroupMemberViewModel(
 
     private val repository = GroupMemberRepository()
     private val groupRepository = GroupRepository()
-    private val tokenStorage = TokenStorage(context)
+    private val accountStorage = AccountStorage(context)
 
     private val _uiState = MutableStateFlow(
         GroupMemberUiState(
@@ -322,7 +322,7 @@ class GroupMemberViewModel(
     }
 
     private suspend fun getToken(): String {
-        return tokenStorage.getToken() ?: ""
+        return accountStorage.getCurrentToken() ?: ""
     }
 
     private fun showToast(message: String) {

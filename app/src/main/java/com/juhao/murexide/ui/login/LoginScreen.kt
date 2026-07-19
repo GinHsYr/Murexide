@@ -1,5 +1,6 @@
 package com.juhao.murexide.ui.login
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.R
+import com.juhao.murexide.ui.settings.switchAccount.SwitchAccountActivity
 
 private enum class LoginMode { PHONE, EMAIL }
 
@@ -29,9 +31,10 @@ fun LoginScreen(
     onLoginSuccess: (String) -> Unit,
     onTokenLogin: () -> Unit,
     viewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory(LocalContext.current.applicationContext as android.app.Application)
+        factory = LoginViewModelFactory()
     )
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val phoneState by viewModel.phoneState.collectAsState()
 
@@ -106,6 +109,14 @@ fun LoginScreen(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.End
         ) {
+            TextButton(onClick = {
+                val intent = Intent(context, SwitchAccountActivity::class.java).apply {
+                    putExtra("chooseMode", true)
+                }
+                context.startActivity(intent)
+            }) {
+                Text("现有账号")
+            }
             TextButton(onClick = onTokenLogin) {
                 Text("Token登录")
             }

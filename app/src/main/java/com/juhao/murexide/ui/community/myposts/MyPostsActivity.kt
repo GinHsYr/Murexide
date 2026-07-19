@@ -9,7 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.theme.MurexideTheme
 
 class MyPostsActivity : ComponentActivity() {
@@ -21,7 +21,7 @@ class MyPostsActivity : ComponentActivity() {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return MyPostsViewModel(TokenStorage(this@MyPostsActivity)) as T
+                    return MyPostsViewModel(AccountStorage(this@MyPostsActivity)) as T
                 }
             }
         }

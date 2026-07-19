@@ -9,11 +9,15 @@ import com.juhao.murexide.ui.theme.MurexideTheme
 class SwitchAccountActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val isChooseMode = intent.getBooleanExtra("chooseMode", false)
+
         enableEdgeToEdge()
         setContent {
             MurexideTheme {
                 Greeting(
-                    onBack = { finish() }
+                    onBack = { finish() },
+                    isChooseMode = isChooseMode,
                 )
             }
         }

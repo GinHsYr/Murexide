@@ -19,8 +19,8 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.SettingsStorage
-import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.AuthRepository
 import com.juhao.murexide.ui.theme.UiCache
@@ -161,11 +161,11 @@ class MyApplication : Application(), ImageLoaderFactory {
     }
 
     private fun initWebSocket() {
-        val tokenStorage = TokenStorage(this)
+        val accountStorage = AccountStorage(this)
         val authRepository = AuthRepository()
         
         applicationScope.launch {
-            tokenStorage.tokenFlow.collect { token ->
+            accountStorage.currentTokenFlow.collect { token ->
                 if (token != null) {
                     Log.d("MyApplication", "Token found, fetching user info for WS")
                     authRepository.getUserInfo(token).onSuccess { userInfo ->

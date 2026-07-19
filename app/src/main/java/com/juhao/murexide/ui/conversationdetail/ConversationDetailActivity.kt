@@ -10,7 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.runBlocking
@@ -32,8 +32,8 @@ class ConversationDetailActivity : ComponentActivity() {
         val chatName = intent.getStringExtra("chat_name") ?: ""
         val chatAvatar = intent.getStringExtra("chat_avatar") ?: ""
 
-        val tokenStorage = TokenStorage(this)
-        val token = runBlocking { tokenStorage.getToken() }
+        val accountStorage = AccountStorage(this)
+        val token = runBlocking { accountStorage.getCurrentToken() }
         if (token == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show()
             return finish()

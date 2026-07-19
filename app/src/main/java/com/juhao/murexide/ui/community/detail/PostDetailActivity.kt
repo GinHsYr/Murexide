@@ -10,7 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.theme.MurexideTheme
 
 class PostDetailActivity : ComponentActivity() {
@@ -30,7 +30,7 @@ class PostDetailActivity : ComponentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return PostDetailViewModel(
-                        tokenStorage = TokenStorage(this@PostDetailActivity),
+                        accountStorage = AccountStorage(this@PostDetailActivity),
                         postId = postId
                     ) as T
                 }

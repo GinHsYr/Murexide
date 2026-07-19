@@ -6,7 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.runBlocking
 
@@ -20,8 +20,8 @@ class ChatActivity : ComponentActivity() {
         val chatName = intent.getStringExtra("chat_name") ?: ""
         val chatAvatar = intent.getStringExtra("chat_avatar") ?: ""
 
-        val tokenStorage = TokenStorage(this)
-        val token = runBlocking { tokenStorage.getToken() } ?: return finish()
+        val accountStorage = AccountStorage(this)
+        val token = runBlocking { accountStorage.getCurrentToken() } ?: return finish()
 
         setContent {
             MurexideTheme {

@@ -1,9 +1,7 @@
 package com.juhao.murexide.ui.login
 
-import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.juhao.murexide.datastore.TokenStorage
 import com.juhao.murexide.repository.AuthRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,11 +29,8 @@ data class PhoneLoginState(
 )
 
 class LoginViewModel(
-    application: Application,
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
-    
-    private val tokenStorage = TokenStorage(application)
     
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState
@@ -48,11 +43,10 @@ class LoginViewModel(
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.value = LoginUiState.Loading
-            
+
             val deviceId = getDeviceId()
-            
+
             repository.login(email, password, deviceId).onSuccess { token ->
-                tokenStorage.saveToken(token)
                 _uiState.value = LoginUiState.Success(token)
             }.onFailure { error ->
                 _uiState.value = LoginUiState.Error(error.message ?: "登录失败")
@@ -111,7 +105,6 @@ class LoginViewModel(
             _phoneState.update { it.copy(isLoggingIn = true, error = null) }
             val deviceId = getDeviceId()
             repository.phoneLogin(mobile, smsCode, deviceId).onSuccess { token ->
-                tokenStorage.saveToken(token)
                 _phoneState.update { it.copy(isLoggingIn = false) }
                 _uiState.value = LoginUiState.Success(token)
             }.onFailure { error ->

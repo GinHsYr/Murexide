@@ -24,9 +24,10 @@ fun EditProfileScreen(
     onBackClick: () -> Unit,
     viewModel: MineViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            val application = LocalContext.current.applicationContext
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return MineViewModel(token) as T
+                return MineViewModel(application as android.app.Application, token) as T
             }
         }
     )

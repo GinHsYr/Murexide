@@ -2,7 +2,7 @@ package com.juhao.murexide.ui.community.ba
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.juhao.murexide.datastore.TokenStorage
+import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.repository.CommunityRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class CreatePostViewModel(
-    private val tokenStorage: TokenStorage,
+    private val accountStorage: AccountStorage,
     private val baId: Int
 ) : ViewModel() {
 
@@ -22,7 +22,7 @@ class CreatePostViewModel(
 
     init {
         viewModelScope.launch {
-            val token = tokenStorage.getToken()
+            val token = accountStorage.getCurrentToken()
             if (token == null) {
                 _uiState.update { it.copy(error = "请先登录") }
             } else {
