@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.settings.switchAccount
 
+import android.content.Intent
+import android.app.Activity
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.juhao.murexide.MainActivity
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
 import com.juhao.murexide.ui.components.Avatar
@@ -120,10 +123,11 @@ fun Greeting(
                     onSwitchAccount = {
                         scope.launch {
                             accountStorage.switchAccount(it.id)
-                            Toast.makeText(context, "切换成功，重启生效", Toast.LENGTH_LONG).show()
-                        }
-                        if (isChooseMode) {
-                            onBack()
+                            Toast.makeText(context, "切换成功", Toast.LENGTH_LONG).show()
+                            val intent = Intent(context, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            context.startActivity(intent)
                         }
                     },
                     onRemoveAccount = {
@@ -191,7 +195,7 @@ fun AccountRow(
                     Spacer(Modifier.width(2.dp))
                     if (!account.isValidated) {
                         Text(
-                            "账号未验证",
+                            "账号未验证，切换至此账号验证",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
