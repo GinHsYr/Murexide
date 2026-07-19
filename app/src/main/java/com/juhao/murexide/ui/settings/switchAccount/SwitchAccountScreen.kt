@@ -1,7 +1,6 @@
 package com.juhao.murexide.ui.settings.switchAccount
 
 import android.content.Intent
-import android.app.Activity
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
