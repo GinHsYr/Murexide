@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.data.MessageButton
@@ -88,10 +89,6 @@ fun MessageBubble(
     anonymousNameProvider: ((String) -> String)? = null,
     roleLabel: String? = null
 ) {
-    LaunchedEffect(Unit) {
-        showMenuChanged(null)
-    }
-
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
@@ -852,7 +849,8 @@ fun MessageBubble(
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenuChanged(null) },
-                        modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd)
+                        modifier = Modifier.align(if (isMine) Alignment.TopStart else Alignment.TopEnd),
+                        properties = PopupProperties(focusable = false)
                     ) {
                         if (message.content.isNotBlank()) {
                             DropdownMenuItem(

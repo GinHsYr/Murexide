@@ -32,6 +32,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
@@ -40,6 +41,8 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +63,7 @@ import com.juhao.murexide.ui.chat.components.GroupMemberSheet
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.MessageItem
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -79,8 +83,15 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 
+private enum class ChatInputPanel {
+    Emoji,
+    Instruction
+}
+
+private val DefaultInputPanelHeight = 280.dp
+
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
-    ExperimentalHazeMaterialsApi::class
+    ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class
 )
 @Composable
 fun ChatScreen(
@@ -101,6 +112,95 @@ fun ChatScreen(
     val expressions by viewModel.stickerPanel.collectAsState()
     val instructionPanel = uiState.instructionPanel
     val instructionForm by viewModel.instructionForm.collectAsState()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val inputFocusRequester = remember { FocusRequester() }
+
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+    val imeTargetBottomPx = WindowInsets.imeAnimationTarget.getBottom(density)
+    var pendingInputPanel by remember { mutableStateOf<ChatInputPanel?>(null) }
+    var isReturningToKeyboard by remember { mutableStateOf(false) }
+    var inputPanelHeight by remember { mutableStateOf(DefaultInputPanelHeight) }
+
+    fun showInputPanel(panel: ChatInputPanel) {
+        when (panel) {
+            ChatInputPanel.Emoji -> {
+                if (!expressions.isVisible) viewModel.toggleStickerPanel()
+            }
+            ChatInputPanel.Instruction -> {
+                if (!instructionPanel.isVisible) viewModel.toggleInstructionPanel()
+            }
+        }
+    }
+
+    fun returnToKeyboard() {
+        pendingInputPanel = null
+        isReturningToKeyboard = true
+        viewModel.hideStickerPanel()
+        viewModel.hideInstructionPanel()
+    }
+
+    fun requestInputPanel(panel: ChatInputPanel) {
+        val isCurrentPanel = when (panel) {
+            ChatInputPanel.Emoji -> expressions.isVisible
+            ChatInputPanel.Instruction -> instructionPanel.isVisible
+        }
+
+        if (isCurrentPanel || pendingInputPanel == panel) {
+            returnToKeyboard()
+            return
+        }
+
+        val keyboardHeightPx = maxOf(imeBottomPx, imeTargetBottomPx)
+        if (keyboardHeightPx > 0) {
+            inputPanelHeight = with(density) { keyboardHeightPx.toDp() }
+        }
+
+        isReturningToKeyboard = false
+        pendingInputPanel = panel
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
+
+    LaunchedEffect(
+        pendingInputPanel,
+        imeBottomPx,
+        imeTargetBottomPx,
+        expressions.isVisible,
+        instructionPanel.isVisible
+    ) {
+        val panel = pendingInputPanel ?: return@LaunchedEffect
+        if (imeBottomPx != 0 || imeTargetBottomPx != 0) return@LaunchedEffect
+
+        val isPanelVisible = when (panel) {
+            ChatInputPanel.Emoji -> expressions.isVisible
+            ChatInputPanel.Instruction -> instructionPanel.isVisible
+        }
+        if (isPanelVisible) {
+            pendingInputPanel = null
+        } else {
+            showInputPanel(panel)
+        }
+    }
+
+    LaunchedEffect(isReturningToKeyboard) {
+        if (!isReturningToKeyboard) return@LaunchedEffect
+        inputFocusRequester.requestFocus()
+        keyboardController?.show()
+        delay(1_000)
+        isReturningToKeyboard = false
+    }
+
+    LaunchedEffect(isReturningToKeyboard, imeBottomPx, imeTargetBottomPx) {
+        if (
+            isReturningToKeyboard &&
+            imeTargetBottomPx > 0 &&
+            imeBottomPx >= imeTargetBottomPx
+        ) {
+            inputPanelHeight = with(density) { imeTargetBottomPx.toDp() }
+            isReturningToKeyboard = false
+        }
+    }
 
     var showMenuMsgId by remember { mutableStateOf<String?>(null) }
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -165,6 +265,10 @@ fun ChatScreen(
     
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
+    }
+
+    BackHandler(enabled = !selectionMode && showMenuMsgId != null) {
+        showMenuMsgId = null
     }
     
     val displayItems by remember {
@@ -747,7 +851,7 @@ fun ChatScreen(
                         }
                     } else {
                         Column(
-                            modifier = Modifier.imePadding()
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             if (uiState.isUploading) {
                                 UploadProgressBar(
@@ -906,67 +1010,89 @@ fun ChatScreen(
                                 onToggleSendType = { type ->
                                     viewModel.toggleSendType(type)
                                 },
-                                isEmojiPanelVisible = expressions.isVisible,
-                                onEmojiClick = {
-                                    if (expressions.isVisible) {
-                                        viewModel.hideStickerPanel()
-                                    } else {
-                                        viewModel.toggleStickerPanel()
-                                    }
+                                isEmojiPanelVisible =
+                                    expressions.isVisible ||
+                                        pendingInputPanel == ChatInputPanel.Emoji,
+                                onEmojiClick = { requestInputPanel(ChatInputPanel.Emoji) },
+                                isInstructionPanelVisible =
+                                    instructionPanel.isVisible ||
+                                        pendingInputPanel == ChatInputPanel.Instruction,
+                                onInstructionClick = {
+                                    requestInputPanel(ChatInputPanel.Instruction)
                                 },
-                                isInstructionPanelVisible = instructionPanel.isVisible,
-                                onInstructionClick = { viewModel.toggleInstructionPanel() },
                                 mentionNames = uiState.mentions.keys,
                                 onMentionTriggered = { pos ->
                                     if (chatType == 2) {
                                         viewModel.showMentionPicker(pos)
                                     }
+                                },
+                                focusRequester = inputFocusRequester,
+                                onInputFocused = {
+                                    if (
+                                        !isReturningToKeyboard &&
+                                        (pendingInputPanel != null ||
+                                            expressions.isVisible ||
+                                            instructionPanel.isVisible)
+                                    ) {
+                                        returnToKeyboard()
+                                    }
                                 }
                             )
 
-                            BackHandler(enabled = expressions.isVisible) {
+                            BackHandler(
+                                enabled = pendingInputPanel != null ||
+                                    expressions.isVisible ||
+                                    instructionPanel.isVisible
+                            ) {
+                                pendingInputPanel = null
                                 viewModel.hideStickerPanel()
-                            }
-
-                            BackHandler(enabled = instructionPanel.isVisible) {
                                 viewModel.hideInstructionPanel()
                             }
 
-                            AnimatedVisibility(
-                                visible = expressions.isVisible,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                EmojiPanel(
-                                    expressions = expressions.expressions,
-                                    isLoading = expressions.isLoading,
-                                    onExpressionClick = { expression ->
-                                        viewModel.sendExpression(expression)
-                                    },
-                                    onStickerItemClick = { stickerItem ->
-                                        viewModel.sendStickerItem(stickerItem)
-                                    },
-                                    stickerPacks = expressions.stickerPacks,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(280.dp)
-                                )
-                            }
-
-                            AnimatedVisibility(
-                                visible = instructionPanel.isVisible,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                InstructionPanel(
-                                    bots = instructionPanel.bots,
-                                    instructions = instructionPanel.instructions,
-                                    isLoading = instructionPanel.isLoading,
-                                    onInstructionClick = { viewModel.onInstructionClick(it) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(280.dp)
-                                )
+                            when {
+                                pendingInputPanel != null || isReturningToKeyboard -> {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(inputPanelHeight)
+                                    )
+                                }
+                                expressions.isVisible -> {
+                                    EmojiPanel(
+                                        expressions = expressions.expressions,
+                                        isLoading = expressions.isLoading,
+                                        onExpressionClick = { expression ->
+                                            viewModel.sendExpression(expression)
+                                        },
+                                        onStickerItemClick = { stickerItem ->
+                                            viewModel.sendStickerItem(stickerItem)
+                                        },
+                                        stickerPacks = expressions.stickerPacks,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(inputPanelHeight)
+                                    )
+                                }
+                                instructionPanel.isVisible -> {
+                                    InstructionPanel(
+                                        bots = instructionPanel.bots,
+                                        instructions = instructionPanel.instructions,
+                                        isLoading = instructionPanel.isLoading,
+                                        onInstructionClick = { viewModel.onInstructionClick(it) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(inputPanelHeight)
+                                    )
+                                }
+                                else -> {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .windowInsetsBottomHeight(
+                                                WindowInsets.navigationBars.union(WindowInsets.ime)
+                                            )
+                                    )
+                                }
                             }
                         }
                     }
