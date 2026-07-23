@@ -20,7 +20,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.clickable
 import com.juhao.murexide.repository.UserInfo
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.UiState
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,7 +70,7 @@ fun MineScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            StyledTopBar(
+            TopAppBar(
                 title = { Text("我的") },
                 scrollBehavior = scrollBehavior,
                 actions = {
