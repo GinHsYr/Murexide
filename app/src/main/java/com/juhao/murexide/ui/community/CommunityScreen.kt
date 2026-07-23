@@ -69,7 +69,7 @@ fun CommunityScreen(
                         }
                     }
                 )
-                SecondaryTabRow(selectedTabIndex = selectedIndex) {
+                PrimaryTabRow(selectedTabIndex = selectedIndex) {
                     tabs.forEachIndexed { index, (tab, label) ->
                         Tab(
                             selected = selectedIndex == index,

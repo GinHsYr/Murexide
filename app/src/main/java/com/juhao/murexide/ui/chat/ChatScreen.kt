@@ -527,6 +527,9 @@ fun ChatScreen(
                                 containerColor = Color.Transparent
                             ),
                             actions = {
+                                IconButton(onClick = { viewModel.recallSelectedMessages() }) {
+                                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = "撤回")
+                                }
                                 if (selectedMessages.size == 1) {
                                     val message = selectedMessages.firstOrNull()
                                     message?.let { 
@@ -538,15 +541,7 @@ fun ChatScreen(
                                                 Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
                                                 viewModel.exitSelectionMode()
                                             }) {
-                                                Icon(Icons.Rounded.ContentCopy, contentDescription = "引用")
-                                            }
-                                        }
-                                        if (!it.isRecalled) {
-                                            IconButton(onClick = { 
-                                                viewModel.setReplyTo(it)
-                                                viewModel.exitSelectionMode()
-                                            }) {
-                                                Icon(Icons.Rounded.FormatQuote, contentDescription = "引用")
+                                                Icon(Icons.Rounded.ContentCopy, contentDescription = "复制")
                                             }
                                         }
                                     }
@@ -825,16 +820,22 @@ fun ChatScreen(
                                 .navigationBarsPadding(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Button(
-                                onClick = { viewModel.recallSelectedMessages() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            ) {
-                                Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null, tint = MaterialTheme.colorScheme.onError)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("撤回", color = MaterialTheme.colorScheme.onError)
+                            val message = selectedMessages.firstOrNull()
+                            message?.let { 
+                                Button(
+                                    onClick = { 
+                                        viewModel.setReplyTo(it)
+                                        viewModel.exitSelectionMode()
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = selectedMessages.size == 1 && !it.isRecalled
+                                ) {
+                                    Icon(Icons.Rounded.FormatQuote, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("引用")
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
                             TextButton(
                                 onClick = { /* 转发选中消息 */ },
                                 modifier = Modifier.weight(1f)

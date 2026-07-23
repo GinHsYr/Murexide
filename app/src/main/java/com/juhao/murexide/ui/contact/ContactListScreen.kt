@@ -75,7 +75,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -207,7 +206,6 @@ private fun ContactDirectoryScreen(
     onContactClick: (ContactItem) -> Unit
 ) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val friendListState = rememberLazyListState()
     val groupListState = rememberLazyListState()
     val botListState = rememberLazyListState()
@@ -219,7 +217,6 @@ private fun ContactDirectoryScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
@@ -247,7 +244,6 @@ private fun ContactDirectoryScreen(
                             }
                         }
                     },
-                    scrollBehavior = scrollBehavior
                 )
 
                 PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
