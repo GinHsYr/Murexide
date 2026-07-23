@@ -48,7 +48,8 @@ fun MineScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     val uiState by viewModel.uiState.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val avatarLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -294,14 +295,12 @@ private fun ProfileCard(
         }.format(userInfo.coin)
     }
 
-    ElevatedCard(
+    Surface(
         onClick = onEditProfileClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shadowElevation = 0.dp
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
