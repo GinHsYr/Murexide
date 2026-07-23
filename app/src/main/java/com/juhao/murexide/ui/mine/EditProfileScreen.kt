@@ -5,7 +5,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -13,6 +12,7 @@ import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.Cake
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Person
@@ -26,8 +26,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,6 +57,9 @@ fun EditProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
+    val regions = remember(context.applicationContext) {
+        ChinaRegionData.load(context.applicationContext)
+    }
 
     var nickname by rememberSaveable { mutableStateOf("") }
     var introduction by rememberSaveable { mutableStateOf("") }
@@ -69,6 +70,7 @@ fun EditProfileScreen(
     var district by rememberSaveable { mutableStateOf("") }
     var locationCode by rememberSaveable { mutableStateOf("") }
     var showBirthdayPicker by rememberSaveable { mutableStateOf(false) }
+    var showRegionPicker by rememberSaveable { mutableStateOf(false) }
     var initializedUserId by rememberSaveable { mutableStateOf<String?>(null) }
     var initializedProfileVersion by rememberSaveable { mutableLongStateOf(Long.MIN_VALUE) }
 
@@ -231,13 +233,10 @@ fun EditProfileScreen(
                     birthday = birthday,
                     onBirthdayClick = { showBirthdayPicker = true },
                     province = province,
-                    onProvinceChange = { province = it },
                     city = city,
-                    onCityChange = { city = it },
                     district = district,
-                    onDistrictChange = { district = it },
                     locationCode = locationCode,
-                    onLocationCodeChange = { locationCode = it },
+                    onLocationClick = { showRegionPicker = true },
                     enabled = !state.isSavingProfile,
                     scrollState = scrollState,
                     paddingValues = paddingValues
@@ -280,6 +279,24 @@ fun EditProfileScreen(
             DatePicker(state = datePickerState)
         }
     }
+
+    if (showRegionPicker) {
+        RegionPickerBottomSheet(
+            regions = regions,
+            provinceName = province,
+            cityName = city,
+            districtName = district,
+            locationCode = locationCode,
+            onDismissRequest = { showRegionPicker = false },
+            onConfirm = { selectedProvince, selectedCity, selectedDistrict, code ->
+                province = selectedProvince
+                city = selectedCity
+                district = selectedDistrict
+                locationCode = code
+                showRegionPicker = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -293,13 +310,10 @@ private fun EditProfileContent(
     birthday: Long,
     onBirthdayClick: () -> Unit,
     province: String,
-    onProvinceChange: (String) -> Unit,
     city: String,
-    onCityChange: (String) -> Unit,
     district: String,
-    onDistrictChange: (String) -> Unit,
     locationCode: String,
-    onLocationCodeChange: (String) -> Unit,
+    onLocationClick: () -> Unit,
     enabled: Boolean,
     scrollState: ScrollState,
     paddingValues: PaddingValues
@@ -410,58 +424,23 @@ private fun EditProfileContent(
         ProfileSectionCard(
             icon = Icons.Rounded.LocationOn,
             title = "所在地",
-            description = "按行政区划填写省、市、区县和地区代码"
+            description = "选择你所在的省、市和区县"
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ProfileTextField(
-                    value = province,
-                    onValueChange = onProvinceChange,
-                    label = "省份",
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f)
-                )
-                ProfileTextField(
-                    value = city,
-                    onValueChange = onCityChange,
-                    label = "城市",
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ProfileTextField(
-                    value = district,
-                    onValueChange = onDistrictChange,
-                    label = "区县",
-                    enabled = enabled,
-                    modifier = Modifier.weight(1f)
-                )
-                ProfileTextField(
-                    value = locationCode,
-                    onValueChange = {
-                        onLocationCodeChange(it.filter { char -> char.isDigit() }.take(6))
-                    },
-                    label = "地区代码",
-                    enabled = enabled,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Text(
-                text = "地区代码为 6 位行政区划码，例如东城区为 110101。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ProfilePickerField(
+                icon = Icons.Rounded.LocationOn,
+                label = "所在地",
+                value = if (locationCode.isBlank()) {
+                    "请选择所在地"
+                } else {
+                    listOf(province, city, district)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · ")
+                        .ifBlank { "请选择所在地" }
+                },
+                trailingIcon = Icons.Rounded.ChevronRight,
+                trailingContentDescription = "选择所在地",
+                onClick = onLocationClick,
+                enabled = enabled,
             )
         }
 
@@ -528,7 +507,9 @@ private fun ProfilePickerField(
     label: String,
     value: String,
     onClick: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
+    trailingIcon: ImageVector = Icons.Rounded.CalendarMonth,
+    trailingContentDescription: String = "选择$label"
 ) {
     OutlinedCard(
         onClick = onClick,
@@ -560,33 +541,12 @@ private fun ProfilePickerField(
                 )
             }
             Icon(
-                imageVector = Icons.Rounded.CalendarMonth,
-                contentDescription = "选择生日",
+                imageVector = trailingIcon,
+                contentDescription = trailingContentDescription,
                 tint = MaterialTheme.colorScheme.primary
             )
         }
     }
-}
-
-@Composable
-private fun ProfileTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        enabled = enabled,
-        keyboardOptions = keyboardOptions,
-        singleLine = true
-    )
 }
 
 private fun Long.toPickerMillis(): Long? {
