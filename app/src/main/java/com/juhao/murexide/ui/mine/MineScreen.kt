@@ -70,7 +70,7 @@ fun MineScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            StyledTopBar(
                 title = { Text("我的") },
                 scrollBehavior = scrollBehavior,
                 actions = {
