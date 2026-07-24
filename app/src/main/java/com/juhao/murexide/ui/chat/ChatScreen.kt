@@ -52,6 +52,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.imageMessagePreviewItem
+import com.juhao.murexide.ui.components.ImageViewerPagination
 import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.ui.chat.components.MessageBubble
 import com.juhao.murexide.ui.chat.components.BoardPanel
@@ -1231,29 +1232,40 @@ fun ChatScreen(
                             },
                             onImageClick = { msg ->
                                 if (!selectionMode) {
-                                    msg.imageUrl?.let { url ->
-                                        val allImages = uiState.messages
-                                            .filter { !it.isRecalled }
-                                            .mapNotNull { imageMessage ->
-                                                imageMessage.imageUrl
-                                                    ?.takeIf { it.isNotEmpty() }
-                                                    ?.let { imageUrl ->
-                                                        if (imageMessage.contentType == MessageItem.CONTENT_TYPE_IMAGE) {
-                                                            imageMessagePreviewItem(imageUrl)
-                                                        } else {
-                                                            fullImagePreviewItem(imageUrl)
-                                                        }
-                                                    }
+                                    when (msg.contentType) {
+                                        MessageItem.CONTENT_TYPE_IMAGE -> {
+                                            buildChatImageGallery(
+                                                messages = uiState.messages,
+                                                selectedMessageId = msg.msgId
+                                            )?.let { gallery ->
+                                                showImageViewer(
+                                                    context = context,
+                                                    images = gallery.entries.map { entry ->
+                                                        imageMessagePreviewItem(
+                                                            url = entry.url,
+                                                            messageId = entry.messageId,
+                                                            imageId = entry.imageId
+                                                        )
+                                                    },
+                                                    initialIndex = gallery.initialIndex,
+                                                    pagination = ImageViewerPagination(
+                                                        chatId = chatId,
+                                                        chatType = chatType
+                                                    )
+                                                )
                                             }
-                                            .reversed()
-                            
-                                        if (allImages.isNotEmpty()) {
-                                            val index = allImages.indexOfFirst { it.originalUrl == url }
-                                            showImageViewer(
-                                                context = context,
-                                                images = allImages,
-                                                initialIndex = index.coerceAtLeast(0)
-                                            )
+                                        }
+                                        MessageItem.CONTENT_TYPE_STICKER -> {
+                                            // Stickers can still be viewed at full size, but
+                                            // never become pages in the photo gallery.
+                                            (msg.stickerUrl ?: msg.imageUrl)
+                                                ?.takeIf { it.isNotBlank() }
+                                                ?.let { url ->
+                                                    showImageViewer(
+                                                        context = context,
+                                                        images = listOf(fullImagePreviewItem(url))
+                                                    )
+                                                }
                                         }
                                     }
                                 } else {

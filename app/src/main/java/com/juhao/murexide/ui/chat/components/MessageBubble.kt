@@ -535,8 +535,13 @@ fun MessageBubble(
                                                     }
                                                 }
                                             } else {
-                                                message.imageUrl?.let { url ->
-                                                    val isImageMessage = message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                                                val isImageMessage = message.contentType == MessageItem.CONTENT_TYPE_IMAGE
+                                                val imageUrl = if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
+                                                    message.stickerUrl ?: message.imageUrl
+                                                } else {
+                                                    message.imageUrl
+                                                }
+                                                imageUrl?.let { url ->
                                                     val displayUrl = if (isImageMessage) imageThumbnailUrl(url) else url
                                                     var retryCount by remember(url) { mutableIntStateOf(0) }
                                                     var loadState by remember(url, retryCount) { mutableIntStateOf(0) }

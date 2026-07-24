@@ -409,6 +409,7 @@ class WebSocketManager private constructor() {
             quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
             quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
             quoteImageUrl = msg.content?.quote_image_url?.takeIf { it.isNotEmpty() },
+            stickerUrl = msg.content?.sticker_url?.takeIf { it.isNotEmpty() },
             imageUrl = msg.content?.image_url?.takeIf { it.isNotEmpty() },
             imageWidth = msg.content?.width?.takeIf { it > 0 },
             imageHeight = msg.content?.height?.takeIf { it > 0 },

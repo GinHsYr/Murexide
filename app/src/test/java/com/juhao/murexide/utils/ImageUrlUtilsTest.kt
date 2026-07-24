@@ -42,12 +42,18 @@ class ImageUrlUtilsTest {
     @Test
     fun `preview item keeps separate thumbnail and original urls`() {
         val original = "https://chat-img.jwznb.com/photo.jpg"
-        val item = imageMessagePreviewItem(original)
+        val item = imageMessagePreviewItem(
+            url = original,
+            messageId = "message-id",
+            imageId = 42L
+        )
 
         assertEquals(original, item.originalUrl)
         assertEquals(original, item.getImageUrl())
         assertEquals(imageThumbnailUrl(original), item.thumbnailUrl)
         assertEquals(imageThumbnailUrl(original), item.getCoverImageUrl())
+        assertEquals("message-id", item.messageId)
+        assertEquals(42L, item.imageId)
     }
 
     @Test

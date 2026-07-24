@@ -35,14 +35,7 @@ class MurexideBigImageHelper : BigImageHelper {
         }
 
         val imageLoader = Coil.imageLoader(context)
-        val displayMetrics = context.resources.displayMetrics
-        val request = ImageRequest.Builder(context)
-            .data(imageUrl)
-            .size(
-                displayMetrics.widthPixels.coerceAtLeast(1),
-                displayMetrics.heightPixels.coerceAtLeast(1)
-            )
-            .allowHardware(false)
+        val request = openImageRequest(context, imageUrl)
             .target(
                 onError = { listener.onLoadImageFailed() },
                 onSuccess = { drawable ->
@@ -55,6 +48,28 @@ class MurexideBigImageHelper : BigImageHelper {
             .build()
         imageLoader.enqueue(request)
     }
+}
+
+/**
+ * Warms Coil's memory/disk cache for a page before OpenImage displays it.
+ * ViewPager2's off-screen page limit only creates adjacent fragments; it does
+ * not reliably keep their full-image requests alive on every Android build.
+ */
+internal fun preloadOpenImage(context: Context, imageUrl: String) {
+    if (imageUrl.isBlank()) return
+    val request = openImageRequest(context.applicationContext, imageUrl).build()
+    Coil.imageLoader(context).enqueue(request)
+}
+
+private fun openImageRequest(context: Context, imageUrl: String): ImageRequest.Builder {
+    val displayMetrics = context.resources.displayMetrics
+    return ImageRequest.Builder(context)
+        .data(imageUrl)
+        .size(
+            displayMetrics.widthPixels.coerceAtLeast(1),
+            displayMetrics.heightPixels.coerceAtLeast(1)
+        )
+        .allowHardware(false)
 }
 
 class MurexideDownloadMediaHelper : DownloadMediaHelper {
