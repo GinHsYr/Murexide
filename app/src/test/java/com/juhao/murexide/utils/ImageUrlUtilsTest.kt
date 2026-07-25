@@ -62,13 +62,19 @@ class ImageUrlUtilsTest {
     fun `video preview item exposes OpenImage video media`() {
         val url = "https://chat-video1.jwznb.com/messages/clip.mp4"
 
-        val item = videoMessagePreviewItem(url)
+        val item = videoMessagePreviewItem(
+            url = url,
+            messageId = "video-message",
+            sequence = 17L
+        )
 
         assertEquals(url, item.originalUrl)
         assertEquals(url, item.getImageUrl())
         assertEquals(url, item.getCoverImageUrl())
         assertEquals(url, item.getVideoUrl())
         assertEquals(MediaType.VIDEO, item.getType())
+        assertEquals("video-message", item.messageId)
+        assertEquals(17L, item.imageId)
     }
 
     @Test

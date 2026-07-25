@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.ClipEntry
@@ -45,6 +47,7 @@ import com.juhao.murexide.data.MessageButton
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.ImageViewerSourceBounds
 import com.juhao.murexide.ui.components.UnifiedHtmlWebView
 import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.MarkdownText
@@ -56,6 +59,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 import androidx.core.graphics.toColorInt
 
 @Composable
@@ -76,7 +80,7 @@ fun MessageBubble(
     showMenu: Boolean = false,
     showMenuMsgId: String? = null,
     showMenuChanged: (String?) -> Unit = {},
-    onImageClick: (MessageItem) -> Unit = {},
+    onImageClick: (MessageItem, ImageViewerSourceBounds?) -> Unit = { _, _ -> },
     onMarkdownImageClick: (String) -> Unit = {},
     onAvatarClick: () -> Unit = {},
     onAvatarLongClick: () -> Unit = {},
@@ -587,6 +591,9 @@ fun MessageBubble(
                                                         bottomStart = if (!isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
                                                         bottomEnd = if (isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp
                                                     )
+                                                    var sourceBounds by remember(message.msgId, url) {
+                                                        mutableStateOf<ImageViewerSourceBounds?>(null)
+                                                    }
 
                                                     Box(
                                                         modifier = Modifier
@@ -603,6 +610,16 @@ fun MessageBubble(
                                                                     Modifier.size(96.dp)
                                                                 }
                                                             )
+                                                            .onGloballyPositioned { coordinates ->
+                                                                val bounds = coordinates.boundsInWindow()
+                                                                sourceBounds = ImageViewerSourceBounds(
+                                                                    left = bounds.left.roundToInt(),
+                                                                    top = bounds.top.roundToInt(),
+                                                                    width = bounds.width.roundToInt(),
+                                                                    height = bounds.height.roundToInt(),
+                                                                    isCropped = isImageMessage || isVideoMessage
+                                                                )
+                                                            }
                                                             .clip(imageShape)
                                                             .background(
                                                                 if (isImageMessage || isVideoMessage) {
@@ -612,7 +629,7 @@ fun MessageBubble(
                                                                 }
                                                             )
                                                             .combinedClickable(
-                                                                onClick = { onImageClick(message) },
+                                                                onClick = { onImageClick(message, sourceBounds) },
                                                                 onLongClick = { onLongPress(message) }
                                                             )
                                                     ) {

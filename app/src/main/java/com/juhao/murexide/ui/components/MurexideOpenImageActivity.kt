@@ -2,6 +2,7 @@ package com.juhao.murexide.ui.components
 
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -9,24 +10,24 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.flyjingfish.openimagelib.OpenImageFragmentStateAdapter
 import com.flyjingfish.openimagelib.StandardOpenImageActivity
-import com.juhao.murexide.data.ConversationImage
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.repository.MessageRepository
+import com.juhao.murexide.ui.chat.ChatMediaGalleryEntry
+import com.juhao.murexide.ui.chat.ChatMediaKind
+import com.juhao.murexide.ui.chat.buildEarlierChatMediaPage
 import kotlinx.coroutines.launch
 
-/** OpenImage activity with chat image pagination and immersive system bars. */
+/** OpenImage activity with mixed chat-media pagination and immersive system bars. */
 class MurexideOpenImageActivity : StandardOpenImageActivity() {
     private val viewerOptions by lazy(LazyThreadSafetyMode.NONE) {
         intent.getBundleExtra(EXTRA_VIEWER_OPTIONS)
     }
-    private val images by lazy(LazyThreadSafetyMode.NONE) {
-        val urls = viewerOptions?.getStringArrayList(EXTRA_IMAGE_URLS).orEmpty()
-        val messageIds = viewerOptions?.getStringArrayList(EXTRA_IMAGE_MESSAGE_IDS).orEmpty()
-        val imageIds = viewerOptions?.getLongArray(EXTRA_IMAGE_IDS) ?: longArrayOf()
+    private val media by lazy(LazyThreadSafetyMode.NONE) {
+        val urls = viewerOptions?.getStringArrayList(EXTRA_MEDIA_URLS).orEmpty()
+        val messageIds = viewerOptions?.getStringArrayList(EXTRA_MEDIA_MESSAGE_IDS).orEmpty()
         urls.mapIndexed { index, url ->
-            ViewerImage(
+            ViewerMedia(
                 messageId = messageIds.getOrNull(index)?.takeIf { it.isNotBlank() },
-                imageId = imageIds.getOrNull(index)?.takeIf { it != 0L },
                 url = url
             )
         }.toMutableList()
@@ -38,28 +39,29 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
         viewerOptions?.getInt(EXTRA_CHAT_TYPE, 0) ?: 0
     }
     private val knownMessageIds by lazy(LazyThreadSafetyMode.NONE) {
-        images.mapNotNullTo(mutableSetOf()) { it.messageId }
+        media.mapNotNullTo(mutableSetOf()) { it.messageId }
     }
     private val accountStorage by lazy(LazyThreadSafetyMode.NONE) {
         AccountStorage(applicationContext)
     }
     private val messageRepository = MessageRepository()
     private val preloadedUrls = mutableSetOf<String>()
-    private var isLoadingEarlierImages = false
-    private var isLoadingLatestImages = false
-    private var hasEarlierImages = true
-    private var hasLatestImages = true
+    private var earlierAnchorMessageId: String? = null
+    private var isLoadingEarlierMedia = false
+    private var hasEarlierMedia = true
     private var callbackRegistered = false
+    private var shareTransitionFinished = false
+    private val shareTransitionFallback = Runnable { onShareTransitionEnd() }
 
     private val pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
         override fun onPageSelected(position: Int) {
             preloadAround(position)
-            maybeLoadMore(position)
+            maybeLoadEarlier(position)
         }
 
         override fun onPageScrollStateChanged(state: Int) {
             if (state == ViewPager2.SCROLL_STATE_IDLE) {
-                maybeLoadMore(viewPager2.currentItem)
+                maybeLoadEarlier(viewPager2.currentItem)
             }
         }
     }
@@ -68,19 +70,38 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
         super.onCreate(savedInstanceState)
         if (isFinishing) return
 
-        enterImmersiveMode()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (canFragmentBack()) {
+                    close(false)
+                }
+            }
+        })
+
+        earlierAnchorMessageId = media.firstNotNullOfOrNull(ViewerMedia::messageId)
 
         viewPager2.registerOnPageChangeCallback(pageChangeCallback)
         callbackRegistered = true
         preloadAround(viewPager2.currentItem)
-        viewPager2.post { maybeLoadMore(viewPager2.currentItem) }
+        viewPager2.post { maybeLoadEarlier(viewPager2.currentItem) }
+        if (!shareTransitionFinished) {
+            viewPager2.postDelayed(shareTransitionFallback, TRANSITION_FALLBACK_DELAY_MS)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && !isFinishing) {
+        if (hasFocus && shareTransitionFinished && !isFinishing) {
             enterImmersiveMode()
         }
+    }
+
+    override fun onShareTransitionEnd() {
+        if (shareTransitionFinished) return
+        shareTransitionFinished = true
+        viewPager2.removeCallbacks(shareTransitionFallback)
+        super.onShareTransitionEnd()
+        enterImmersiveMode()
     }
 
     private fun enterImmersiveMode() {
@@ -96,145 +117,131 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
 
     private fun preloadAround(position: Int) {
         for (index in (position - PRELOAD_RADIUS)..(position + PRELOAD_RADIUS)) {
-            val url = images.getOrNull(index)?.url ?: continue
+            val url = media.getOrNull(index)?.url ?: continue
             if (preloadedUrls.add(url)) {
                 preloadOpenImage(applicationContext, url)
             }
         }
     }
 
-    private fun maybeLoadMore(position: Int) {
-        if (!paginationEnabled || images.isEmpty()) return
-        if (position <= LOAD_THRESHOLD && hasEarlierImages && !isLoadingEarlierImages) {
-            loadPage(PageDirection.EARLIER)
-        }
-        if (
-            position >= images.lastIndex - LOAD_THRESHOLD &&
-            hasLatestImages &&
-            !isLoadingLatestImages
-        ) {
-            loadPage(PageDirection.LATEST)
+    private fun maybeLoadEarlier(position: Int) {
+        if (!paginationEnabled || media.isEmpty()) return
+        if (position <= LOAD_THRESHOLD && hasEarlierMedia && !isLoadingEarlierMedia) {
+            loadEarlierPage()
         }
     }
 
-    private fun loadPage(direction: PageDirection) {
-        val anchor = when (direction) {
-            PageDirection.EARLIER -> images.first()
-            PageDirection.LATEST -> images.last()
-        }
-        val anchorId = anchor.imageId ?: run {
-            markComplete(direction)
+    private fun loadEarlierPage() {
+        val anchorId = earlierAnchorMessageId ?: run {
+            hasEarlierMedia = false
             return
         }
 
-        setLoading(direction, true)
+        isLoadingEarlierMedia = true
         lifecycleScope.launch {
+            var continuePaging = false
             try {
-                val token = accountStorage.getCurrentToken() ?: return@launch
-                messageRepository.getImageMessageList(
+                val token = accountStorage.getCurrentToken() ?: run {
+                    hasEarlierMedia = false
+                    return@launch
+                }
+                messageRepository.getMessageList(
                     token = token,
                     chatId = chatId,
                     chatType = chatType,
-                    imageId = anchorId,
-                    earlierQuantities = if (direction == PageDirection.EARLIER) PAGE_SIZE else 0,
-                    latestQuantities = if (direction == PageDirection.LATEST) PAGE_SIZE else 0
+                    msgId = anchorId
                 ).onSuccess { page ->
-                    addPage(direction, page)
+                    if (page.isEmpty()) {
+                        hasEarlierMedia = false
+                        return@onSuccess
+                    }
+
+                    val mediaPage = buildEarlierChatMediaPage(
+                        messages = page,
+                        knownMessageIds = knownMessageIds,
+                        currentAnchorMessageId = anchorId,
+                        pageSize = PAGE_SIZE
+                    )
+                    earlierAnchorMessageId = mediaPage.nextAnchorMessageId
+                    val addedCount = addEarlierPage(mediaPage.entries)
+                    hasEarlierMedia = mediaPage.hasMoreMessages
+                    continuePaging = addedCount == 0 && mediaPage.shouldContinueLoading
                 }.onFailure { error ->
-                    Log.w(TAG, "Failed to load $direction image page", error)
+                    Log.w(TAG, "Failed to load earlier media messages", error)
                 }
             } finally {
-                setLoading(direction, false)
-                viewPager2.post { maybeLoadMore(viewPager2.currentItem) }
+                isLoadingEarlierMedia = false
+                if (continuePaging && !isFinishing) {
+                    viewPager2.postDelayed(
+                        { maybeLoadEarlier(viewPager2.currentItem) },
+                        EMPTY_MEDIA_PAGE_DELAY_MS
+                    )
+                }
             }
         }
     }
 
-    private fun addPage(direction: PageDirection, page: List<ConversationImage>) {
-        val adapter = viewPager2.adapter as? OpenImageFragmentStateAdapter ?: return
-        val newImages = page.filter { image ->
-            image.messageId.isNotBlank() && image.messageId !in knownMessageIds
-        }
-        if (newImages.isEmpty()) {
-            markComplete(direction)
-            return
+    private fun addEarlierPage(newEntries: List<ChatMediaGalleryEntry>): Int {
+        val adapter = viewPager2.adapter as? OpenImageFragmentStateAdapter ?: return -1
+        if (newEntries.isEmpty()) {
+            return 0
         }
 
-        val viewerImages = newImages.map { image ->
-            ViewerImage(
-                messageId = image.messageId,
-                imageId = image.sequence,
-                url = image.url
+        val viewerMedia = newEntries.map { entry ->
+            ViewerMedia(
+                messageId = entry.messageId,
+                url = entry.url
             )
         }
-        val openImageItems = newImages.map { image ->
-            imageMessagePreviewItem(
-                url = image.url,
-                messageId = image.messageId,
-                imageId = image.sequence
-            )
-        }
-        knownMessageIds.addAll(newImages.map { it.messageId })
-
-        when (direction) {
-            PageDirection.EARLIER -> {
-                images.addAll(0, viewerImages)
-                adapter.addFrontData(openImageItems)
-            }
-            PageDirection.LATEST -> {
-                images.addAll(viewerImages)
-                adapter.addData(openImageItems)
+        val openImageItems = newEntries.map { entry ->
+            when (entry.kind) {
+                ChatMediaKind.IMAGE -> imageMessagePreviewItem(
+                    url = entry.url,
+                    messageId = entry.messageId,
+                    imageId = entry.sequence
+                )
+                ChatMediaKind.VIDEO -> videoMessagePreviewItem(
+                    url = entry.url,
+                    messageId = entry.messageId,
+                    sequence = entry.sequence
+                )
             }
         }
-    }
-
-    private fun markComplete(direction: PageDirection) {
-        when (direction) {
-            PageDirection.EARLIER -> hasEarlierImages = false
-            PageDirection.LATEST -> hasLatestImages = false
-        }
-    }
-
-    private fun setLoading(direction: PageDirection, isLoading: Boolean) {
-        when (direction) {
-            PageDirection.EARLIER -> isLoadingEarlierImages = isLoading
-            PageDirection.LATEST -> isLoadingLatestImages = isLoading
-        }
+        knownMessageIds.addAll(newEntries.map { it.messageId })
+        media.addAll(0, viewerMedia)
+        adapter.addFrontData(openImageItems)
+        return newEntries.size
     }
 
     override fun onDestroy() {
         if (callbackRegistered) {
             viewPager2.unregisterOnPageChangeCallback(pageChangeCallback)
         }
+        viewPager2.removeCallbacks(shareTransitionFallback)
         super.onDestroy()
     }
 
     companion object {
-        private const val TAG = "MurexideImageViewer"
+        private const val TAG = "MurexideMediaViewer"
 
         const val EXTRA_VIEWER_OPTIONS = "murexide_open_image_options"
-        const val EXTRA_IMAGE_URLS = "murexide_open_image_urls"
-        const val EXTRA_IMAGE_MESSAGE_IDS = "murexide_open_image_message_ids"
-        const val EXTRA_IMAGE_IDS = "murexide_open_image_ids"
+        const val EXTRA_MEDIA_URLS = "murexide_open_image_urls"
+        const val EXTRA_MEDIA_MESSAGE_IDS = "murexide_open_image_message_ids"
         const val EXTRA_CHAT_ID = "murexide_open_image_chat_id"
         const val EXTRA_CHAT_TYPE = "murexide_open_image_chat_type"
 
         private const val PRELOAD_RADIUS = 1
         private const val LOAD_THRESHOLD = 1
         private const val PAGE_SIZE = 20
+        private const val EMPTY_MEDIA_PAGE_DELAY_MS = 150L
+        private const val TRANSITION_FALLBACK_DELAY_MS = 450L
     }
 
     private val paginationEnabled: Boolean
-        get() = chatId.isNotBlank() && chatType in 1..3 && images.any { it.imageId != null }
+        get() = chatId.isNotBlank() && chatType in 1..3 && earlierAnchorMessageId != null
 
-    private data class ViewerImage(
+    private data class ViewerMedia(
         val messageId: String?,
-        val imageId: Long?,
         val url: String
     )
-
-    private enum class PageDirection {
-        EARLIER,
-        LATEST
-    }
 }

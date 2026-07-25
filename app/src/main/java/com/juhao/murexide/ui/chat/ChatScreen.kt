@@ -53,7 +53,7 @@ import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.imageMessagePreviewItem
 import com.juhao.murexide.ui.components.videoMessagePreviewItem
-import com.juhao.murexide.ui.components.ImageViewerPagination
+import com.juhao.murexide.ui.components.MediaViewerPagination
 import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.ui.chat.components.MessageBubble
 import com.juhao.murexide.ui.chat.components.BoardPanel
@@ -1233,28 +1233,37 @@ fun ChatScreen(
                                     showMenuMsgId = msgId
                                 }
                             },
-                            onImageClick = { msg ->
+                            onImageClick = { msg, sourceBounds ->
                                 if (!selectionMode) {
                                     when (msg.contentType) {
-                                        MessageItem.CONTENT_TYPE_IMAGE -> {
-                                            buildChatImageGallery(
+                                        MessageItem.CONTENT_TYPE_IMAGE,
+                                        MessageItem.CONTENT_TYPE_VIDEO -> {
+                                            buildChatMediaGallery(
                                                 messages = uiState.messages,
                                                 selectedMessageId = msg.msgId
                                             )?.let { gallery ->
                                                 showImageViewer(
                                                     context = context,
                                                     images = gallery.entries.map { entry ->
-                                                        imageMessagePreviewItem(
-                                                            url = entry.url,
-                                                            messageId = entry.messageId,
-                                                            imageId = entry.imageId
-                                                        )
+                                                        when (entry.kind) {
+                                                            ChatMediaKind.IMAGE -> imageMessagePreviewItem(
+                                                                url = entry.url,
+                                                                messageId = entry.messageId,
+                                                                imageId = entry.sequence
+                                                            )
+                                                            ChatMediaKind.VIDEO -> videoMessagePreviewItem(
+                                                                url = entry.url,
+                                                                messageId = entry.messageId,
+                                                                sequence = entry.sequence
+                                                            )
+                                                        }
                                                     },
                                                     initialIndex = gallery.initialIndex,
-                                                    pagination = ImageViewerPagination(
+                                                    pagination = MediaViewerPagination(
                                                         chatId = chatId,
                                                         chatType = chatType
-                                                    )
+                                                    ),
+                                                    sourceBounds = sourceBounds
                                                 )
                                             }
                                         }
@@ -1268,17 +1277,10 @@ fun ChatScreen(
                                                 ?.let { url ->
                                                     showImageViewer(
                                                         context = context,
-                                                        images = listOf(fullImagePreviewItem(url))
+                                                        images = listOf(fullImagePreviewItem(url)),
+                                                        sourceBounds = sourceBounds
                                                     )
                                                 }
-                                        }
-                                        MessageItem.CONTENT_TYPE_VIDEO -> {
-                                            msg.videoUrl?.let { url ->
-                                                showImageViewer(
-                                                    context = context,
-                                                    images = listOf(videoMessagePreviewItem(url))
-                                                )
-                                            }
                                         }
                                     }
                                 } else {

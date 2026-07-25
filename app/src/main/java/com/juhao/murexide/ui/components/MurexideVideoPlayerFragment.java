@@ -178,7 +178,9 @@ public final class MurexideVideoPlayerFragment extends BaseImageFragment<Loading
         if (playbackPosition > 0L) {
             player.seekTo(playbackPosition);
         }
-        player.setPlayWhenReady(true);
+        // ViewPager2 keeps adjacent pages STARTED. Only the selected (RESUMED)
+        // video may play audio while the user swipes through mixed media.
+        player.setPlayWhenReady(isResumed());
         player.prepare();
         loadingIndicator.hideLoading();
     }
