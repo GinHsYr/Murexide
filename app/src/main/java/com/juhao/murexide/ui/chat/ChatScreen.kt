@@ -1003,7 +1003,6 @@ fun ChatScreen(
 
                             MessageInput(
                                 inputText = uiState.inputText,
-                                sendType = uiState.sendType,
                                 isSending = uiState.isSending,
                                 onTextChange = { text, mentions ->
                                     viewModel.updateInputText(text, mentions)

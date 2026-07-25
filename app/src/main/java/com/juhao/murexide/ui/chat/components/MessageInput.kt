@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -68,21 +67,19 @@ import com.juhao.murexide.utils.MentionUtils
 import kotlin.math.roundToInt
 
 private val SendButtonSize = 44.dp
-private val SendFormatOptionWidth = 76.dp
+private val SendFormatOptionWidth = 96.dp
 private val SendFormatPickerHeight = 48.dp
 private val SendFormatPickerGap = 8.dp
-private val SendCancelDragDistance = 128.dp
 
 private data class SendFormatOption(
-    val type: String,
+    val type: String?,
     val label: String
 )
 
-// The text option stays nearest to the send button, which sits at the right edge of the screen.
 private val SendFormatOptions = listOf(
+    SendFormatOption(type = null, label = "取消"),
     SendFormatOption(type = "html", label = "HTML"),
-    SendFormatOption(type = "markdown", label = "Markdown"),
-    SendFormatOption(type = "text", label = "文本")
+    SendFormatOption(type = "markdown", label = "Markdown")
 )
 
 internal fun sendFormatOptionIndex(
@@ -99,18 +96,9 @@ internal fun sendFormatOptionIndex(
         .coerceIn(0, optionCount - 1)
 }
 
-internal fun shouldCancelFormatSend(
-    verticalDrag: Float,
-    cancelDistance: Float
-): Boolean {
-    require(cancelDistance > 0f)
-    return verticalDrag >= cancelDistance
-}
-
 @Composable
 fun MessageInput(
     inputText: String,
-    sendType: String,
     isSending: Boolean = false,
     onTextChange: (String, List<MentionToken>) -> Unit,
     onSendClick: () -> Unit,
@@ -218,7 +206,6 @@ fun MessageInput(
         ) { isNotBlank ->
             if (isNotBlank) {
                 FormatSendButton(
-                    sendType = sendType,
                     enabled = !isSending,
                     isSending = isSending,
                     onSendClick = onSendClick,
@@ -246,7 +233,6 @@ fun MessageInput(
 
 @Composable
 private fun FormatSendButton(
-    sendType: String,
     enabled: Boolean,
     isSending: Boolean,
     onSendClick: () -> Unit,
@@ -254,19 +240,15 @@ private fun FormatSendButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var showFormatPicker by remember { mutableStateOf(false) }
-    var selectedType by remember(sendType) { mutableStateOf(sendType) }
+    var selectedType by remember { mutableStateOf<String?>(null) }
     var dragOrigin by remember { mutableStateOf(Offset.Zero) }
-    var initialFormatIndex by remember { mutableStateOf(SendFormatOptions.lastIndex) }
-    var cancelSend by remember { mutableStateOf(false) }
 
     val currentEnabled by rememberUpdatedState(enabled)
-    val currentSendType by rememberUpdatedState(sendType)
     val currentOnSendClick by rememberUpdatedState(onSendClick)
     val currentOnSendWithType by rememberUpdatedState(onSendWithType)
     val hapticFeedback = LocalHapticFeedback.current
     val density = LocalDensity.current
     val optionWidthPx = with(density) { SendFormatOptionWidth.toPx() }
-    val cancelDistancePx = with(density) { SendCancelDragDistance.toPx() }
     val pickerOffsetPx = with(density) {
         (SendFormatPickerHeight + SendFormatPickerGap).roundToPx()
     }
@@ -292,7 +274,7 @@ private fun FormatSendButton(
                     role = Role.Button
                     contentDescription = "发送"
                     stateDescription = if (enabled) {
-                        "长按并滑动可选择消息格式"
+                        "长按并滑动可取消或选择消息格式"
                     } else {
                         "发送中"
                     }
@@ -302,11 +284,12 @@ private fun FormatSendButton(
                         enabled
                     }
                     customActions = if (enabled) {
-                        SendFormatOptions.reversed().map { option ->
+                        SendFormatOptions.mapNotNull { option ->
+                            val type = option.type ?: return@mapNotNull null
                             CustomAccessibilityAction(
                                 label = "以${option.label}格式发送",
                                 action = {
-                                    onSendWithType(option.type)
+                                    onSendWithType(type)
                                     true
                                 }
                             )
@@ -325,10 +308,8 @@ private fun FormatSendButton(
 
                                 if (showFormatPicker) {
                                     val formatToSend = selectedType
-                                    val wasCancelled = cancelSend
                                     showFormatPicker = false
-                                    cancelSend = false
-                                    if (released && currentEnabled && !wasCancelled) {
+                                    if (released && currentEnabled && formatToSend != null) {
                                         currentOnSendWithType(formatToSend)
                                     }
                                 }
@@ -339,15 +320,8 @@ private fun FormatSendButton(
                         },
                         onLongPress = { pressPosition ->
                             if (currentEnabled) {
-                                val initialType = currentSendType.takeIf { type ->
-                                    SendFormatOptions.any { it.type == type }
-                                } ?: "text"
-                                selectedType = initialType
-                                initialFormatIndex = SendFormatOptions.indexOfFirst {
-                                    it.type == initialType
-                                }
+                                selectedType = "markdown"
                                 dragOrigin = pressPosition
-                                cancelSend = false
                                 showFormatPicker = true
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
@@ -356,26 +330,16 @@ private fun FormatSendButton(
                 }
                 // Selection is relative to the long-press point, so the finger can stay
                 // anywhere around the button instead of having to enter the popup.
-                .pointerInput(optionWidthPx, cancelDistancePx) {
+                .pointerInput(optionWidthPx) {
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             if (!showFormatPicker) continue
 
                             val pointer = event.changes.firstOrNull { it.pressed } ?: continue
-                            val nextCancelSend = shouldCancelFormatSend(
-                                verticalDrag = pointer.position.y - dragOrigin.y,
-                                cancelDistance = cancelDistancePx
-                            )
-                            if (nextCancelSend != cancelSend) {
-                                cancelSend = nextCancelSend
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            if (nextCancelSend) continue
-
                             val optionIndex = sendFormatOptionIndex(
                                 horizontalDrag = pointer.position.x - dragOrigin.x,
-                                initialIndex = initialFormatIndex,
+                                initialIndex = SendFormatOptions.lastIndex,
                                 optionWidth = optionWidthPx,
                                 optionCount = SendFormatOptions.size
                             )
@@ -416,7 +380,6 @@ private fun FormatSendButton(
                 offset = IntOffset(x = 0, y = -pickerOffsetPx),
                 onDismissRequest = {
                     showFormatPicker = false
-                    cancelSend = false
                 },
                 properties = PopupProperties(
                     focusable = false,
@@ -430,84 +393,57 @@ private fun FormatSendButton(
                         .heightIn(min = SendFormatPickerHeight, max = SendFormatPickerHeight)
                         .clearAndSetSemantics { },
                     shape = RoundedCornerShape(14.dp),
-                    color = if (cancelSend) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     tonalElevation = 3.dp,
                     shadowElevation = 8.dp
                 ) {
-                    if (cancelSend) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                text = "松开取消发送",
-                                modifier = Modifier.padding(start = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            SendFormatOptions.forEach { option ->
-                                val selected = option.type == selectedType
-                                Box(
-                                    modifier = Modifier
-                                        .width(SendFormatOptionWidth)
-                                        .fillMaxHeight()
-                                        .padding(4.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(
-                                            if (selected) {
-                                                MaterialTheme.colorScheme.primaryContainer
-                                            } else {
-                                                Color.Transparent
-                                            }
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        when (option.type) {
-                                            "html" -> Icon(
-                                                imageVector = Icons.Rounded.Code,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            "markdown" -> Icon(
-                                                painter = painterResource(R.drawable.markdown),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            else -> Icon(
-                                                imageVector = Icons.Rounded.TextFields,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SendFormatOptions.forEach { option ->
+                            val selected = option.type == selectedType
+                            Box(
+                                modifier = Modifier
+                                    .width(SendFormatOptionWidth)
+                                    .fillMaxHeight()
+                                    .padding(4.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (selected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            Color.Transparent
                                         }
-                                        Text(
-                                            text = option.label,
-                                            modifier = Modifier.padding(start = 4.dp),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = if (selected) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                            maxLines = 1
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    when (option.type) {
+                                        "html" -> Icon(
+                                            imageVector = Icons.Rounded.Code,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        "markdown" -> Icon(
+                                            painter = painterResource(R.drawable.markdown),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        else -> Icon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
+                                    Text(
+                                        text = option.label,
+                                        modifier = Modifier.padding(start = 4.dp),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        maxLines = 1
+                                    )
                                 }
                             }
                         }
