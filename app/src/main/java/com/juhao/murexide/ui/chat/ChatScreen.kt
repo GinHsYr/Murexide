@@ -1005,7 +1005,9 @@ fun ChatScreen(
                                 inputText = uiState.inputText,
                                 sendType = uiState.sendType,
                                 isSending = uiState.isSending,
-                                onTextChange = { viewModel.updateInputText(it) },
+                                onTextChange = { text, mentions ->
+                                    viewModel.updateInputText(text, mentions)
+                                },
                                 onSendClick = { viewModel.sendMessage() },
                                 onSendWithType = { type -> viewModel.sendMessage(type) },
                                 onAddImageClick = { openImagePicker() },
@@ -1021,7 +1023,7 @@ fun ChatScreen(
                                 onInstructionClick = {
                                     requestInputPanel(ChatInputPanel.Instruction)
                                 },
-                                mentionNames = uiState.mentions.keys,
+                                mentions = uiState.mentions,
                                 onMentionTriggered = { pos ->
                                     if (chatType == 2) {
                                         viewModel.showMentionPicker(pos)

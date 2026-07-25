@@ -16,19 +16,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
 import com.juhao.murexide.MainActivity
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
+import com.juhao.murexide.repository.AuthRepository
 import com.juhao.murexide.ui.theme.MurexideTheme
+import com.juhao.murexide.utils.DeviceIdProvider
 import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
+    private val accountStorage by lazy { AccountStorage(this) }
+    private val authRepository by lazy { AuthRepository() }
+    private val deviceId by lazy { DeviceIdProvider.get(this) }
+    private lateinit var loginViewModel: LoginViewModel
+    private var isCompletingLogin = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val accountStorage = AccountStorage(this)
         val isAddMode = intent.getBooleanExtra("addMode", false)
+        loginViewModel = ViewModelProvider(
+            this,
+            LoginViewModelFactory(deviceId)
+        )[LoginViewModel::class.java]
 
         setContent {
             var showTokenDialog by remember { mutableStateOf(false) }
@@ -37,34 +49,12 @@ class LoginActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     LoginScreen(
                         onLoginSuccess = { token ->
-                            lifecycleScope.launch {
-                                val account = UserAccount(
-                                    username = "用户",
-                                    avatar = "",
-                                    id = System.currentTimeMillis().toString(),
-                                    token = token
-                                )
-                                accountStorage.addAccount(account)
-                                if (!isAddMode) {
-                                    accountStorage.setCurrentUser(account.id)
-                                    Toast.makeText(
-                                        this@LoginActivity,
-                                        "登录成功",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    startActivity(
-                                        Intent(
-                                            this@LoginActivity,
-                                            MainActivity::class.java
-                                        )
-                                    )
-                                }
-                                finish()
-                            }
+                            completeLogin(token, isAddMode, "登录成功")
                         },
                         onTokenLogin = {
                             showTokenDialog = true
-                        }
+                        },
+                        viewModel = loginViewModel
                     )
 
                     if (showTokenDialog) {
@@ -72,35 +62,64 @@ class LoginActivity : ComponentActivity() {
                             onDismiss = { showTokenDialog = false },
                             onConfirm = { token ->
                                 showTokenDialog = false
-                                lifecycleScope.launch {
-                                    val account = UserAccount(
-                                        username = "用户",
-                                        avatar = "",
-                                        id = System.currentTimeMillis().toString(),
-                                        token = token
-                                    )
-                                    accountStorage.addAccount(account)
-                                    if (!isAddMode) {
-                                        accountStorage.setCurrentUser(account.id)
-                                        Toast.makeText(
-                                            this@LoginActivity,
-                                            "Token登录成功",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        startActivity(
-                                            Intent(
-                                                this@LoginActivity,
-                                                MainActivity::class.java
-                                            )
-                                        )
-                                    }
-                                    finish()
-                                }
+                                completeLogin(token.trim(), isAddMode, "Token登录成功")
                             }
                         )
                     }
                 }
             }
+        }
+    }
+
+    private fun completeLogin(token: String, isAddMode: Boolean, successMessage: String) {
+        if (isCompletingLogin) return
+        isCompletingLogin = true
+
+        lifecycleScope.launch {
+            val userInfoResult = authRepository.getUserInfo(token)
+            if (userInfoResult.isFailure) {
+                isCompletingLogin = false
+                loginViewModel.resetLoginResult()
+                Toast.makeText(
+                    this@LoginActivity,
+                    userInfoResult.exceptionOrNull()?.message ?: "登录凭据无效",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+
+            val userInfo = userInfoResult.getOrThrow()
+            try {
+                accountStorage.upsertAccount(
+                    account = UserAccount(
+                        username = userInfo.name,
+                        avatar = userInfo.avatarUrl,
+                        id = userInfo.id,
+                        token = token,
+                        isValidated = true
+                    ),
+                    makeCurrent = !isAddMode
+                )
+            } catch (error: Exception) {
+                isCompletingLogin = false
+                loginViewModel.resetLoginResult()
+                Toast.makeText(
+                    this@LoginActivity,
+                    error.message ?: "保存账号失败",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+
+            Toast.makeText(
+                this@LoginActivity,
+                if (isAddMode) "账号已添加" else successMessage,
+                Toast.LENGTH_SHORT
+            ).show()
+            if (!isAddMode) {
+                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+            }
+            finish()
         }
     }
 

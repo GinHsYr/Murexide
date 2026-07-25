@@ -11,4 +11,8 @@ object UiState {
 
 object UiCache {
     var conversation = mutableStateOf<List<ConversationItem>>(emptyList())
+
+    fun clearAccountData() {
+        conversation.value = emptyList()
+    }
 }

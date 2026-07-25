@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.juhao.murexide.R
+import com.juhao.murexide.data.MentionToken
 import com.juhao.murexide.utils.MentionUtils
 import kotlin.math.roundToInt
 
@@ -111,7 +112,7 @@ fun MessageInput(
     inputText: String,
     sendType: String,
     isSending: Boolean = false,
-    onTextChange: (String) -> Unit,
+    onTextChange: (String, List<MentionToken>) -> Unit,
     onSendClick: () -> Unit,
     onSendWithType: (String) -> Unit,
     onAddImageClick: () -> Unit,
@@ -121,7 +122,7 @@ fun MessageInput(
     onEmojiClick: () -> Unit,
     isInstructionPanelVisible: Boolean = false,
     onInstructionClick: () -> Unit = {},
-    mentionNames: Collection<String> = emptyList(),
+    mentions: List<MentionToken> = emptyList(),
     onMentionTriggered: (Int) -> Unit = {},
     focusRequester: FocusRequester,
     onInputFocused: () -> Unit = {}
@@ -164,10 +165,10 @@ fun MessageInput(
         BasicTextField(
             value = fieldValue,
             onValueChange = { new ->
-                val result = MentionUtils.processEdit(fieldValue, new, mentionNames)
+                val result = MentionUtils.processEdit(fieldValue, new, mentions)
                 fieldValue = result.value
                 if (result.value.text != inputText) {
-                    onTextChange(result.value.text)
+                    onTextChange(result.value.text, result.mentions)
                 }
                 if (result.insertedText == "@") {
                     onMentionTriggered(result.insertPos)

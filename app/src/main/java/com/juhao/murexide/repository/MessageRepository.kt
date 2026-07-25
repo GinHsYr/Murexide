@@ -169,7 +169,7 @@ class MessageRepository {
         contentType: Int,
         quoteMsgId: String? = null,
         commandId: Long? = null
-    ): Result<Boolean> {
+    ): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 val msgId = UUID.randomUUID().toString().replace("-", "")
@@ -218,7 +218,7 @@ class MessageRepository {
                         val sendResult = send_message.ADAPTER.decode(responseBody)
 
                         if (sendResult.status?.code == 1) {
-                            Result.success(true)
+                            Result.success(msgId)
                         } else {
                             Result.failure(Exception(sendResult.status?.msg ?: "发送失败"))
                         }

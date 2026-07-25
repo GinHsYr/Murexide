@@ -1,6 +1,7 @@
 package com.juhao.murexide.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 @Serializable
 data class LoginRequest(
@@ -20,6 +21,11 @@ data class LoginResponse(
 @Serializable
 data class LoginData(
     val token: String
+)
+
+@Serializable
+data class LogoutRequest(
+    @SerialName("device-id") val deviceId: String
 )
 
 // ---------- 手机号登录 ----------
