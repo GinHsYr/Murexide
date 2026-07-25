@@ -73,6 +73,7 @@ class WebSocketManager private constructor() {
 
     sealed class WsEvent {
         data class NewMessage(val message: MessageItem) : WsEvent()
+        data class LocalMessageSent(val message: MessageItem) : WsEvent()
         data class EditMessage(val message: MessageItem) : WsEvent()
         data class StreamContent(val msgId: String, val content: String) : WsEvent()
         data class MessageDeleted(val msgId: String) : WsEvent()
@@ -87,6 +88,12 @@ class WebSocketManager private constructor() {
         ) : WsEvent()
         object Connected : WsEvent()
         object Disconnected : WsEvent()
+    }
+
+    fun publishLocalMessageSent(message: MessageItem) {
+        scope.launch {
+            _messageFlow.emit(WsEvent.LocalMessageSent(message))
+        }
     }
 
     fun connect(userId: String, token: String, deviceId: String, platform: String = "android") {

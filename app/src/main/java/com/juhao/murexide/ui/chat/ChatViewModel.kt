@@ -1269,21 +1269,21 @@ class ChatViewModel(
         if (msgId in msgIdCache) return
 
         val ownMessage = _uiState.value.messages.firstOrNull { it.isMine }
-        addReceivedMessage(
-            createOutgoingMessage(
-                msgId = msgId,
-                senderId = wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty(),
-                senderName = ownMessage?.senderName.orEmpty(),
-                senderAvatar = ownMessage?.senderAvatar.orEmpty(),
-                chatId = chatId,
-                chatType = chatType,
-                content = content,
-                contentType = contentType,
-                quoteMsgId = quoteMsgId,
-                commandId = commandId,
-                commandName = commandName
-            )
+        val message = createOutgoingMessage(
+            msgId = msgId,
+            senderId = wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty(),
+            senderName = ownMessage?.senderName.orEmpty(),
+            senderAvatar = ownMessage?.senderAvatar.orEmpty(),
+            chatId = chatId,
+            chatType = chatType,
+            content = content,
+            contentType = contentType,
+            quoteMsgId = quoteMsgId,
+            commandId = commandId,
+            commandName = commandName
         )
+        addReceivedMessage(message)
+        wsManager.publishLocalMessageSent(message)
     }
 
     fun updateStreamMessage(msgId: String, content: String) {

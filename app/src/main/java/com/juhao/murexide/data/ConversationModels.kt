@@ -25,3 +25,25 @@ data class ConversationItem(
     val isAtMentioned: Boolean
         get() = at > 0
 }
+
+internal fun List<ConversationItem>.withLatestMessage(
+    message: MessageItem
+): List<ConversationItem>? {
+    val index = indexOfFirst {
+        it.chatId == message.chatId ||
+            (message.chatType == 1 && it.chatId == message.senderId)
+    }
+    if (index == -1) return null
+
+    val conversations = toMutableList()
+    val oldConversation = conversations.removeAt(index)
+    conversations.add(
+        0,
+        oldConversation.copy(
+            chatContent = message.getDisplayContent(),
+            timestampMs = message.timestamp,
+            unreadMessage = oldConversation.unreadMessage + if (message.isMine) 0 else 1
+        )
+    )
+    return conversations
+}
