@@ -463,7 +463,7 @@ fun ChatScreen(
                         .matchParentSize()
                         .hazeEffect(
                             state = hazeState,
-                            style = HazeMaterials.thin().copy(
+                            style = HazeMaterials.regular().copy(
                                 noiseFactor = 0f
                             ),
                             block = null
@@ -791,7 +791,7 @@ fun ChatScreen(
                         .matchParentSize()
                         .hazeEffect(
                             state = hazeState,
-                            style = HazeMaterials.thin().copy(
+                            style = HazeMaterials.regular().copy(
                                 noiseFactor = 0f
                             ),
                             block = null

@@ -526,14 +526,13 @@ private fun MoreActionsButton(
     var showMenu by remember { mutableStateOf(false) }
 
     Box {
-        IconButton(
+        FilledIconButton(
             onClick = { showMenu = true },
             modifier = Modifier.size(44.dp)
         ) {
             Icon(
                 Icons.Rounded.Add,
-                contentDescription = "更多",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                contentDescription = "更多"
             )
         }
 
