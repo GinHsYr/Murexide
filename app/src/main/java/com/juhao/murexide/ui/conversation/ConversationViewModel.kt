@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.ConversationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,34 +87,37 @@ class ConversationViewModel(
     private fun observeWebSocket() {
         viewModelScope.launch {
             wsManager.messageFlow.collect { event ->
-                if (event is WebSocketManager.WsEvent.NewMessage) {
-                    handleNewMessage(event.message)
+                when (event) {
+                    is WebSocketManager.WsEvent.NewMessage -> handleNewMessage(event.message)
+                    is WebSocketManager.WsEvent.LocalMessageSent -> handleNewMessage(event.message)
+                    else -> Unit
                 }
             }
         }
     }
 
-    private fun handleNewMessage(message: com.juhao.murexide.data.MessageItem) {
+    private fun handleNewMessage(message: MessageItem) {
+        var conversationMissing = false
         _uiState.update { state ->
             if (state is ConversationUiState.Success) {
-                val conversations = state.conversations.toMutableList()
-                val index = conversations.indexOfFirst { it.chatId == message.chatId || (message.chatType == 1 && it.chatId == message.senderId) }
-                
-                if (index != -1) {
-                    val oldConv = conversations.removeAt(index)
-                    val updatedConv = oldConv.copy(
-                        chatContent = message.getDisplayContent(),
-                        timestampMs = message.timestamp,
-                        unreadMessage = oldConv.unreadMessage + if (!message.isMine) 1 else 0
-                    )
-                    conversations.add(0, updatedConv)
+                val conversations = state.conversations.withLatestMessage(message)
+                if (conversations != null) {
                     state.copy(conversations = conversations)
                 } else {
-                    refresh()
+                    conversationMissing = true
                     state
                 }
             } else {
                 state
+            }
+        }
+
+        if (conversationMissing) {
+            refresh()
+        } else {
+            val state = _uiState.value
+            if (state is ConversationUiState.Success) {
+                UiCache.conversation.value = state.conversations
             }
         }
     }

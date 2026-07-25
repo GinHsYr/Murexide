@@ -27,10 +27,12 @@ import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.AuthRepository
 import com.juhao.murexide.ui.theme.UiCache
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.ui.components.MurexideBigImageHelper
 import com.juhao.murexide.ui.components.MurexideDownloadMediaHelper
 import com.juhao.murexide.ui.components.MurexideVideoFragmentCreate
 import com.juhao.murexide.utils.AppForegroundState
+import com.juhao.murexide.utils.DeviceIdProvider
 import com.juhao.murexide.utils.NotificationHelper
 import com.juhao.murexide.utils.isYunhuImageUrl
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +55,7 @@ class MyApplication : Application(), ImageLoaderFactory {
         }
         NotificationHelper.createNotificationChannel(this)
         AppForegroundState.init(this)
+        observeAvatarSetting()
         initWebSocket()
         observeNetworkStatus()
         observeMessages(this)
@@ -181,11 +184,10 @@ class MyApplication : Application(), ImageLoaderFactory {
                 if (token != null) {
                     Log.d("MyApplication", "Token found, fetching user info for WS")
                     authRepository.getUserInfo(token).onSuccess { userInfo ->
-                        val deviceId = "android_${Build.MODEL}_${Build.ID}"
                         WebSocketManager.getInstance().connect(
                             userId = userInfo.id,
                             token = token,
-                            deviceId = deviceId
+                            deviceId = DeviceIdProvider.get(this@MyApplication)
                         )
                     }.onFailure { e ->
                         Log.e("MyApplication", "Failed to get user info for WS", e)
@@ -194,6 +196,14 @@ class MyApplication : Application(), ImageLoaderFactory {
                     Log.d("MyApplication", "No token, disconnecting WS")
                     WebSocketManager.getInstance().disconnect()
                 }
+            }
+        }
+    }
+
+    private fun observeAvatarSetting() {
+        applicationScope.launch {
+            settingsStorage.squareAvatarFlow.collect { squareAvatar ->
+                UiState.squareAvatar.value = squareAvatar
             }
         }
     }

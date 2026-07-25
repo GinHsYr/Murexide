@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -29,6 +30,24 @@ data class UserAccount(
     val token: String = "",
     val isValidated: Boolean = false
 )
+
+internal fun upsertAccountInList(
+    accounts: List<UserAccount>,
+    account: UserAccount,
+    obsoleteAccountId: String? = null,
+    moveToFront: Boolean = false
+): List<UserAccount> {
+    val replacedIds = setOfNotNull(account.id, obsoleteAccountId)
+    val firstReplacedIndex = accounts.indexOfFirst { it.id in replacedIds }
+    val remaining = accounts.filterNot { it.id in replacedIds }.toMutableList()
+    val insertionIndex = when {
+        moveToFront -> 0
+        firstReplacedIndex < 0 -> remaining.size
+        else -> firstReplacedIndex.coerceAtMost(remaining.size)
+    }
+    remaining.add(insertionIndex, account)
+    return remaining
+}
 
 class AccountStorage(private val context: Context) {
     companion object {
@@ -110,17 +129,16 @@ class AccountStorage(private val context: Context) {
             val encryptedJson = context.userDataStore.data
                 .map { preferences -> preferences[ACCOUNTS_KEY] }
                 .firstOrNull()
-
-            if (!encryptedJson.isNullOrEmpty()) {
-                val jsonString = decrypt(encryptedJson)
-                json.decodeFromString(jsonString)
-            } else {
-                emptyList()
-            }
+            decodeAccounts(encryptedJson)
         } catch (_: Exception) {
             clearAccounts()
             emptyList()
         }
+    }
+
+    private fun decodeAccounts(encryptedJson: String?): List<UserAccount> {
+        if (encryptedJson.isNullOrEmpty()) return emptyList()
+        return json.decodeFromString(decrypt(encryptedJson))
     }
 
     private suspend fun loadCurrentUserId(): String? {
@@ -197,21 +215,52 @@ class AccountStorage(private val context: Context) {
         saveAccounts(updatedAccounts)
     }
 
+    /**
+     * Replaces every stored copy of this account in one DataStore transaction.
+     * [obsoleteAccountId] is used to remove a temporary pre-validation account ID.
+     */
+    suspend fun upsertAccount(
+        account: UserAccount,
+        makeCurrent: Boolean,
+        obsoleteAccountId: String? = null
+    ) {
+        var updatedAccounts = emptyList<UserAccount>()
+        var selectedUserId: String? = null
+
+        context.userDataStore.edit { preferences ->
+            val storedAccounts = decodeAccounts(preferences[ACCOUNTS_KEY])
+            updatedAccounts = upsertAccountInList(
+                accounts = storedAccounts,
+                account = account,
+                obsoleteAccountId = obsoleteAccountId,
+                moveToFront = makeCurrent
+            )
+            preferences[ACCOUNTS_KEY] = encrypt(json.encodeToString(updatedAccounts))
+
+            if (makeCurrent) {
+                preferences[CURRENT_USER_ID_KEY] = account.id
+                selectedUserId = account.id
+            } else {
+                selectedUserId = preferences[CURRENT_USER_ID_KEY]
+            }
+        }
+
+        _accountsCache.value = updatedAccounts
+        _currentUserId.value = selectedUserId
+        isCacheValid = true
+    }
+
     suspend fun validateAccount(newAccount: UserAccount): Boolean {
         refreshCache()
 
         val currentAccount = getCurrentAccount() ?: return false
         val oldId = currentAccount.id
 
-        if (newAccount.id != oldId) {
-            val accounts = _accountsCache.value.toMutableList()
-            accounts.removeAll { it.id == oldId }
-            accounts.add(newAccount.copy(isValidated = true, token = currentAccount.token))
-            saveAccounts(accounts)
-            setCurrentUser(newAccount.id)
-        } else {
-            updateAccount(newAccount.copy(isValidated = true, token = currentAccount.token))
-        }
+        upsertAccount(
+            account = newAccount.copy(isValidated = true, token = currentAccount.token),
+            makeCurrent = true,
+            obsoleteAccountId = oldId.takeIf { it != newAccount.id }
+        )
 
         return true
     }
@@ -323,12 +372,10 @@ class AccountStorage(private val context: Context) {
      * 获取当前用户Token（Flow）
      */
     val currentTokenFlow: Flow<String?> = currentUserIdFlow.combine(userAccountsFlow) { userId, accounts ->
-        if (userId != null) {
-            accounts.find { it.id == userId }?.token
-        } else {
-            accounts.firstOrNull()?.token
-        }
-    }
+        userId
+            ?.let { id -> accounts.find { it.id == id }?.token }
+            ?.takeIf { it.isNotEmpty() }
+    }.distinctUntilChanged()
 
     /**
      * 获取当前用户ID（同步方式，可能返回过期值）

@@ -29,6 +29,7 @@ data class PhoneLoginState(
 )
 
 class LoginViewModel(
+    private val deviceId: String,
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
     
@@ -43,8 +44,6 @@ class LoginViewModel(
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.value = LoginUiState.Loading
-
-            val deviceId = getDeviceId()
 
             repository.login(email, password, deviceId).onSuccess { token ->
                 _uiState.value = LoginUiState.Success(token)
@@ -103,7 +102,6 @@ class LoginViewModel(
     fun phoneLogin(mobile: String, smsCode: String) {
         viewModelScope.launch {
             _phoneState.update { it.copy(isLoggingIn = true, error = null) }
-            val deviceId = getDeviceId()
             repository.phoneLogin(mobile, smsCode, deviceId).onSuccess { token ->
                 _phoneState.update { it.copy(isLoggingIn = false) }
                 _uiState.value = LoginUiState.Success(token)
@@ -119,6 +117,12 @@ class LoginViewModel(
         _phoneState.update { it.copy(error = null) }
     }
 
+    fun resetLoginResult() {
+        if (_uiState.value is LoginUiState.Success) {
+            _uiState.value = LoginUiState.Idle
+        }
+    }
+
     private fun startCountdown() {
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
@@ -130,7 +134,4 @@ class LoginViewModel(
         }
     }
 
-    private fun getDeviceId(): String {
-        return "android_device_${System.currentTimeMillis()}"
-    }
 }

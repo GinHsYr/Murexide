@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.theme.UiState
 
 @Composable
@@ -24,13 +23,7 @@ fun Avatar(
     canView: Boolean = false
 ) {
     val context = LocalContext.current
-    val settingsStorage = remember { SettingsStorage(context) }
-    
     val squareAvatar by UiState.squareAvatar
-
-    LaunchedEffect(Unit) {
-        UiState.squareAvatar.value = settingsStorage.getSquareAvatar()
-    }
     
     val imageRequest = remember(url) {
         ImageRequest.Builder(context)

@@ -49,7 +49,6 @@ fun AppearanceScreen(
     var backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
 
     LaunchedEffect(Unit) {
-        UiState.squareAvatar.value = settingsStorage.getSquareAvatar()
         showSticky = settingsStorage.getShowSticky()
         bubbleCornerRadius = settingsStorage.getBubbleCornerRadius()
         bubbleOpacity = settingsStorage.getBubbleOpacity()

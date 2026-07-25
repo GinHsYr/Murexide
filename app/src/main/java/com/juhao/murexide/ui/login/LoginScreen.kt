@@ -20,7 +20,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.R
 import com.juhao.murexide.ui.settings.switchAccount.SwitchAccountActivity
 
@@ -30,9 +29,7 @@ private enum class LoginMode { PHONE, EMAIL }
 fun LoginScreen(
     onLoginSuccess: (String) -> Unit,
     onTokenLogin: () -> Unit,
-    viewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory()
-    )
+    viewModel: LoginViewModel
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()

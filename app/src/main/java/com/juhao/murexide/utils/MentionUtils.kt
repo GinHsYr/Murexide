@@ -2,36 +2,92 @@ package com.juhao.murexide.utils
 
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import com.juhao.murexide.data.MentionToken
 
 object MentionUtils {
     data class EditResult(
         val value: TextFieldValue,
+        val mentions: List<MentionToken>,
         val insertedText: String,
         val insertPos: Int
     )
 
-    fun mentionSpans(text: String, names: Collection<String>): List<Pair<Int, Int>> {
-        val spans = mutableListOf<Pair<Int, Int>>()
-        for (name in names) {
-            if (name.isEmpty()) continue
-            val target = "@$name"
-            var idx = text.indexOf(target)
-            while (idx >= 0) {
-                spans += idx to (idx + target.length)
-                idx = text.indexOf(target, idx + 1)
+    data class InsertResult(
+        val text: String,
+        val mentions: List<MentionToken>
+    )
+
+    fun validMentions(text: String, mentions: List<MentionToken>): List<MentionToken> {
+        val result = mutableListOf<MentionToken>()
+        var previousEnd = -1
+        mentions.sortedBy { it.start }.forEach { mention ->
+            val isValidRange = mention.start >= 0 &&
+                mention.endExclusive == mention.start + mention.displayText.length &&
+                mention.endExclusive <= text.length
+            if (
+                isValidRange &&
+                mention.start >= previousEnd &&
+                text.regionMatches(
+                    thisOffset = mention.start,
+                    other = mention.displayText,
+                    otherOffset = 0,
+                    length = mention.displayText.length
+                )
+            ) {
+                result += mention
+                previousEnd = mention.endExclusive
             }
         }
-        return spans.sortedBy { it.first }
+        return result
+    }
+
+    fun mentionedUserIds(text: String, mentions: List<MentionToken>): List<String> {
+        return validMentions(text, mentions).map { it.userId }.distinct()
+    }
+
+    fun insertMention(
+        text: String,
+        mentions: List<MentionToken>,
+        userId: String,
+        displayName: String,
+        triggerPos: Int = -1
+    ): InsertResult {
+        require(displayName.isNotEmpty())
+        val currentMentions = validMentions(text, mentions)
+        val replacesTrigger = triggerPos in text.indices && text[triggerPos] == '@'
+        val insertAt = if (replacesTrigger) triggerPos else text.length
+        val replaceEnd = if (replacesTrigger) triggerPos + 1 else insertAt
+        val displayText = "@$displayName"
+        val insertedText = "$displayText "
+        val newText = text.substring(0, insertAt) + insertedText + text.substring(replaceEnd)
+        val shiftedMentions = transformMentions(
+            mentions = currentMentions,
+            editStart = insertAt,
+            editEnd = replaceEnd,
+            insertedLength = insertedText.length
+        )
+        val newMention = MentionToken(
+            userId = userId,
+            displayName = displayName,
+            start = insertAt,
+            endExclusive = insertAt + displayText.length
+        )
+        return InsertResult(
+            text = newText,
+            mentions = (shiftedMentions + newMention).sortedBy { it.start }
+        )
     }
 
     fun processEdit(
         old: TextFieldValue,
         new: TextFieldValue,
-        names: Collection<String>
+        mentions: List<MentionToken>
     ): EditResult {
+        val currentMentions = validMentions(old.text, mentions)
         if (old.text == new.text) {
             return EditResult(
-                new.copy(selection = clampSelection(new.text, new.selection, names)),
+                new.copy(selection = clampSelection(new.text, new.selection, currentMentions)),
+                currentMentions,
                 "", -1
             )
         }
@@ -50,60 +106,107 @@ object MentionUtils {
         val delEnd = oldText.length - suffix
         val inserted = newText.substring(prefix, newText.length - suffix)
 
-        val spans = mentionSpans(oldText, names)
-
         if (delStart == delEnd) {
-            for ((s, e) in spans) {
-                if (delStart in (s + 1)..<e) {
-                    val result = oldText.substring(0, e) + inserted + oldText.substring(e)
+            for (mention in currentMentions) {
+                if (delStart > mention.start && delStart < mention.endExclusive) {
+                    val insertAt = mention.endExclusive
+                    val result = oldText.substring(0, insertAt) + inserted + oldText.substring(insertAt)
+                    val updatedMentions = transformMentions(
+                        currentMentions,
+                        insertAt,
+                        insertAt,
+                        inserted.length
+                    )
                     return EditResult(
-                        TextFieldValue(result, TextRange(e + inserted.length)),
-                        inserted, e
+                        TextFieldValue(result, TextRange(insertAt + inserted.length)),
+                        updatedMentions,
+                        inserted,
+                        insertAt
                     )
                 }
             }
-            return EditResult(
-                new.copy(selection = clampSelection(newText, new.selection, names)),
-                inserted, delStart
-            )
         }
 
-        var s2 = delStart
-        var e2 = delEnd
-        var expanded = false
-        for ((s, e) in spans) {
-            val intersects = delStart < e && delEnd > s
-            val fullyCovered = delStart <= s && delEnd >= e
-            if (intersects && !fullyCovered) {
-                if (s < s2) { s2 = s; expanded = true }
-                if (e > e2) { e2 = e; expanded = true }
-            }
+        var editStart = delStart
+        var editEnd = delEnd
+        if (delStart < delEnd) {
+            var expanded: Boolean
+            do {
+                expanded = false
+                currentMentions.forEach { mention ->
+                    val intersects = editStart < mention.endExclusive && editEnd > mention.start
+                    val fullyCovered = editStart <= mention.start && editEnd >= mention.endExclusive
+                    if (intersects && !fullyCovered) {
+                        val expandedStart = minOf(editStart, mention.start)
+                        val expandedEnd = maxOf(editEnd, mention.endExclusive)
+                        if (expandedStart != editStart || expandedEnd != editEnd) {
+                            editStart = expandedStart
+                            editEnd = expandedEnd
+                            expanded = true
+                        }
+                    }
+                }
+            } while (expanded)
         }
-        if (expanded) {
-            val result = oldText.substring(0, s2) + inserted + oldText.substring(e2)
-            return EditResult(
-                TextFieldValue(result, TextRange(s2 + inserted.length)),
-                inserted, s2
-            )
+
+        val resultText = oldText.substring(0, editStart) + inserted + oldText.substring(editEnd)
+        val updatedMentions = transformMentions(
+            currentMentions,
+            editStart,
+            editEnd,
+            inserted.length
+        )
+        val selection = if (editStart == delStart && editEnd == delEnd) {
+            new.selection
+        } else {
+            TextRange(editStart + inserted.length)
         }
         return EditResult(
-            new.copy(selection = clampSelection(newText, new.selection, names)),
-            inserted, delStart
+            TextFieldValue(
+                resultText,
+                clampSelection(resultText, selection, updatedMentions)
+            ),
+            updatedMentions,
+            inserted,
+            editStart
         )
+    }
+
+    private fun transformMentions(
+        mentions: List<MentionToken>,
+        editStart: Int,
+        editEnd: Int,
+        insertedLength: Int
+    ): List<MentionToken> {
+        val offset = insertedLength - (editEnd - editStart)
+        return mentions.mapNotNull { mention ->
+            when {
+                mention.endExclusive <= editStart -> mention
+                mention.start >= editEnd -> mention.copy(
+                    start = mention.start + offset,
+                    endExclusive = mention.endExclusive + offset
+                )
+                else -> null
+            }
+        }.sortedBy { it.start }
     }
 
     private fun clampSelection(
         text: String,
         selection: TextRange,
-        names: Collection<String>
+        mentions: List<MentionToken>
     ): TextRange {
-        val spans = mentionSpans(text, names)
-        if (spans.isEmpty()) return selection
+        val validMentions = validMentions(text, mentions)
+        if (validMentions.isEmpty()) return selection
 
         fun clampPos(p: Int): Int {
-            for ((s, e) in spans) {
-                if (p in (s + 1)..<e) {
-                    return if (p - s < e - p) s else e
+            for (mention in validMentions) {
+                if (p > mention.start && p < mention.endExclusive) {
+                    return if (p - mention.start < mention.endExclusive - p) {
+                        mention.start
+                    } else {
+                        mention.endExclusive
+                    }
                 }
             }
             return p

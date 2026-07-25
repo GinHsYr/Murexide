@@ -20,6 +20,7 @@ import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
+import com.juhao.murexide.utils.MentionUtils
 import com.juhao.murexide.utils.QiniuUploader
 import com.juhao.murexide.network.WebSocketManager
 import kotlinx.coroutines.CancellationException
@@ -351,9 +352,10 @@ class ChatViewModel(
         loadMessages()
     }
 
-    fun updateInputText(text: String) {
-        if (_uiState.value.inputText == text) return
-        _uiState.update { it.copy(inputText = text) }
+    fun updateInputText(text: String, mentions: List<MentionToken>) {
+        val state = _uiState.value
+        if (state.inputText == text && state.mentions == mentions) return
+        _uiState.update { it.copy(inputText = text, mentions = mentions) }
     }
 
     fun setReplyTo(message: MessageItem) {
@@ -379,9 +381,7 @@ class ChatViewModel(
                 "html" -> MessageItem.CONTENT_TYPE_HTML
                 else -> MessageItem.CONTENT_TYPE_TEXT
             }
-            val mentionedIds = state.mentions
-                .filterKeys { name -> state.inputText.contains("@$name") }
-                .values.distinct()
+            val mentionedIds = MentionUtils.mentionedUserIds(state.inputText, state.mentions)
 
             val content = MessageContent(
                 text = state.inputText,
@@ -401,13 +401,21 @@ class ChatViewModel(
                 contentType = contentType,
                 quoteMsgId = state.replyTo?.msgId,
                 commandId = state.pendingCommandId
-            ).onSuccess {
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = contentType,
+                    quoteMsgId = state.replyTo?.msgId,
+                    commandId = state.pendingCommandId,
+                    commandName = state.pendingCommandName
+                )
                 _uiState.update {
                     it.copy(
                         inputText = "",
                         replyTo = null,
                         isSending = false,
-                        mentions = emptyMap(),
+                        mentions = emptyList(),
                         pendingCommandId = null,
                         pendingCommandName = null,
                         pendingCommandHint = null
@@ -519,8 +527,14 @@ class ChatViewModel(
                 chatType = chatType,
                 content = content,
                 contentType = MessageItem.CONTENT_TYPE_VIDEO,
-                quoteMsgId = _uiState.value.replyTo?.msgId
-            ).onSuccess {
+                quoteMsgId = state.replyTo?.msgId
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_VIDEO,
+                    quoteMsgId = state.replyTo?.msgId
+                )
                 _uiState.update { 
                     it.copy(
                         replyTo = null,
@@ -644,8 +658,14 @@ class ChatViewModel(
                 chatType = chatType,
                 content = content,
                 contentType = MessageItem.CONTENT_TYPE_IMAGE,
-                quoteMsgId = _uiState.value.replyTo?.msgId
-            ).onSuccess {
+                quoteMsgId = state.replyTo?.msgId
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_IMAGE,
+                    quoteMsgId = state.replyTo?.msgId
+                )
                 _uiState.update { 
                     it.copy(
                         replyTo = null,
@@ -739,6 +759,8 @@ class ChatViewModel(
     }
     
     private fun sendFileMessage(fileUrl: String, fileSize: Long, uri: Uri, context: Context) {
+        val state = _uiState.value
+
         viewModelScope.launch {
             val fileName = getFileNameFromUri(context, uri)
             
@@ -755,8 +777,14 @@ class ChatViewModel(
                 chatType = chatType,
                 content = content,
                 contentType = MessageItem.CONTENT_TYPE_FILE,
-                quoteMsgId = _uiState.value.replyTo?.msgId
-            ).onSuccess {
+                quoteMsgId = state.replyTo?.msgId
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_FILE,
+                    quoteMsgId = state.replyTo?.msgId
+                )
                 _uiState.update { 
                     it.copy(
                         replyTo = null,
@@ -869,6 +897,7 @@ class ChatViewModel(
             it.copy(
                 editingMessage = message,
                 inputText = message.content,
+                mentions = emptyList(),
                 sendType = when (message.contentType) {
                     MessageItem.CONTENT_TYPE_MARKDOWN -> "markdown"
                     MessageItem.CONTENT_TYPE_HTML -> "html"
@@ -888,6 +917,7 @@ class ChatViewModel(
             it.copy(
                 editingMessage = null,
                 inputText = "",
+                mentions = emptyList(),
                 sendType = "text"
             )
         }
@@ -922,6 +952,7 @@ class ChatViewModel(
                         isSending = false,
                         editingMessage = null,
                         inputText = "",
+                        mentions = emptyList(),
                         sendType = "text"
                     )
                 }
@@ -1032,8 +1063,14 @@ class ChatViewModel(
                 chatType = chatType,
                 content = content,
                 contentType = MessageItem.CONTENT_TYPE_STICKER,
-                quoteMsgId = _uiState.value.replyTo?.msgId
-            ).onSuccess {
+                quoteMsgId = state.replyTo?.msgId
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_STICKER,
+                    quoteMsgId = state.replyTo?.msgId
+                )
                 hideStickerPanel()
                 _uiState.update { 
                     it.copy(
@@ -1123,6 +1160,7 @@ class ChatViewModel(
                 _uiState.update {
                     it.copy(
                         inputText = item.defaultText,
+                        mentions = emptyList(),
                         pendingCommandId = item.id,
                         pendingCommandName = item.name,
                         pendingCommandHint = item.hintText
@@ -1135,14 +1173,23 @@ class ChatViewModel(
     /** 直发指令：立即发送 */
     private fun sendInstructionDirect(item: InstructionItem) {
         viewModelScope.launch {
+            val content = MessageContent()
             repository.sendMessage(
                 token = token,
                 chatId = chatId,
                 chatType = chatType,
-                content = MessageContent(),
+                content = content,
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 commandId = item.id
-            ).onSuccess {
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_TEXT,
+                    quoteMsgId = null,
+                    commandId = item.id,
+                    commandName = item.name
+                )
                 hideInstructionPanel()
             }.onFailure { error ->
                 _toastMessage.emit("指令发送失败: ${error.message}")
@@ -1153,14 +1200,23 @@ class ChatViewModel(
     /** 提交自定义输入指令表单 */
     fun submitInstructionForm(item: InstructionItem, formJson: String) {
         viewModelScope.launch {
+            val content = MessageContent(form = formJson)
             repository.sendMessage(
                 token = token,
                 chatId = chatId,
                 chatType = chatType,
-                content = MessageContent(form = formJson),
+                content = content,
                 contentType = MessageItem.CONTENT_TYPE_TEXT,
                 commandId = item.id
-            ).onSuccess {
+            ).onSuccess { msgId ->
+                addSentMessage(
+                    msgId = msgId,
+                    content = content,
+                    contentType = MessageItem.CONTENT_TYPE_TEXT,
+                    quoteMsgId = null,
+                    commandId = item.id,
+                    commandName = item.name
+                )
                 _instructionForm.value = null
                 hideInstructionPanel()
             }.onFailure { error ->
@@ -1186,7 +1242,9 @@ class ChatViewModel(
 
     fun addReceivedMessage(message: MessageItem) {
         if (message.msgId in msgIdCache) {
-            updateEditedMessage(message)
+            _uiState.update { state ->
+                state.copy(messages = upsertNewestMessage(state.messages, message))
+            }
             return
         }
         
@@ -1196,8 +1254,36 @@ class ChatViewModel(
 
         msgIdCache.add(message.msgId)
         _uiState.update {
-            it.copy(messages = listOf(message) + it.messages)
+            it.copy(messages = upsertNewestMessage(it.messages, message))
         }
+    }
+
+    private fun addSentMessage(
+        msgId: String,
+        content: MessageContent,
+        contentType: Int,
+        quoteMsgId: String?,
+        commandId: Long? = null,
+        commandName: String? = null
+    ) {
+        if (msgId in msgIdCache) return
+
+        val ownMessage = _uiState.value.messages.firstOrNull { it.isMine }
+        val message = createOutgoingMessage(
+            msgId = msgId,
+            senderId = wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty(),
+            senderName = ownMessage?.senderName.orEmpty(),
+            senderAvatar = ownMessage?.senderAvatar.orEmpty(),
+            chatId = chatId,
+            chatType = chatType,
+            content = content,
+            contentType = contentType,
+            quoteMsgId = quoteMsgId,
+            commandId = commandId,
+            commandName = commandName
+        )
+        addReceivedMessage(message)
+        wsManager.publishLocalMessageSent(message)
     }
 
     fun updateStreamMessage(msgId: String, content: String) {
@@ -1387,13 +1473,17 @@ class ChatViewModel(
     fun mentionUser(userId: String, name: String) {
         if (chatType != 2 || name.isEmpty()) return
         _uiState.update { state ->
-            val text = state.inputText
-            val mentionText = "@$name "
-            val newText = if (text.contains("@$name")) text else text + mentionText
-            state.copy(
-                inputText = newText,
-                mentions = state.mentions + (name to userId)
-            )
+            if (MentionUtils.mentionedUserIds(state.inputText, state.mentions).contains(userId)) {
+                state
+            } else {
+                val result = MentionUtils.insertMention(
+                    text = state.inputText,
+                    mentions = state.mentions,
+                    userId = userId,
+                    displayName = name
+                )
+                state.copy(inputText = result.text, mentions = result.mentions)
+            }
         }
     }
 
@@ -1411,17 +1501,16 @@ class ChatViewModel(
 
     fun selectMention(member: GroupMember) {
         _uiState.update { state ->
-            val pos = state.mentionPicker.triggerPos
-            val text = state.inputText
-            val mentionText = "@${member.name} "
-            val newText = if (pos in text.indices && text.getOrNull(pos) == '@') {
-                text.substring(0, pos) + mentionText + text.substring(pos + 1)
-            } else {
-                text + mentionText
-            }
+            val result = MentionUtils.insertMention(
+                text = state.inputText,
+                mentions = state.mentions,
+                userId = member.userId,
+                displayName = member.name,
+                triggerPos = state.mentionPicker.triggerPos
+            )
             state.copy(
-                inputText = newText,
-                mentions = state.mentions + (member.name to member.userId),
+                inputText = result.text,
+                mentions = result.mentions,
                 mentionPicker = MentionPickerState()
             )
         }

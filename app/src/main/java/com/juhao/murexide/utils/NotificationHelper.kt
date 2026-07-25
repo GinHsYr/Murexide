@@ -98,6 +98,11 @@ object NotificationHelper {
         val notificationId = chatId.hashCode()
         NotificationManagerCompat.from(context).cancel(notificationId)
     }
+
+    fun clearAllNotifications(context: Context) {
+        messageCounts.clear()
+        NotificationManagerCompat.from(context).cancelAll()
+    }
 }
 
 object AppForegroundState {

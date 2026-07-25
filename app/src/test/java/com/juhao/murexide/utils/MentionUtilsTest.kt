@@ -1,0 +1,87 @@
+package com.juhao.murexide.utils
+
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import com.juhao.murexide.data.MentionToken
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class MentionUtilsTest {
+    @Test
+    fun `same display names retain both selected user ids`() {
+        val first = MentionUtils.insertMention(
+            text = "",
+            mentions = emptyList(),
+            userId = "user-1",
+            displayName = "Ann"
+        )
+        val second = MentionUtils.insertMention(
+            text = first.text,
+            mentions = first.mentions,
+            userId = "user-2",
+            displayName = "Ann"
+        )
+
+        assertEquals("@Ann @Ann ", second.text)
+        assertEquals(
+            listOf("user-1", "user-2"),
+            MentionUtils.mentionedUserIds(second.text, second.mentions)
+        )
+    }
+
+    @Test
+    fun `plain prefix match does not create a mention`() {
+        assertTrue(MentionUtils.mentionedUserIds("@Anna", emptyList()).isEmpty())
+
+        val anna = MentionToken(
+            userId = "anna-id",
+            displayName = "Anna",
+            start = 0,
+            endExclusive = 5
+        )
+        assertEquals(
+            listOf("anna-id"),
+            MentionUtils.mentionedUserIds("@Anna", listOf(anna))
+        )
+    }
+
+    @Test
+    fun `text inserted before mentions shifts their ranges`() {
+        val original = MentionUtils.insertMention(
+            text = "",
+            mentions = emptyList(),
+            userId = "user-1",
+            displayName = "Ann"
+        )
+        val edited = MentionUtils.processEdit(
+            old = TextFieldValue(original.text, TextRange(0)),
+            new = TextFieldValue("Hi ${original.text}", TextRange(3)),
+            mentions = original.mentions
+        )
+
+        assertEquals(3, edited.mentions.single().start)
+        assertEquals(
+            listOf("user-1"),
+            MentionUtils.mentionedUserIds(edited.value.text, edited.mentions)
+        )
+    }
+
+    @Test
+    fun `partial deletion removes the entire mention token`() {
+        val mention = MentionToken(
+            userId = "user-1",
+            displayName = "Ann",
+            start = 0,
+            endExclusive = 4
+        )
+        val edited = MentionUtils.processEdit(
+            old = TextFieldValue("@Ann hello", TextRange(4)),
+            new = TextFieldValue("@An hello", TextRange(3)),
+            mentions = listOf(mention)
+        )
+
+        assertEquals(" hello", edited.value.text)
+        assertTrue(edited.mentions.isEmpty())
+    }
+}

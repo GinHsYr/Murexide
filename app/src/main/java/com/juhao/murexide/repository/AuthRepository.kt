@@ -200,6 +200,42 @@ class AuthRepository {
         }
     }
 
+    suspend fun logout(token: String, deviceId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = json.encodeToString(
+                    LogoutRequest.serializer(),
+                    LogoutRequest(deviceId)
+                )
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/user/logout")
+                    .post(jsonBody.toRequestBody("application/json".toMediaType()))
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure(httpError(response, "退出登录失败"))
+                    }
+
+                    val logoutResponse = json.decodeFromString(
+                        BaseResponse.serializer(),
+                        response.body.string()
+                    )
+                    if (logoutResponse.code == 1) {
+                        Result.success(Unit)
+                    } else {
+                        Result.failure(
+                            Exception(logoutResponse.msg.ifBlank { "退出登录失败" })
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     suspend fun getUserInfo(token: String): Result<UserInfo> {
         return withContext(Dispatchers.IO) {
             try {
