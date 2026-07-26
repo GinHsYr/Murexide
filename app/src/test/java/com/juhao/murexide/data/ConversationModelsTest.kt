@@ -3,6 +3,7 @@ package com.juhao.murexide.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class ConversationModelsTest {
@@ -50,16 +51,77 @@ class ConversationModelsTest {
         assertNull(listOf(conversation(chatId = "target")).withLatestMessage(message))
     }
 
+    @Test
+    fun `editing latest message updates preview without reordering conversation`() {
+        val otherConversation = conversation(chatId = "other", content = "other message")
+        val targetConversation = conversation(
+            chatId = "target",
+            content = "old message",
+            unreadCount = 2,
+            timestamp = 1_234L
+        )
+        val editedMessage = outgoingMessage(
+            chatId = "target",
+            content = "edited message",
+            timestamp = 1_234L
+        ).copy(isEdited = true)
+
+        val updated = listOf(otherConversation, targetConversation)
+            .withEditedLatestMessage(editedMessage)
+
+        assertNotNull(updated)
+        assertSame(otherConversation, updated[0])
+        assertEquals("other", updated[0].chatId)
+        assertEquals("target", updated[1].chatId)
+        assertEquals("edited message", updated[1].chatContent)
+        assertEquals(1_234L, updated[1].timestampMs)
+        assertEquals(2, updated[1].unreadMessage)
+    }
+
+    @Test
+    fun `editing older message does not replace latest preview`() {
+        val conversations = listOf(
+            conversation(
+                chatId = "target",
+                content = "latest message",
+                timestamp = 2_000L
+            )
+        )
+        val editedOlderMessage = outgoingMessage(
+            chatId = "target",
+            content = "edited older message",
+            timestamp = 1_000L
+        ).copy(isEdited = true)
+
+        val updated = conversations.withEditedLatestMessage(editedOlderMessage)
+
+        assertEquals(conversations, updated)
+        assertEquals("latest message", updated.single().chatContent)
+    }
+
+    @Test
+    fun `edited message without timestamp leaves previews unchanged`() {
+        val conversations = listOf(conversation(chatId = "target"))
+        val message = outgoingMessage(
+            chatId = "target",
+            content = "edited message",
+            timestamp = 0L
+        ).copy(isEdited = true)
+
+        assertSame(conversations, conversations.withEditedLatestMessage(message))
+    }
+
     private fun conversation(
         chatId: String,
         content: String = "old message",
-        unreadCount: Int = 0
+        unreadCount: Int = 0,
+        timestamp: Long = 1L
     ) = ConversationItem(
         chatId = chatId,
         chatType = 2,
         name = chatId,
         chatContent = content,
-        timestampMs = 1L,
+        timestampMs = timestamp,
         unreadMessage = unreadCount,
         avatarUrl = ""
     )

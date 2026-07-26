@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.ConversationRepository
@@ -90,6 +91,7 @@ class ConversationViewModel(
                 when (event) {
                     is WebSocketManager.WsEvent.NewMessage -> handleNewMessage(event.message)
                     is WebSocketManager.WsEvent.LocalMessageSent -> handleNewMessage(event.message)
+                    is WebSocketManager.WsEvent.EditMessage -> handleEditedMessage(event.message)
                     else -> Unit
                 }
             }
@@ -119,6 +121,23 @@ class ConversationViewModel(
             if (state is ConversationUiState.Success) {
                 UiCache.conversation.value = state.conversations
             }
+        }
+    }
+
+    private fun handleEditedMessage(message: MessageItem) {
+        _uiState.update { state ->
+            if (state is ConversationUiState.Success) {
+                state.copy(
+                    conversations = state.conversations.withEditedLatestMessage(message)
+                )
+            } else {
+                state
+            }
+        }
+
+        val state = _uiState.value
+        if (state is ConversationUiState.Success) {
+            UiCache.conversation.value = state.conversations
         }
     }
 

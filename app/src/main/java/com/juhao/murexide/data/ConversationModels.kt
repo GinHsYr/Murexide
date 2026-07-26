@@ -47,3 +47,27 @@ internal fun List<ConversationItem>.withLatestMessage(
     )
     return conversations
 }
+
+/**
+ * Updates a conversation preview only when [message] is the conversation's latest message.
+ *
+ * Edit pushes do not expose the latest message id, so the original message timestamp is used
+ * to avoid replacing the preview when an older message is edited. Incomplete or unrelated edit
+ * events leave the current list untouched; an edit must never trigger a full conversation reload.
+ */
+internal fun List<ConversationItem>.withEditedLatestMessage(
+    message: MessageItem
+): List<ConversationItem> {
+    val index = indexOfFirst {
+        it.chatId == message.chatId ||
+            (message.chatType == 1 && it.chatId == message.senderId)
+    }
+    if (index == -1 || message.timestamp <= 0L) return this
+
+    val conversation = this[index]
+    if (conversation.timestampMs != message.timestamp) return this
+
+    return toMutableList().apply {
+        this[index] = conversation.copy(chatContent = message.getDisplayContent())
+    }
+}
