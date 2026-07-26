@@ -17,7 +17,7 @@ import com.juhao.murexide.ui.chat.ChatMediaKind
 import com.juhao.murexide.ui.chat.buildEarlierChatMediaPage
 import kotlinx.coroutines.launch
 
-/** OpenImage activity with mixed chat-media pagination and immersive system bars. */
+/** OpenImage activity with mixed chat-media pagination and fullscreen media. */
 class MurexideOpenImageActivity : StandardOpenImageActivity() {
     private val viewerOptions by lazy(LazyThreadSafetyMode.NONE) {
         intent.getBundleExtra(EXTRA_VIEWER_OPTIONS)
@@ -92,7 +92,7 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus && shareTransitionFinished && !isFinishing) {
-            enterImmersiveMode()
+            configureSystemBars()
         }
     }
 
@@ -101,17 +101,18 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
         shareTransitionFinished = true
         viewPager2.removeCallbacks(shareTransitionFallback)
         super.onShareTransitionEnd()
-        enterImmersiveMode()
+        configureSystemBars()
     }
 
-    private fun enterImmersiveMode() {
+    private fun configureSystemBars() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = false
-            hide(WindowInsetsCompat.Type.systemBars())
+            hide(WindowInsetsCompat.Type.statusBars())
+            show(WindowInsetsCompat.Type.navigationBars())
         }
     }
 
