@@ -30,7 +30,7 @@ class BaDetailActivity : ComponentActivity() {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return BaDetailViewModel(
-                        accountStorage = AccountStorage(this@BaDetailActivity),
+                        accountStorage = AccountStorage.getInstance(this@BaDetailActivity),
                         baId = baId
                     ) as T
                 }

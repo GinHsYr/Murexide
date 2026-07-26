@@ -44,7 +44,7 @@ class MineViewModel(
     private val _eventFlow = MutableSharedFlow<MineEvent>()
     val eventFlow: SharedFlow<MineEvent> = _eventFlow
 
-    private val accountStorage = AccountStorage(application)
+    private val accountStorage = AccountStorage.getInstance(application)
 
     sealed class MineEvent {
         data class ShowToast(val message: String) : MineEvent()

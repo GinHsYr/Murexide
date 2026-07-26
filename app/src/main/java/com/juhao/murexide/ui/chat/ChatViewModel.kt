@@ -956,13 +956,13 @@ class ChatViewModel(
                         sendType = "text"
                     )
                 }
-                updateEditedMessage(
-                    message.copy(
-                        content = newContent,
-                        contentType = contentType,
-                        isEdited = true
-                    )
+                val editedMessage = message.copy(
+                    content = newContent,
+                    contentType = contentType,
+                    isEdited = true
                 )
+                updateEditedMessage(editedMessage)
+                wsManager.publishLocalMessageEdited(editedMessage)
                 _toastMessage.emit("编辑成功")
             }.onFailure { error ->
                 _uiState.update { it.copy(isSending = false) }

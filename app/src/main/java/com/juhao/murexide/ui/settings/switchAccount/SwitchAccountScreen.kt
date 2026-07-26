@@ -54,7 +54,9 @@ fun Greeting(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    val accountStorage = AccountStorage(context)
+    val accountStorage = remember(context.applicationContext) {
+        AccountStorage.getInstance(context.applicationContext)
+    }
 
     val accounts = accountStorage.userAccountsFlow.collectAsState(initial = emptyList()).value
     val currentAccount = accountStorage.currentTokenFlow.collectAsState(initial = "").value

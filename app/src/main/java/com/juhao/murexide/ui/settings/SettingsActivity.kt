@@ -22,7 +22,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val accountStorage = AccountStorage(this)
+        val accountStorage = AccountStorage.getInstance(this)
         val authRepository = AuthRepository()
 
         setContent {

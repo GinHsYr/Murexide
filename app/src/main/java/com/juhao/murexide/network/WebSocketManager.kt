@@ -96,6 +96,12 @@ class WebSocketManager private constructor() {
         }
     }
 
+    fun publishLocalMessageEdited(message: MessageItem) {
+        scope.launch {
+            _messageFlow.emit(WsEvent.EditMessage(message))
+        }
+    }
+
     fun connect(userId: String, token: String, deviceId: String, platform: String = "android") {
         val credsChanged = currentUserId != userId ||
                 currentToken != token ||
@@ -344,12 +350,20 @@ class WebSocketManager private constructor() {
                     }
                 }
                 "edit_message" -> {
-                    val editMessage = edit_message.ADAPTER.decode(data)
-                    editMessage.data_?.msg?.let { msg ->
-                        Log.d(TAG, "Edit message: msgId=${msg.msg_id}, chatId=${msg.chat_id}")
-                        val messageItem = parseEditMessage(msg)
+                    decodeEditMessageEvent(data)?.let { event ->
+                        when (event) {
+                            is WsEvent.EditMessage -> Log.d(
+                                TAG,
+                                "Edit message: msgId=${event.message.msgId}, chatId=${event.message.chatId}"
+                            )
+                            is WsEvent.MessageDeleted -> Log.d(
+                                TAG,
+                                "Recalled message: msgId=${event.msgId}"
+                            )
+                            else -> Unit
+                        }
                         scope.launch {
-                            _messageFlow.emit(WsEvent.EditMessage(messageItem))
+                            _messageFlow.emit(event)
                         }
                     }
                 }
@@ -444,27 +458,6 @@ class WebSocketManager private constructor() {
         )
     }
 
-    private fun parseEditMessage(msg: WsMsg): MessageItem {
-        return MessageItem(
-            msgId = msg.msg_id,
-            senderId = "",
-            senderName = "",
-            senderAvatar = "",
-            chatId = msg.chat_id,
-            chatType = 1,
-            content = msg.content?.text ?: "",
-            contentType = msg.content_type,
-            timestamp = System.currentTimeMillis(),
-            msgSeq = 0,
-            direction = "left",
-            isRecalled = false,
-            isEdited = true,
-            quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
-            quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
-            buttons = parseMessageButtons(msg.content?.buttons)
-        )
-    }
-
     fun disconnect() {
         currentUserId = null
         currentToken = null
@@ -476,4 +469,35 @@ class WebSocketManager private constructor() {
         isConnected = false
         _connectionState.value = false
     }
+}
+
+internal fun decodeEditMessageEvent(data: ByteArray): WebSocketManager.WsEvent? {
+    val msg = edit_message.ADAPTER.decode(data).data_?.msg ?: return null
+    val message = msg.toEditedMessageItem()
+    return if (message.isRecalled) {
+        WebSocketManager.WsEvent.MessageDeleted(message.msgId)
+    } else {
+        WebSocketManager.WsEvent.EditMessage(message)
+    }
+}
+
+private fun WsMsg.toEditedMessageItem(): MessageItem {
+    return MessageItem(
+        msgId = msg_id,
+        senderId = "",
+        senderName = "",
+        senderAvatar = "",
+        chatId = chat_id,
+        chatType = chat_type,
+        content = content?.text ?: "",
+        contentType = content_type,
+        timestamp = timestamp,
+        msgSeq = msg_seq,
+        direction = "left",
+        isRecalled = delete_time > 0,
+        isEdited = true,
+        quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
+        quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },
+        buttons = parseMessageButtons(content?.buttons)
+    )
 }
