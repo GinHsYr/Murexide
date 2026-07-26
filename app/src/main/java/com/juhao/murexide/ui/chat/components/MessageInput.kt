@@ -328,8 +328,6 @@ private fun FormatSendButton(
                         }
                     )
                 }
-                // Selection is relative to the long-press point, so the finger can stay
-                // anywhere around the button instead of having to enter the popup.
                 .pointerInput(optionWidthPx) {
                     awaitPointerEventScope {
                         while (true) {
@@ -463,7 +461,7 @@ private fun MoreActionsButton(
     var showMenu by remember { mutableStateOf(false) }
 
     Box {
-        FilledIconButton(
+        FilledTonalIconButton(
             onClick = { showMenu = true },
             modifier = Modifier.size(44.dp)
         ) {
