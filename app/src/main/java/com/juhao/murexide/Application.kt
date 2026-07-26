@@ -176,7 +176,7 @@ class MyApplication : Application(), ImageLoaderFactory {
     }
 
     private fun initWebSocket() {
-        val accountStorage = AccountStorage(this)
+        val accountStorage = AccountStorage.getInstance(this)
         val authRepository = AuthRepository()
         
         applicationScope.launch {

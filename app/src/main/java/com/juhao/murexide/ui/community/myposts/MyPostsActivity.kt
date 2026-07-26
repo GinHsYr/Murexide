@@ -21,7 +21,9 @@ class MyPostsActivity : ComponentActivity() {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return MyPostsViewModel(AccountStorage(this@MyPostsActivity)) as T
+                    return MyPostsViewModel(
+                        AccountStorage.getInstance(this@MyPostsActivity)
+                    ) as T
                 }
             }
         }

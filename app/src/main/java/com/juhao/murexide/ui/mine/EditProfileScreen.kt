@@ -30,7 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.ui.components.StyledIconButton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,8 +59,14 @@ fun EditProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
-    val regions = remember(context.applicationContext) {
-        ChinaRegionData.load(context.applicationContext)
+    val applicationContext = context.applicationContext
+    val regions by produceState<List<RegionProvince>>(
+        initialValue = emptyList(),
+        key1 = applicationContext
+    ) {
+        value = withContext(Dispatchers.IO) {
+            ChinaRegionData.load(applicationContext)
+        }
     }
 
     var nickname by rememberSaveable { mutableStateOf("") }

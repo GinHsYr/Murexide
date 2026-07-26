@@ -7,13 +7,20 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 /**
  * 会话详情页面。同时处理 yunhu://chat-add?id=xxx&type=user 协议链接。
@@ -32,43 +39,59 @@ class ConversationDetailActivity : ComponentActivity() {
         val chatName = intent.getStringExtra("chat_name") ?: ""
         val chatAvatar = intent.getStringExtra("chat_avatar") ?: ""
 
-        val accountStorage = AccountStorage(this)
-        val token = runBlocking { accountStorage.getCurrentToken() }
-        if (token == null) {
-            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show()
-            return finish()
-        }
+        val accountStorage = AccountStorage.getInstance(this)
+        val tokenState = mutableStateOf<String?>(null)
 
         setContent {
             MurexideTheme {
-                ConversationDetailScreen(
-                    onBack = { finish() },
-                    onEnterChat = { detail ->
-                        ChatActivity.start(
-                            context = this,
-                            chatId = detail.chatId,
-                            chatType = detail.chatType,
-                            chatName = detail.name,
-                            chatAvatar = detail.avatarUrl
-                        )
-                        finish()
-                    },
-                    viewModel = viewModel(
-                        factory = object : ViewModelProvider.Factory {
-                            @Suppress("UNCHECKED_CAST")
-                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                return ConversationDetailViewModel(
-                                    token = token,
-                                    chatId = chatId,
-                                    chatType = chatType,
-                                    fallbackName = chatName,
-                                    fallbackAvatar = chatAvatar
-                                ) as T
+                val token = tokenState.value
+                if (token == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    ConversationDetailScreen(
+                        onBack = { finish() },
+                        onEnterChat = { detail ->
+                            ChatActivity.start(
+                                context = this,
+                                chatId = detail.chatId,
+                                chatType = detail.chatType,
+                                chatName = detail.name,
+                                chatAvatar = detail.avatarUrl
+                            )
+                            finish()
+                        },
+                        viewModel = viewModel(
+                            factory = object : ViewModelProvider.Factory {
+                                @Suppress("UNCHECKED_CAST")
+                                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                    return ConversationDetailViewModel(
+                                        token = token,
+                                        chatId = chatId,
+                                        chatType = chatType,
+                                        fallbackName = chatName,
+                                        fallbackAvatar = chatAvatar
+                                    ) as T
+                                }
                             }
-                        }
+                        )
                     )
-                )
+                }
             }
+        }
+
+        lifecycleScope.launch {
+            val token = runCatching { accountStorage.getCurrentToken() }.getOrNull()
+            if (token == null) {
+                Toast.makeText(this@ConversationDetailActivity, "请先登录", Toast.LENGTH_SHORT).show()
+                finish()
+                return@launch
+            }
+            tokenState.value = token
         }
     }
 

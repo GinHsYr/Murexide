@@ -44,7 +44,7 @@ class GroupMemberViewModel(
 
     private val repository = GroupMemberRepository()
     private val groupRepository = GroupRepository()
-    private val accountStorage = AccountStorage(context)
+    private val accountStorage = AccountStorage.getInstance(context)
 
     private val _uiState = MutableStateFlow(
         GroupMemberUiState(

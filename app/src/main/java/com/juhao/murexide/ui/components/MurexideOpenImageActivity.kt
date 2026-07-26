@@ -42,7 +42,7 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
         media.mapNotNullTo(mutableSetOf()) { it.messageId }
     }
     private val accountStorage by lazy(LazyThreadSafetyMode.NONE) {
-        AccountStorage(applicationContext)
+        AccountStorage.getInstance(applicationContext)
     }
     private val messageRepository = MessageRepository()
     private val preloadedUrls = mutableSetOf<String>()

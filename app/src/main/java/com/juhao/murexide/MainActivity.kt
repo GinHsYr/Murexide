@@ -90,7 +90,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val accountStorage = AccountStorage(this)
+        val accountStorage = AccountStorage.getInstance(this)
 
         lifecycleScope.launch {
             val token = accountStorage.getCurrentToken()

@@ -12,17 +12,26 @@ import com.juhao.murexide.proto.user.get_user
 import com.juhao.murexide.proto.user.get_user_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+
+@Serializable
+private data class CommonStatusResponse(
+    val code: Int = 0,
+    val msg: String? = null
+)
 
 /**
  * 加载会话详情：根据会话类型分别请求用户 / 群聊 / 机器人信息。
  */
-class ConversationDetailRepository {
-    private val client = NetworkClient.okHttpClient
-    private val baseUrl = NetworkClient.BASE_URL
+class ConversationDetailRepository(
+    private val client: OkHttpClient = NetworkClient.okHttpClient,
+    private val baseUrl: String = NetworkClient.BASE_URL
+) {
 
     suspend fun getDetail(
         token: String,
@@ -106,10 +115,18 @@ class ConversationDetailRepository {
                 .build()
 
             client.newCall(httpRequest).execute().use { response ->
-                if (response.isSuccessful) {
+                if (!response.isSuccessful) {
+                    return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                }
+
+                val status = json.decodeFromString<CommonStatusResponse>(response.body.string())
+                if (status.code == 1) {
                     Result.success(true)
                 } else {
-                    Result.failure(Exception("HTTP error: ${response.code}"))
+                    val message = status.msg
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "修改失败（code: ${status.code}）"
+                    Result.failure(Exception(message))
                 }
             }
         } catch (e: Exception) {

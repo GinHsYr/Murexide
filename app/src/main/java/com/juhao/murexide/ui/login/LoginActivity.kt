@@ -26,7 +26,7 @@ import com.juhao.murexide.utils.DeviceIdProvider
 import kotlinx.coroutines.launch
 
 class LoginActivity : ComponentActivity() {
-    private val accountStorage by lazy { AccountStorage(this) }
+    private val accountStorage by lazy { AccountStorage.getInstance(this) }
     private val authRepository by lazy { AuthRepository() }
     private val deviceId by lazy { DeviceIdProvider.get(this) }
     private lateinit var loginViewModel: LoginViewModel
