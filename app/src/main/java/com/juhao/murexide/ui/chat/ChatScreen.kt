@@ -3,6 +3,12 @@ package com.juhao.murexide.ui.chat
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.CancellationSignal
+import android.view.View
+import android.view.WindowInsets as AndroidWindowInsets
+import android.view.WindowInsetsAnimationControlListener
+import android.view.WindowInsetsAnimationController
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
@@ -43,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +77,8 @@ import com.juhao.murexide.data.resolveStickerMessageUrl
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.*
@@ -87,6 +96,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlin.coroutines.resume
 
 private enum class ChatInputPanel {
     Emoji,
@@ -94,6 +104,49 @@ private enum class ChatInputPanel {
 }
 
 private val DefaultInputPanelHeight = 280.dp
+
+private suspend fun View.measureShownImeHeight(): Int? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+
+    return suspendCancellableCoroutine { continuation ->
+        val cancellationSignal = CancellationSignal()
+        continuation.invokeOnCancellation { cancellationSignal.cancel() }
+
+        val controller = windowInsetsController
+        if (controller == null) {
+            continuation.resume(null)
+            return@suspendCancellableCoroutine
+        }
+
+        // Animation control exposes the fully shown bounds without making the hidden IME visible.
+        controller.controlWindowInsetsAnimation(
+            AndroidWindowInsets.Type.ime(),
+            -1L,
+            null,
+            cancellationSignal,
+            object : WindowInsetsAnimationControlListener {
+                override fun onReady(
+                    animationController: WindowInsetsAnimationController,
+                    types: Int
+                ) {
+                    val height = animationController.shownStateInsets.bottom.takeIf { it > 0 }
+                    animationController.finish(false)
+                    if (continuation.isActive) continuation.resume(height)
+                }
+
+                override fun onFinished(
+                    animationController: WindowInsetsAnimationController
+                ) = Unit
+
+                override fun onCancelled(
+                    animationController: WindowInsetsAnimationController?
+                ) {
+                    if (continuation.isActive) continuation.resume(null)
+                }
+            }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
     ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class
@@ -120,12 +173,19 @@ fun ChatScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember { FocusRequester() }
+    val composeView = LocalView.current
 
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val imeTargetBottomPx = WindowInsets.imeAnimationTarget.getBottom(density)
     var pendingInputPanel by remember { mutableStateOf<ChatInputPanel?>(null) }
+    var isMeasuringIme by remember { mutableStateOf(false) }
     var isReturningToKeyboard by remember { mutableStateOf(false) }
-    var inputPanelHeight by remember { mutableStateOf(DefaultInputPanelHeight) }
+    var inputPanelHeightPx by remember { mutableIntStateOf(0) }
+    val inputPanelHeight = if (inputPanelHeightPx > 0) {
+        with(density) { inputPanelHeightPx.toDp() }
+    } else {
+        DefaultInputPanelHeight
+    }
 
     fun showInputPanel(panel: ChatInputPanel) {
         when (panel) {
@@ -139,6 +199,7 @@ fun ChatScreen(
     }
 
     fun returnToKeyboard() {
+        isMeasuringIme = false
         pendingInputPanel = null
         isReturningToKeyboard = true
         viewModel.hideStickerPanel()
@@ -156,25 +217,58 @@ fun ChatScreen(
             return
         }
 
-        val keyboardHeightPx = maxOf(imeBottomPx, imeTargetBottomPx)
-        if (keyboardHeightPx > 0) {
-            inputPanelHeight = with(density) { keyboardHeightPx.toDp() }
-        }
-
         isReturningToKeyboard = false
         pendingInputPanel = panel
+
+        val keyboardHeightPx = maxOf(imeBottomPx, imeTargetBottomPx)
+        if (keyboardHeightPx > 0) {
+            inputPanelHeightPx = keyboardHeightPx
+            isMeasuringIme = false
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        } else if (inputPanelHeightPx == 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            isMeasuringIme = true
+        } else {
+            isMeasuringIme = false
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+
+    LaunchedEffect(isMeasuringIme) {
+        if (!isMeasuringIme) return@LaunchedEffect
+
+        inputFocusRequester.requestFocus()
+        withFrameNanos { }
+        val measuredHeightPx = withTimeoutOrNull(500) {
+            composeView.measureShownImeHeight()
+        }
+        if (!isMeasuringIme || pendingInputPanel == null) return@LaunchedEffect
+
+        if (measuredHeightPx != null) {
+            inputPanelHeightPx = measuredHeightPx
+        }
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
+        isMeasuringIme = false
+    }
+
+    LaunchedEffect(imeTargetBottomPx) {
+        if (imeTargetBottomPx > 0) {
+            inputPanelHeightPx = imeTargetBottomPx
+        }
     }
 
     LaunchedEffect(
         pendingInputPanel,
+        isMeasuringIme,
         imeBottomPx,
         imeTargetBottomPx,
         expressions.isVisible,
         instructionPanel.isVisible
     ) {
         val panel = pendingInputPanel ?: return@LaunchedEffect
+        if (isMeasuringIme) return@LaunchedEffect
         if (imeBottomPx != 0 || imeTargetBottomPx != 0) return@LaunchedEffect
 
         val isPanelVisible = when (panel) {
@@ -202,7 +296,7 @@ fun ChatScreen(
             imeTargetBottomPx > 0 &&
             imeBottomPx >= imeTargetBottomPx
         ) {
-            inputPanelHeight = with(density) { imeTargetBottomPx.toDp() }
+            inputPanelHeightPx = imeTargetBottomPx
             isReturningToKeyboard = false
         }
     }
@@ -1031,6 +1125,7 @@ fun ChatScreen(
                                 focusRequester = inputFocusRequester,
                                 onInputFocused = {
                                     if (
+                                        !isMeasuringIme &&
                                         !isReturningToKeyboard &&
                                         (pendingInputPanel != null ||
                                             expressions.isVisible ||
@@ -1046,12 +1141,24 @@ fun ChatScreen(
                                     expressions.isVisible ||
                                     instructionPanel.isVisible
                             ) {
+                                isMeasuringIme = false
                                 pendingInputPanel = null
+                                focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
                                 viewModel.hideStickerPanel()
                                 viewModel.hideInstructionPanel()
                             }
 
                             when {
+                                isMeasuringIme -> {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .windowInsetsBottomHeight(
+                                                WindowInsets.navigationBars.union(WindowInsets.ime)
+                                            )
+                                    )
+                                }
                                 pendingInputPanel != null || isReturningToKeyboard -> {
                                     Spacer(
                                         modifier = Modifier
