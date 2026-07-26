@@ -45,7 +45,9 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,7 +62,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -343,7 +344,7 @@ private fun ContactTabContent(
                 item(key = "contact_state", contentType = "state") {
                     when {
                         isLoading -> LoadingState(
-                            modifier = Modifier.fillParentMaxHeight(
+                            modifier = Modifier.fillMaxWidth().fillParentMaxHeight(
                                 if (showNewMessageShortcut) 0.7f else 1f
                             )
                         )
@@ -904,10 +905,11 @@ private fun RequestStatusPill(label: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoadingState(modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        ContainedLoadingIndicator()
     }
 }
 

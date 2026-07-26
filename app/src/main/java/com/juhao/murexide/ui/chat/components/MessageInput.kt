@@ -231,6 +231,7 @@ fun MessageInput(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FormatSendButton(
     enabled: Boolean,
@@ -309,7 +310,7 @@ private fun FormatSendButton(
                                 if (showFormatPicker) {
                                     val formatToSend = selectedType
                                     showFormatPicker = false
-                                    if (released && currentEnabled && formatToSend != null) {
+                                    if (released && formatToSend != null) {
                                         currentOnSendWithType(formatToSend)
                                     }
                                 }
@@ -352,12 +353,8 @@ private fun FormatSendButton(
             contentAlignment = Alignment.Center
         ) {
             if (isSending) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .focusProperties { canFocus = false },
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
+                ContainedLoadingIndicator(
+                    modifier = Modifier.size(20.dp)
                 )
             } else {
                 Icon(
