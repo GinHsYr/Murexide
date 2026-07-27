@@ -97,6 +97,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlin.coroutines.resume
+import kotlin.time.Duration.Companion.milliseconds
 
 private enum class ChatInputPanel {
     Emoji,
@@ -149,7 +150,8 @@ private suspend fun View.measureShownImeHeight(): Int? {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
-    ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class
+    ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class,
+    ExperimentalMaterial3ExpressiveApi::class
 )
 @Composable
 fun ChatScreen(
@@ -240,7 +242,7 @@ fun ChatScreen(
 
         inputFocusRequester.requestFocus()
         withFrameNanos { }
-        val measuredHeightPx = withTimeoutOrNull(500) {
+        val measuredHeightPx = withTimeoutOrNull(500.milliseconds) {
             composeView.measureShownImeHeight()
         }
         if (!isMeasuringIme || pendingInputPanel == null) return@LaunchedEffect
@@ -286,7 +288,7 @@ fun ChatScreen(
         if (!isReturningToKeyboard) return@LaunchedEffect
         inputFocusRequester.requestFocus()
         keyboardController?.show()
-        delay(1_000)
+        delay(1_000.milliseconds)
         isReturningToKeyboard = false
     }
 
@@ -1241,7 +1243,7 @@ fun ChatScreen(
                         .fillMaxSize()
                         .padding(top = innerPadding.calculateTopPadding() + 24.dp)
                 ) {
-                    CircularProgressIndicator(
+                    ContainedLoadingIndicator(
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
                             .padding(top = 16.dp)
@@ -1375,8 +1377,6 @@ fun ChatScreen(
                                             }
                                         }
                                         MessageItem.CONTENT_TYPE_STICKER -> {
-                                            // Stickers can still be viewed at full size, but
-                                            // never become pages in the photo gallery.
                                             resolveStickerMessageUrl(
                                                 imageUrl = msg.imageUrl,
                                                 stickerUrl = msg.stickerUrl
@@ -1441,7 +1441,7 @@ fun ChatScreen(
                                     .padding(16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
+                                ContainedLoadingIndicator()
                             }
                         }
                     }

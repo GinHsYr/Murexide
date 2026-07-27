@@ -231,6 +231,7 @@ fun MessageInput(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FormatSendButton(
     enabled: Boolean,
@@ -309,7 +310,7 @@ private fun FormatSendButton(
                                 if (showFormatPicker) {
                                     val formatToSend = selectedType
                                     showFormatPicker = false
-                                    if (released && currentEnabled && formatToSend != null) {
+                                    if (released && formatToSend != null) {
                                         currentOnSendWithType(formatToSend)
                                     }
                                 }
@@ -328,8 +329,6 @@ private fun FormatSendButton(
                         }
                     )
                 }
-                // Selection is relative to the long-press point, so the finger can stay
-                // anywhere around the button instead of having to enter the popup.
                 .pointerInput(optionWidthPx) {
                     awaitPointerEventScope {
                         while (true) {
@@ -354,12 +353,8 @@ private fun FormatSendButton(
             contentAlignment = Alignment.Center
         ) {
             if (isSending) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .focusProperties { canFocus = false },
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
+                ContainedLoadingIndicator(
+                    modifier = Modifier.size(20.dp)
                 )
             } else {
                 Icon(
@@ -463,7 +458,7 @@ private fun MoreActionsButton(
     var showMenu by remember { mutableStateOf(false) }
 
     Box {
-        FilledIconButton(
+        FilledTonalIconButton(
             onClick = { showMenu = true },
             modifier = Modifier.size(44.dp)
         ) {
