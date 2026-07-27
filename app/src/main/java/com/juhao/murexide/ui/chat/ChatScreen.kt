@@ -75,7 +75,9 @@ import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -314,6 +316,18 @@ fun ChatScreen(
     var showScrollToBottom by remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var firstMessageId by remember { mutableStateOf<String?>(null) }
+    var highlightedMessageId by remember { mutableStateOf<String?>(null) }
+    var highlightRequest by remember { mutableIntStateOf(0) }
+    var quoteJumpJob by remember { mutableStateOf<Job?>(null) }
+
+    LaunchedEffect(highlightedMessageId, highlightRequest) {
+        val highlightedId = highlightedMessageId ?: return@LaunchedEffect
+        val request = highlightRequest
+        delay(1_600.milliseconds)
+        if (highlightedMessageId == highlightedId && highlightRequest == request) {
+            highlightedMessageId = null
+        }
+    }
 
     val downloadingFiles by viewModel.downloadingFiles.collectAsState()
 
@@ -1322,6 +1336,29 @@ fun ChatScreen(
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
                             onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },
+                            onQuoteClick = { quotedMessage ->
+                                val quoteMsgId = quotedMessage.quoteMsgId
+                                if (!quoteMsgId.isNullOrBlank()) {
+                                    showMenuMsgId = null
+                                    quoteJumpJob?.cancel()
+                                    quoteJumpJob = scope.launch {
+                                        if (viewModel.loadQuotedMessage(quoteMsgId)) {
+                                            val targetIndex = withTimeoutOrNull(2_000.milliseconds) {
+                                                snapshotFlow {
+                                                    displayItems.indexOfFirst {
+                                                        it.message.msgId == quoteMsgId
+                                                    }
+                                                }.first { it >= 0 }
+                                            }
+                                            if (targetIndex != null) {
+                                                listState.animateScrollToCenteredItem(targetIndex)
+                                                highlightedMessageId = quoteMsgId
+                                                highlightRequest++
+                                            }
+                                        }
+                                    }
+                                }
+                            },
                             isAdmin = uiState.isAdmin,
                             isLastFromSender = item.isLastFromSender,
                             isFirstFromSender = item.isFirstFromSender,
@@ -1430,6 +1467,7 @@ fun ChatScreen(
                                     viewModel.toggleMessageSelection(msg)
                                 }
                             },
+                            isHighlighted = highlightedMessageId == message.msgId,
                         )
                     }
 

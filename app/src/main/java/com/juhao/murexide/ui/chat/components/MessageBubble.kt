@@ -2,6 +2,7 @@ package com.juhao.murexide.ui.chat.components
 
 import android.content.ClipData
 import android.widget.Toast
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -73,6 +74,7 @@ fun MessageBubble(
     onRecall: () -> Unit = {},
     onEdit: () -> Unit = {},
     onReply: () -> Unit = {},
+    onQuoteClick: ((MessageItem) -> Unit)? = null,
     isAdmin: Boolean = false,
     isLastFromSender: Boolean = true,
     isFirstFromSender: Boolean = true,
@@ -97,7 +99,8 @@ fun MessageBubble(
     hideMyInfo: Boolean = false,
     hideImages: Boolean = false,
     anonymousNameProvider: ((String) -> String)? = null,
-    roleLabel: String? = null
+    roleLabel: String? = null,
+    isHighlighted: Boolean = false
 ) {
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -139,16 +142,22 @@ fun MessageBubble(
         animationSpec = tween(durationMillis = 300),
         label = "message_alpha"
     )
+
+    val highlightColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            isHighlighted -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 250),
+        label = "message_highlight"
+    )
     
     Row(
         modifier = Modifier
             .alpha(animatedAlpha)
             .background(
-                if (isSelected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                } else {
-                    Color.Transparent
-                },
+                highlightColor,
                 shape = RoundedCornerShape(12.dp)
             )
             .combinedClickable(
@@ -350,8 +359,22 @@ fun MessageBubble(
     
                                 if (message.quoteMsgText != null) {
                                     val quoteText = message.quoteMsgText
+                                    val quoteClickModifier = if (
+                                        !isSelectionMode &&
+                                        !message.quoteMsgId.isNullOrBlank() &&
+                                        onQuoteClick != null
+                                    ) {
+                                        Modifier.clickable(
+                                            onClickLabel = "跳转至原消息",
+                                            onClick = { onQuoteClick(message) }
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
                                     Surface(
-                                        modifier = Modifier.padding(bottom = 4.dp),
+                                        modifier = Modifier
+                                            .padding(bottom = 4.dp)
+                                            .then(quoteClickModifier),
                                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {

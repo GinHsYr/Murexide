@@ -36,6 +36,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -88,6 +90,7 @@ class ChatViewModel(
 
     private var currentMsgId: String? = null
     private var isLoadingMore = false
+    private val historyLoadMutex = Mutex()
 
     init {
         loadMessages()
@@ -314,43 +317,117 @@ class ChatViewModel(
     }
 
     fun loadMore() {
-        if (isLoadingMore || !_uiState.value.hasMore) return
+        if (isLoadingMore || !_uiState.value.hasMore || !historyLoadMutex.tryLock()) return
 
         viewModelScope.launch {
-            isLoadingMore = true
-            _uiState.update { it.copy(isLoadingMore = true) }
-
-            repository.getMessageList(
-                token = token,
-                chatId = chatId,
-                chatType = chatType,
-                msgId = currentMsgId
-            ).onSuccess { messages ->
-                val resolvedMessages = messages.map(::withCurrentUserProfileFallback)
-                if (resolvedMessages.isNotEmpty()) {
-                    val newMessages = resolvedMessages.filter { it.msgId !in msgIdCache }
-                    if (newMessages.isNotEmpty()) {
-                        msgIdCache.addAll(newMessages.map { it.msgId })
-                        _uiState.update {
-                            it.copy(
-                                messages = it.messages + newMessages,
-                                isLoadingMore = false,
-                                hasMore = true
-                            )
-                        }
-                    } else {
-                        _uiState.update { it.copy(isLoadingMore = false, hasMore = true) }
-                    }
-                    currentMsgId = resolvedMessages.last().msgId
-                } else {
-                    _uiState.update { it.copy(isLoadingMore = false, hasMore = false) }
-                }
-            }.onFailure {
-                _uiState.update { it.copy(isLoadingMore = false) }
+            try {
+                loadOlderMessagesUntil()
+            } finally {
+                historyLoadMutex.unlock()
             }
-
-            isLoadingMore = false
         }
+    }
+
+    /**
+     * Ensures that a quoted message is present in the contiguous history currently shown.
+     *
+     * The history endpoint returns messages before the supplied ID, so older pages are loaded
+     * sequentially instead of inserting an isolated message and breaking the timeline order.
+     */
+    suspend fun loadQuotedMessage(messageId: String): Boolean {
+        if (messageId.isBlank()) return false
+        if (_uiState.value.messages.any { it.msgId == messageId }) return true
+
+        return historyLoadMutex.withLock {
+            if (_uiState.value.messages.any { it.msgId == messageId }) {
+                true
+            } else {
+                loadOlderMessagesUntil(targetMessageId = messageId)
+            }
+        }
+    }
+
+    private suspend fun loadOlderMessagesUntil(targetMessageId: String? = null): Boolean {
+        if (targetMessageId != null && _uiState.value.messages.any { it.msgId == targetMessageId }) {
+            return true
+        }
+        if (!_uiState.value.hasMore) {
+            if (targetMessageId != null) {
+                _toastMessage.emit("原消息已删除或不可查看")
+            }
+            return false
+        }
+
+        isLoadingMore = true
+        _uiState.update { it.copy(isLoadingMore = true) }
+
+        try {
+            while (true) {
+                val anchorMessageId = currentMsgId
+                    ?: _uiState.value.messages.lastOrNull()?.msgId
+                    ?: return quotedMessageUnavailable(targetMessageId)
+
+                val result = repository.getMessageList(
+                    token = token,
+                    chatId = chatId,
+                    chatType = chatType,
+                    msgId = anchorMessageId
+                )
+                val error = result.exceptionOrNull()
+                if (error != null) {
+                    if (targetMessageId != null) {
+                        _toastMessage.emit("加载原消息失败")
+                    }
+                    return false
+                }
+
+                val resolvedMessages = result.getOrThrow().map(::withCurrentUserProfileFallback)
+                if (resolvedMessages.isEmpty()) {
+                    _uiState.update { it.copy(hasMore = false) }
+                    return quotedMessageUnavailable(targetMessageId)
+                }
+
+                val page = resolveOlderMessagePage(
+                    knownMessageIds = msgIdCache,
+                    currentAnchorMessageId = anchorMessageId,
+                    messages = resolvedMessages
+                )
+                val newMessages = page.newMessages
+                if (newMessages.isNotEmpty()) {
+                    msgIdCache.addAll(newMessages.map { it.msgId })
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages + newMessages,
+                            hasMore = true
+                        )
+                    }
+                }
+                currentMsgId = page.nextAnchorMessageId
+
+                if (targetMessageId != null &&
+                    _uiState.value.messages.any { it.msgId == targetMessageId }
+                ) {
+                    return true
+                }
+
+                if (!page.madeCursorProgress) {
+                    _uiState.update { it.copy(hasMore = false) }
+                    return quotedMessageUnavailable(targetMessageId)
+                }
+
+                if (targetMessageId == null) return true
+            }
+        } finally {
+            isLoadingMore = false
+            _uiState.update { it.copy(isLoadingMore = false) }
+        }
+    }
+
+    private suspend fun quotedMessageUnavailable(targetMessageId: String?): Boolean {
+        if (targetMessageId != null) {
+            _toastMessage.emit("原消息已删除或不可查看")
+        }
+        return false
     }
 
     fun refresh() {
