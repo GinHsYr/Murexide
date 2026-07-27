@@ -9,7 +9,6 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -331,6 +330,27 @@ class AccountStorage private constructor(context: Context) {
         }
         .distinctUntilChanged()
 
+    /**
+     * 当前账号的原子快照。
+     *
+     * 用户 ID 与账号列表来自同一次 DataStore 发射，避免切换账号时把新 ID 和旧 Token
+     * 临时组合到一起。WebSocket 登录应直接使用这里已经校验并持久化的账号信息。
+     */
+    val currentAccountFlow: Flow<UserAccount?> = dataStore.data
+        .map { preferences ->
+            val currentUserId = preferences[CURRENT_USER_ID_KEY]
+                .also { currentUserIdSnapshot = it }
+            val accounts = try {
+                decodeAccounts(preferences[ACCOUNTS_KEY])
+            } catch (_: Exception) {
+                emptyList()
+            }
+            currentUserId?.let { id -> accounts.find { it.id == id } }
+        }
+        .catch { emit(null) }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.IO)
+
     suspend fun getCurrentAccount(): UserAccount? {
         val stored = readStoredAccounts()
         return stored.currentUserId
@@ -340,12 +360,8 @@ class AccountStorage private constructor(context: Context) {
     suspend fun getCurrentToken(): String? =
         getCurrentAccount()?.token?.takeIf { it.isNotEmpty() }
 
-    val currentTokenFlow: Flow<String?> = currentUserIdFlow
-        .combine(userAccountsFlow) { userId, accounts ->
-            userId
-                ?.let { id -> accounts.find { it.id == id }?.token }
-                ?.takeIf { it.isNotEmpty() }
-        }
+    val currentTokenFlow: Flow<String?> = currentAccountFlow
+        .map { account -> account?.token?.takeIf { it.isNotEmpty() } }
         .distinctUntilChanged()
 
     /** 获取最近一次异步读取到的用户 ID；应用启动前可能为 null。 */

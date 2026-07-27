@@ -160,14 +160,17 @@ private fun MessageItem.compareToLatest(
 ): Int {
     if (sameMessage) return 0
 
+    val latestSeq = conversation.latestMessageSeq
+    if (msgSeq > 0L && latestSeq > 0L && msgSeq != latestSeq) {
+        return msgSeq.compareTo(latestSeq)
+    }
+
     val latestTimestamp = conversation.latestMessageTimestamp
     if (timestamp <= 0L) return if (latestTimestamp <= 0L) 0 else -1
     if (latestTimestamp <= 0L) return 1
     if (timestamp != latestTimestamp) return timestamp.compareTo(latestTimestamp)
 
-    val latestSeq = conversation.latestMessageSeq
     return when {
-        msgSeq > 0L && latestSeq > 0L -> msgSeq.compareTo(latestSeq)
         msgSeq > 0L && conversation.latestMessageId != null -> 1
         else -> 0
     }
