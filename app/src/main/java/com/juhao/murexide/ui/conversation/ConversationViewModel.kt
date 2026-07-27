@@ -7,6 +7,8 @@ import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
+import com.juhao.murexide.data.withRecalledLatestMessage
+import com.juhao.murexide.data.withStreamedLatestMessage
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.ConversationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +72,8 @@ class ConversationViewModel(
     
     private var currentMd5: String = ""
     private val json = Json { ignoreUnknownKeys = true }
+    private val recentMessages = LinkedHashMap<String, RecentMessage>()
+    private var stickyConversations: List<StickyItem> = emptyList()
 
     init {
         loadConversations()
@@ -91,7 +95,16 @@ class ConversationViewModel(
                 when (event) {
                     is WebSocketManager.WsEvent.NewMessage -> handleNewMessage(event.message)
                     is WebSocketManager.WsEvent.LocalMessageSent -> handleNewMessage(event.message)
+                    is WebSocketManager.WsEvent.LatestMessageResolved -> {
+                        handleResolvedLatestMessage(event.message)
+                    }
                     is WebSocketManager.WsEvent.EditMessage -> handleEditedMessage(event.message)
+                    is WebSocketManager.WsEvent.StreamContent -> {
+                        handleStreamContent(event.msgId, event.content)
+                    }
+                    is WebSocketManager.WsEvent.MessageDeleted -> {
+                        handleRecalledMessage(event.message)
+                    }
                     else -> Unit
                 }
             }
@@ -99,10 +112,11 @@ class ConversationViewModel(
     }
 
     private fun handleNewMessage(message: MessageItem) {
+        val resolvedMessage = rememberMessage(message, incrementUnread = true)
         var conversationMissing = false
         _uiState.update { state ->
             if (state is ConversationUiState.Success) {
-                val conversations = state.conversations.withLatestMessage(message)
+                val conversations = state.conversations.withLatestMessage(resolvedMessage)
                 if (conversations != null) {
                     state.copy(conversations = conversations)
                 } else {
@@ -125,10 +139,11 @@ class ConversationViewModel(
     }
 
     private fun handleEditedMessage(message: MessageItem) {
+        val resolvedMessage = rememberMessage(message)
         _uiState.update { state ->
             if (state is ConversationUiState.Success) {
                 state.copy(
-                    conversations = state.conversations.withEditedLatestMessage(message)
+                    conversations = state.conversations.withEditedLatestMessage(resolvedMessage)
                 )
             } else {
                 state
@@ -141,18 +156,145 @@ class ConversationViewModel(
         }
     }
 
+    private fun handleResolvedLatestMessage(message: MessageItem) {
+        val resolvedMessage = rememberMessage(message, incrementUnread = false)
+        _uiState.update { state ->
+            if (state is ConversationUiState.Success) {
+                state.conversations.withLatestMessage(
+                    message = resolvedMessage,
+                    incrementUnread = false
+                )?.let { state.copy(conversations = it) } ?: state
+            } else {
+                state
+            }
+        }
+        syncConversationCache()
+    }
+
+    private fun handleStreamContent(msgId: String, content: String) {
+        rememberStreamContent(msgId, content)
+        _uiState.update { state ->
+            if (state is ConversationUiState.Success) {
+                state.copy(
+                    conversations = state.conversations.withStreamedLatestMessage(
+                        msgId = msgId,
+                        content = content
+                    )
+                )
+            } else {
+                state
+            }
+        }
+        syncConversationCache()
+    }
+
+    private fun handleRecalledMessage(message: MessageItem) {
+        val resolvedMessage = rememberMessage(message.copy(isRecalled = true))
+        _uiState.update { state ->
+            if (state is ConversationUiState.Success) {
+                state.copy(
+                    conversations = state.conversations.withRecalledLatestMessage(resolvedMessage)
+                )
+            } else {
+                state
+            }
+        }
+        syncConversationCache()
+    }
+
+    private fun rememberMessage(
+        message: MessageItem,
+        incrementUnread: Boolean? = null
+    ): MessageItem {
+        if (message.msgId.isBlank()) return message
+
+        val existing = recentMessages.remove(message.msgId)
+        val existingMessage = existing?.message
+        val resolved = if (existingMessage == null) {
+            message
+        } else {
+            message.copy(
+                senderId = message.senderId.ifBlank { existingMessage.senderId },
+                senderName = message.senderName.ifBlank { existingMessage.senderName },
+                senderAvatar = message.senderAvatar.ifBlank { existingMessage.senderAvatar },
+                chatId = message.chatId.ifBlank { existingMessage.chatId },
+                chatType = message.chatType.takeIf { it > 0 } ?: existingMessage.chatType,
+                content = when {
+                    message.isEdited -> message.content
+                    existingMessage.content.length > message.content.length &&
+                        existingMessage.content.startsWith(message.content) -> existingMessage.content
+                    else -> message.content
+                },
+                contentType = message.contentType.takeIf { it > 0 } ?: existingMessage.contentType,
+                timestamp = message.timestamp.takeIf { it > 0 } ?: existingMessage.timestamp,
+                msgSeq = message.msgSeq.takeIf { it > 0 } ?: existingMessage.msgSeq,
+                direction = if (message.senderId.isBlank()) existingMessage.direction else message.direction,
+                isRecalled = existingMessage.isRecalled || message.isRecalled,
+                isEdited = existingMessage.isEdited || message.isEdited
+            )
+        }
+
+        recentMessages[message.msgId] = RecentMessage(
+            message = resolved,
+            incrementUnread = incrementUnread ?: existing?.incrementUnread ?: false
+        )
+        while (recentMessages.size > MAX_RECENT_MESSAGES) {
+            val oldestKey = recentMessages.keys.firstOrNull() ?: break
+            recentMessages.remove(oldestKey)
+        }
+        return resolved
+    }
+
+    private fun rememberStreamContent(msgId: String, content: String) {
+        if (msgId.isBlank() || content.isEmpty()) return
+        val recent = recentMessages.remove(msgId) ?: return
+        recentMessages[msgId] = recent.copy(
+            message = recent.message.copy(content = recent.message.content + content)
+        )
+    }
+
+    private fun overlayRecentMessages(
+        conversations: List<ConversationItem>
+    ): List<ConversationItem> {
+        return recentMessages.values
+            .sortedWith(
+                compareBy<RecentMessage> { it.message.timestamp }
+                    .thenBy { it.message.msgSeq }
+            )
+            .fold(conversations) { current, recent ->
+                current.withLatestMessage(
+                    message = recent.message,
+                    incrementUnread = recent.incrementUnread
+                ) ?: current
+            }
+    }
+
+    private fun syncConversationCache() {
+        val state = _uiState.value
+        if (state is ConversationUiState.Success) {
+            UiCache.conversation.value = state.conversations
+        }
+    }
+
     fun loadConversations() {
         viewModelScope.launch {
             _uiState.value = ConversationUiState.Loading
 
             fetchStickyList()
             repository.getConversationList(token, currentMd5).onSuccess { conversations ->
+                val mergedConversations = overlayRecentMessages(conversations)
                 _uiState.update { state ->
-                    UiCache.conversation.value = conversations
+                    UiCache.conversation.value = mergedConversations
                     if (state is ConversationUiState.Success) {
-                        state.copy(conversations = conversations)
+                        state.copy(
+                            conversations = mergedConversations,
+                            stickyConversations = stickyConversations
+                        )
                     } else {
-                        ConversationUiState.Success(conversations = conversations)
+                        ConversationUiState.Success(
+                            conversations = mergedConversations,
+                            stickyConversations = stickyConversations
+                        )
                     }
                 }
             }.onFailure { error ->
@@ -179,14 +321,12 @@ class ConversationViewModel(
                             val stickyResponse = json.decodeFromString<StickyListResponse>(body)
                             if (stickyResponse.code == 1) {
                                 val stickyList = stickyResponse.data?.sticky ?: emptyList()
+                                stickyConversations = stickyList
                                 _uiState.update { state ->
                                     if (state is ConversationUiState.Success) {
                                         state.copy(stickyConversations = stickyList)
                                     } else {
-                                        ConversationUiState.Success(
-                                            conversations = emptyList(),
-                                            stickyConversations = stickyList
-                                        )
+                                        state
                                     }
                                 }
                             }
@@ -207,12 +347,31 @@ class ConversationViewModel(
     }
 
     fun clearUnread(chatId: String) {
+        recentMessages.entries.forEach { entry ->
+            val recent = entry.value
+            if (recent.message.belongsToConversation(chatId)) {
+                entry.setValue(recent.copy(incrementUnread = false))
+            }
+        }
         val currentState = _uiState.value
         if (currentState is ConversationUiState.Success) {
             val conversations = currentState.conversations.map {
                 if (it.chatId == chatId) it.copy(unreadMessage = 0, at = 0) else it
             }
             _uiState.update { currentState.copy(conversations = conversations) }
+            syncConversationCache()
         }
     }
 }
+
+private data class RecentMessage(
+    val message: MessageItem,
+    val incrementUnread: Boolean
+)
+
+private fun MessageItem.belongsToConversation(conversationId: String): Boolean {
+    return chatId == conversationId ||
+        (chatType == 1 && senderId == conversationId)
+}
+
+private const val MAX_RECENT_MESSAGES = 100

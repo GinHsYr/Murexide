@@ -26,10 +26,14 @@ class WebSocketManagerTest {
     fun recalledEditMessagePayload_decodesAsDeletedEvent() {
         val event = decodeEditMessageEvent(editPayload(deleteTime = 1_234))
 
-        assertEquals(
-            WebSocketManager.WsEvent.MessageDeleted("message-id"),
-            event
-        )
+        assertTrue(event is WebSocketManager.WsEvent.MessageDeleted)
+        val message = (event as WebSocketManager.WsEvent.MessageDeleted).message
+        assertEquals("message-id", message.msgId)
+        assertEquals("chat-id", message.chatId)
+        assertEquals(2, message.chatType)
+        assertEquals(1_000L, message.timestamp)
+        assertEquals(42L, message.msgSeq)
+        assertTrue(message.isRecalled)
     }
 
     private fun editPayload(deleteTime: Long): ByteArray {

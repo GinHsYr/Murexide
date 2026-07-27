@@ -4,6 +4,7 @@ import java.net.URI
 import java.util.Locale
 
 private const val FALLBACK_IMAGE_ASPECT_RATIO = 4f / 3f
+private const val FALLBACK_VIDEO_ASPECT_RATIO = 16f / 9f
 private const val THUMBNAIL_OPERATION = "imageMogr2/thumbnail/840x840>"
 
 fun isYunhuImageUrl(url: String): Boolean {
@@ -29,10 +30,18 @@ fun imageThumbnailUrl(url: String): String {
 }
 
 fun imageAspectRatio(width: Long?, height: Long?): Float {
+    return mediaAspectRatio(width, height, FALLBACK_IMAGE_ASPECT_RATIO)
+}
+
+fun videoAspectRatio(width: Long?, height: Long?): Float {
+    return mediaAspectRatio(width, height, FALLBACK_VIDEO_ASPECT_RATIO)
+}
+
+private fun mediaAspectRatio(width: Long?, height: Long?, fallback: Float): Float {
     if (width == null || height == null || width <= 0 || height <= 0) {
-        return FALLBACK_IMAGE_ASPECT_RATIO
+        return fallback
     }
     val ratio = width.toDouble() / height.toDouble()
     return ratio.toFloat().takeIf { it.isFinite() && it > 0f }
-        ?: FALLBACK_IMAGE_ASPECT_RATIO
+        ?: fallback
 }

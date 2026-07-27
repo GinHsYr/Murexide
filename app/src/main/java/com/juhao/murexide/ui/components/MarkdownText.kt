@@ -354,6 +354,7 @@ private fun MarkdownText(
     val flavour = remember { GFMFlavourDescriptor() }
     val parser = remember(flavour) { MarkdownParser(flavour) }
     val referenceLinkHandler = remember { PersistentReferenceLinkHandler() }
+    val components = remember { compatibleMarkdownComponents() }
     CompositionLocalProvider(
         LocalUriHandler provides uriHandler
     ) {
@@ -368,7 +369,8 @@ private fun MarkdownText(
                 markdownState = markdownState,
                 modifier = modifier,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = components
             )
         } else {
             val markdownState = rememberMarkdownState(
@@ -384,7 +386,8 @@ private fun MarkdownText(
                 markdownState = markdownState,
                 modifier = modifier,
                 typography = typography,
-                annotator = annotator
+                annotator = annotator,
+                components = components
             )
         }
     }

@@ -51,7 +51,12 @@ class OutgoingMessageTest {
                 video = "video/clip.mp4",
                 fileKey = "files/report.pdf",
                 fileName = "report.pdf",
-                fileSize = 42
+                fileSize = 42,
+                media = MessageMedia(
+                    fileKey = "images/photo.webp",
+                    width = 1200,
+                    height = 1600
+                )
             ),
             contentType = MessageItem.CONTENT_TYPE_IMAGE,
             quoteMsgId = null,
@@ -64,6 +69,8 @@ class OutgoingMessageTest {
         assertEquals("https://chat-file.jwznb.com/files/report.pdf", message.fileUrl)
         assertEquals("report.pdf", message.fileName)
         assertEquals(42L, message.fileSize)
+        assertEquals(1200L, message.imageWidth)
+        assertEquals(1600L, message.imageHeight)
     }
 
     @Test
@@ -102,6 +109,29 @@ class OutgoingMessageTest {
 
         assertEquals(1, messages.size)
         assertEquals(serverMessage, messages.single())
+    }
+
+    @Test
+    fun `keeps the local sender profile when the server message omits it`() {
+        val localMessage = textMessage("same", "local content").copy(
+            senderId = "me",
+            senderName = "My name",
+            senderAvatar = "https://example.com/me.png"
+        )
+        val serverMessage = textMessage("same", "server content").copy(
+            senderId = "",
+            senderName = "",
+            senderAvatar = "",
+            msgSeq = 42
+        )
+
+        val message = upsertNewestMessage(listOf(localMessage), serverMessage).single()
+
+        assertEquals("me", message.senderId)
+        assertEquals("My name", message.senderName)
+        assertEquals("https://example.com/me.png", message.senderAvatar)
+        assertEquals("server content", message.content)
+        assertEquals(42L, message.msgSeq)
     }
 
     private fun textMessage(id: String, text: String): MessageItem {

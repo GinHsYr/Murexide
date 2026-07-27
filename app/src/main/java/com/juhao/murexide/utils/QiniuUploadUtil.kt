@@ -5,7 +5,10 @@ import android.os.Build
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
+import com.juhao.murexide.data.MessageMedia
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -27,8 +30,36 @@ import kotlinx.serialization.Serializable
 data class QiniuUploadResponse(
     val key: String,
     val hash: String = "",
-    val fsize: Long = 0L
-)
+    val fsize: Long = 0L,
+    val fileType: String = "application/octet-stream",
+    val width: Long? = null,
+    val height: Long? = null,
+    val fileSuffix: String = ""
+) {
+    fun toMessageMedia(): MessageMedia = MessageMedia(
+        fileKey = key,
+        fileHash = hash,
+        fileType = fileType,
+        width = width,
+        height = height,
+        fileSize = fsize,
+        fileSuffix = fileSuffix
+    )
+}
+
+internal fun orientedMediaDimensions(
+    width: Long?,
+    height: Long?,
+    rotationDegrees: Int = 0
+): Pair<Long, Long>? {
+    if (width == null || height == null || width <= 0L || height <= 0L) return null
+    val normalizedRotation = ((rotationDegrees % 360) + 360) % 360
+    return if (normalizedRotation == 90 || normalizedRotation == 270) {
+        height to width
+    } else {
+        width to height
+    }
+}
 
 class QiniuUploader(
     context: Context,
@@ -249,6 +280,76 @@ class QiniuUploader(
         }
     }
 
+    private fun enrichUploadResponse(
+        response: QiniuUploadResponse,
+        uploadFile: File,
+        suffix: String
+    ): QiniuUploadResponse {
+        val fallbackMimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(suffix.lowercase())
+            ?: when (uploadType) {
+                1 -> "image/$suffix"
+                2 -> "video/$suffix"
+                else -> "application/octet-stream"
+            }
+
+        val (mimeType, dimensions) = when (uploadType) {
+            1 -> readImageMetadata(uploadFile, fallbackMimeType)
+            2 -> readVideoMetadata(uploadFile, fallbackMimeType)
+            else -> fallbackMimeType to null
+        }
+
+        return response.copy(
+            fsize = response.fsize.takeIf { it > 0L } ?: uploadFile.length(),
+            fileType = mimeType,
+            width = dimensions?.first,
+            height = dimensions?.second,
+            fileSuffix = suffix
+        )
+    }
+
+    private fun readImageMetadata(
+        file: File,
+        fallbackMimeType: String
+    ): Pair<String, Pair<Long, Long>?> {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, options)
+        val dimensions = orientedMediaDimensions(
+            width = options.outWidth.toLong(),
+            height = options.outHeight.toLong()
+        )
+        return (options.outMimeType ?: fallbackMimeType) to dimensions
+    }
+
+    private fun readVideoMetadata(
+        file: File,
+        fallbackMimeType: String
+    ): Pair<String, Pair<Long, Long>?> {
+        return runCatching {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(file.absolutePath)
+                val width = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH
+                )?.toLongOrNull()
+                val height = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT
+                )?.toLongOrNull()
+                val rotation = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION
+                )?.toIntOrNull() ?: 0
+                val mimeType = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+                ) ?: fallbackMimeType
+                mimeType to orientedMediaDimensions(width, height, rotation)
+            } finally {
+                retriever.release()
+            }
+        }.getOrElse {
+            fallbackMimeType to null
+        }
+    }
+
     suspend fun upload(
         input: String,
         onProgress: (Float) -> Unit = {}
@@ -388,7 +489,11 @@ class QiniuUploader(
                             if (!fallbackResponse.isSuccessful) {
                                 return@withContext Result.failure(IOException("Upload failed: ${fallbackResponse.code} - $fallbackBody"))
                             }
-                            val uploadResponse = parseUploadResponse(fallbackBody)
+                            val uploadResponse = enrichUploadResponse(
+                                response = parseUploadResponse(fallbackBody),
+                                uploadFile = uploadFile,
+                                suffix = safeExt
+                            )
                             onProgress(1f)
                             return@withContext Result.success(uploadResponse)
                         }
@@ -398,7 +503,11 @@ class QiniuUploader(
                         return@withContext Result.failure(IOException("Upload failed: ${response.code} - $responseBody"))
                     }
 
-                    val uploadResponse = parseUploadResponse(responseBody)
+                    val uploadResponse = enrichUploadResponse(
+                        response = parseUploadResponse(responseBody),
+                        uploadFile = uploadFile,
+                        suffix = safeExt
+                    )
                     onProgress(1f)
                     Result.success(uploadResponse)
                 }

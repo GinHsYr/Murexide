@@ -56,6 +56,7 @@ data class MessageItem(
         get() = direction == "right"
 
     fun getDisplayContent(): String {
+        if (isRecalled) return "此消息已被撤回"
         return when (contentType) {
             CONTENT_TYPE_IMAGE -> "[图片消息]"
             CONTENT_TYPE_FILE -> "[文件消息]"
@@ -118,6 +119,17 @@ data class MessageTag(
 )
 
 @Serializable
+data class MessageMedia(
+    val fileKey: String,
+    val fileHash: String = "",
+    val fileType: String = "application/octet-stream",
+    val width: Long? = null,
+    val height: Long? = null,
+    val fileSize: Long = 0L,
+    val fileSuffix: String = ""
+)
+
+@Serializable
 data class MessageContent(
     val text: String = "",
     val image: String? = null,
@@ -136,7 +148,8 @@ data class MessageContent(
     val stickerPackId: Long? = null,
     val mentionedId: List<String> = emptyList(),
     val commandId: Long? = null,
-    val form: String? = null
+    val form: String? = null,
+    val media: MessageMedia? = null
 )
 
 data class MentionToken(

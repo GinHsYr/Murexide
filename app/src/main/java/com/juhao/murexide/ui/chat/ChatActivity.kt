@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.datastore.UserAccount
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -33,12 +34,12 @@ class ChatActivity : ComponentActivity() {
         val chatAvatar = intent.getStringExtra("chat_avatar") ?: ""
 
         val accountStorage = AccountStorage.getInstance(this)
-        val tokenState = mutableStateOf<String?>(null)
+        val accountState = mutableStateOf<UserAccount?>(null)
 
         setContent {
             MurexideTheme {
-                val token = tokenState.value
-                if (token == null) {
+                val account = accountState.value
+                if (account == null) {
                     Surface {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -63,9 +64,12 @@ class ChatActivity : ComponentActivity() {
                                 @Suppress("UNCHECKED_CAST")
                                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                                     return ChatViewModel(
-                                        token = token,
+                                        token = account.token,
                                         chatId = chatId,
-                                        chatType = chatType
+                                        chatType = chatType,
+                                        currentUserId = account.id,
+                                        currentUserName = account.username,
+                                        currentUserAvatar = account.avatar
                                     ) as T
                                 }
                             }
@@ -76,12 +80,12 @@ class ChatActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            val token = runCatching { accountStorage.getCurrentToken() }.getOrNull()
-            if (token == null) {
+            val account = runCatching { accountStorage.getCurrentUserInfo() }.getOrNull()
+            if (account == null || account.token.isEmpty()) {
                 finish()
                 return@launch
             }
-            tokenState.value = token
+            accountState.value = account
         }
     }
 

@@ -21,6 +21,59 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 
+internal fun createSendMessageRequest(
+    msgId: String,
+    chatId: String,
+    chatType: Int,
+    content: MessageContent,
+    contentType: Int,
+    quoteMsgId: String?,
+    commandId: Long?
+): send_message_send {
+    val contentProto = send_message_send.Content(
+        text = content.text.takeIf { it.isNotEmpty() } ?: "",
+        image = content.image ?: "",
+        quote_msg_text = content.quoteMsgText ?: "",
+        quote_image_url = content.quoteImageUrl ?: "",
+        quote_image_name = content.quoteImageName ?: "",
+        file_name = content.fileName ?: "",
+        file_key = content.fileKey ?: "",
+        file_size = content.fileSize ?: 0L,
+        audio = content.audio ?: "",
+        audio_time = content.audioTime?.toLong() ?: 0L,
+        video = content.video ?: "",
+        post_type = content.postType ?: "",
+        expression_id = content.expressionId ?: "",
+        sticker_item_id = content.stickerItemId ?: 0L,
+        sticker_pack_id = content.stickerPackId ?: 0L,
+        mentioned_id = content.mentionedId,
+        form = content.form ?: ""
+    )
+    val mediaProto = content.media?.let { media ->
+        send_message_send.Media(
+            file_key = media.fileKey,
+            file_hash = media.fileHash,
+            file_type = media.fileType,
+            image_height = media.height ?: 0L,
+            image_width = media.width ?: 0L,
+            file_size = media.fileSize,
+            file_key2 = media.fileKey,
+            file_suffix = media.fileSuffix
+        )
+    }
+
+    return send_message_send(
+        msg_id = msgId,
+        chat_id = chatId,
+        chat_type = chatType.toLong(),
+        content = contentProto,
+        content_type = contentType.toLong(),
+        quote_msg_id = quoteMsgId ?: "",
+        command_id = commandId ?: 0L,
+        media = mediaProto
+    )
+}
+
 class MessageRepository {
     private val client = NetworkClient.okHttpClient
     private val baseUrl = NetworkClient.BASE_URL
@@ -174,35 +227,14 @@ class MessageRepository {
             try {
                 val msgId = UUID.randomUUID().toString().replace("-", "")
 
-                // 构建 ProtoBuf 请求
-                val contentProto = send_message_send.Content(
-                    text = content.text.takeIf { it.isNotEmpty() } ?: "",
-                    image = content.image ?: "",
-                    quote_msg_text = content.quoteMsgText ?: "",
-                    quote_image_url = content.quoteImageUrl ?: "",
-                    quote_image_name = content.quoteImageName ?: "",
-                    file_name = content.fileName ?: "",
-                    file_key = content.fileKey ?: "",
-                    file_size = content.fileSize ?: 0L,
-                    audio = content.audio ?: "",
-                    audio_time = content.audioTime?.toLong() ?: 0L,
-                    video = content.video ?: "",
-                    post_type = content.postType ?: "",
-                    expression_id = content.expressionId ?: "",
-                    sticker_item_id = content.stickerItemId ?: 0L,
-                    sticker_pack_id = content.stickerPackId ?: 0L,
-                    mentioned_id = content.mentionedId,
-                    form = content.form ?: ""
-                )
-
-                val requestProto = send_message_send(
-                    msg_id = msgId,
-                    chat_id = chatId,
-                    chat_type = chatType.toLong(),
-                    content = contentProto,
-                    content_type = contentType.toLong(),
-                    quote_msg_id = quoteMsgId ?: "",
-                    command_id = commandId ?: 0L
+                val requestProto = createSendMessageRequest(
+                    msgId = msgId,
+                    chatId = chatId,
+                    chatType = chatType,
+                    content = content,
+                    contentType = contentType,
+                    quoteMsgId = quoteMsgId,
+                    commandId = commandId
                 )
                 val requestBody = requestProto.encode().toRequestBody("application/octet-stream".toMediaType())
 

@@ -41,6 +41,9 @@ class ConversationRepository {
                                     remark = conversationData.remark.takeIf { it.isNotEmpty() },
                                     chatContent = conversationData.chat_content.takeIf { it.isNotEmpty() } ?: "[消息]",
                                     timestampMs = conversationData.timestamp_ms,
+                                    sendTimestamp = conversationData.send_timestamp
+                                        .takeIf { it > 0 }
+                                        ?: conversationData.timestamp_ms,
                                     unreadMessage = conversationData.unread_message.toInt(),
                                     at = conversationData.at.toInt(),
                                     avatarUrl = conversationData.avatar_url,

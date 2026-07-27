@@ -21,6 +21,7 @@ import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
 import com.juhao.murexide.utils.MentionUtils
+import com.juhao.murexide.utils.QiniuUploadResponse
 import com.juhao.murexide.utils.QiniuUploader
 import com.juhao.murexide.network.WebSocketManager
 import kotlinx.coroutines.CancellationException
@@ -35,6 +36,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -50,7 +53,10 @@ class ChatViewModel(
     private val friendRepository: FriendRepository = FriendRepository(),
     private val groupMemberRepository: GroupMemberRepository = GroupMemberRepository(),
     private val boardRepository: BoardRepository = BoardRepository(),
-    private val wsManager: WebSocketManager = WebSocketManager.getInstance()
+    private val wsManager: WebSocketManager = WebSocketManager.getInstance(),
+    private val currentUserId: String = "",
+    private val currentUserName: String = "",
+    private val currentUserAvatar: String = ""
 ) : ViewModel() {
 
     companion object {
@@ -84,6 +90,7 @@ class ChatViewModel(
 
     private var currentMsgId: String? = null
     private var isLoadingMore = false
+    private val historyLoadMutex = Mutex()
 
     init {
         loadMessages()
@@ -282,19 +289,21 @@ class ChatViewModel(
                 chatId = chatId,
                 chatType = chatType
             ).onSuccess { messages ->
+                val resolvedMessages = messages.map(::withCurrentUserProfileFallback)
                 msgIdCache.clear()
-                msgIdCache.addAll(messages.map { it.msgId })
+                msgIdCache.addAll(resolvedMessages.map { it.msgId })
 
                 _uiState.update {
                     it.copy(
-                        messages = messages,
+                        messages = resolvedMessages,
                         isLoading = false,
-                        hasMore = messages.isNotEmpty(),
+                        hasMore = resolvedMessages.isNotEmpty(),
                         error = null
                     )
                 }
-                if (messages.isNotEmpty()) {
-                    currentMsgId = messages.last().msgId
+                resolvedMessages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
+                if (resolvedMessages.isNotEmpty()) {
+                    currentMsgId = resolvedMessages.last().msgId
                 }
             }.onFailure { error ->
                 _uiState.update {
@@ -308,42 +317,117 @@ class ChatViewModel(
     }
 
     fun loadMore() {
-        if (isLoadingMore || !_uiState.value.hasMore) return
+        if (isLoadingMore || !_uiState.value.hasMore || !historyLoadMutex.tryLock()) return
 
         viewModelScope.launch {
-            isLoadingMore = true
-            _uiState.update { it.copy(isLoadingMore = true) }
-
-            repository.getMessageList(
-                token = token,
-                chatId = chatId,
-                chatType = chatType,
-                msgId = currentMsgId
-            ).onSuccess { messages ->
-                if (messages.isNotEmpty()) {
-                    val newMessages = messages.filter { it.msgId !in msgIdCache }
-                    if (newMessages.isNotEmpty()) {
-                        msgIdCache.addAll(newMessages.map { it.msgId })
-                        _uiState.update {
-                            it.copy(
-                                messages = it.messages + newMessages,
-                                isLoadingMore = false,
-                                hasMore = true
-                            )
-                        }
-                    } else {
-                        _uiState.update { it.copy(isLoadingMore = false, hasMore = true) }
-                    }
-                    currentMsgId = messages.last().msgId
-                } else {
-                    _uiState.update { it.copy(isLoadingMore = false, hasMore = false) }
-                }
-            }.onFailure {
-                _uiState.update { it.copy(isLoadingMore = false) }
+            try {
+                loadOlderMessagesUntil()
+            } finally {
+                historyLoadMutex.unlock()
             }
-
-            isLoadingMore = false
         }
+    }
+
+    /**
+     * Ensures that a quoted message is present in the contiguous history currently shown.
+     *
+     * The history endpoint returns messages before the supplied ID, so older pages are loaded
+     * sequentially instead of inserting an isolated message and breaking the timeline order.
+     */
+    suspend fun loadQuotedMessage(messageId: String): Boolean {
+        if (messageId.isBlank()) return false
+        if (_uiState.value.messages.any { it.msgId == messageId }) return true
+
+        return historyLoadMutex.withLock {
+            if (_uiState.value.messages.any { it.msgId == messageId }) {
+                true
+            } else {
+                loadOlderMessagesUntil(targetMessageId = messageId)
+            }
+        }
+    }
+
+    private suspend fun loadOlderMessagesUntil(targetMessageId: String? = null): Boolean {
+        if (targetMessageId != null && _uiState.value.messages.any { it.msgId == targetMessageId }) {
+            return true
+        }
+        if (!_uiState.value.hasMore) {
+            if (targetMessageId != null) {
+                _toastMessage.emit("原消息已删除或不可查看")
+            }
+            return false
+        }
+
+        isLoadingMore = true
+        _uiState.update { it.copy(isLoadingMore = true) }
+
+        try {
+            while (true) {
+                val anchorMessageId = currentMsgId
+                    ?: _uiState.value.messages.lastOrNull()?.msgId
+                    ?: return quotedMessageUnavailable(targetMessageId)
+
+                val result = repository.getMessageList(
+                    token = token,
+                    chatId = chatId,
+                    chatType = chatType,
+                    msgId = anchorMessageId
+                )
+                val error = result.exceptionOrNull()
+                if (error != null) {
+                    if (targetMessageId != null) {
+                        _toastMessage.emit("加载原消息失败")
+                    }
+                    return false
+                }
+
+                val resolvedMessages = result.getOrThrow().map(::withCurrentUserProfileFallback)
+                if (resolvedMessages.isEmpty()) {
+                    _uiState.update { it.copy(hasMore = false) }
+                    return quotedMessageUnavailable(targetMessageId)
+                }
+
+                val page = resolveOlderMessagePage(
+                    knownMessageIds = msgIdCache,
+                    currentAnchorMessageId = anchorMessageId,
+                    messages = resolvedMessages
+                )
+                val newMessages = page.newMessages
+                if (newMessages.isNotEmpty()) {
+                    msgIdCache.addAll(newMessages.map { it.msgId })
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages + newMessages,
+                            hasMore = true
+                        )
+                    }
+                }
+                currentMsgId = page.nextAnchorMessageId
+
+                if (targetMessageId != null &&
+                    _uiState.value.messages.any { it.msgId == targetMessageId }
+                ) {
+                    return true
+                }
+
+                if (!page.madeCursorProgress) {
+                    _uiState.update { it.copy(hasMore = false) }
+                    return quotedMessageUnavailable(targetMessageId)
+                }
+
+                if (targetMessageId == null) return true
+            }
+        } finally {
+            isLoadingMore = false
+            _uiState.update { it.copy(isLoadingMore = false) }
+        }
+    }
+
+    private suspend fun quotedMessageUnavailable(targetMessageId: String?): Boolean {
+        if (targetMessageId != null) {
+            _toastMessage.emit("原消息已删除或不可查看")
+        }
+        return false
     }
 
     fun refresh() {
@@ -474,7 +558,7 @@ class ChatViewModel(
                             uploadImagePath = null
                         )
                     }
-                    sendVideoMessage(response.key)
+                    sendVideoMessage(response)
                 }.onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -507,18 +591,19 @@ class ChatViewModel(
         }
     }
     
-    private fun sendVideoMessage(videoUrl: String) {
+    private fun sendVideoMessage(upload: QiniuUploadResponse) {
         val state = _uiState.value
         
         viewModelScope.launch {
             val content = MessageContent(
-                video = videoUrl,
+                video = upload.key,
                 text = "",
                 quoteMsgText = state.replyTo?.let {
                     "${it.senderName}: ${it.content}"
                 },
                 quoteImageUrl = state.replyTo?.imageUrl,
-                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment
+                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment,
+                media = upload.toMessageMedia()
             )
             
             repository.sendMessage(
@@ -594,7 +679,7 @@ class ChatViewModel(
                             uploadImagePath = null
                         )
                     }
-                    sendImageMessage(response.key)
+                    sendImageMessage(response)
                 }.onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -638,18 +723,19 @@ class ChatViewModel(
         }
     }
     
-    private fun sendImageMessage(imageUrl: String) {
+    private fun sendImageMessage(upload: QiniuUploadResponse) {
         val state = _uiState.value
         
         viewModelScope.launch {
             val content = MessageContent(
-                image = imageUrl,
+                image = upload.key,
                 text = "",
                 quoteMsgText = state.replyTo?.let {
                     "${it.senderName}: ${it.content}"
                 },
                 quoteImageUrl = state.replyTo?.imageUrl,
-                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment
+                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment,
+                media = upload.toMessageMedia()
             )
             
             repository.sendMessage(
@@ -870,6 +956,7 @@ class ChatViewModel(
 
     fun recallMessage() {
         val msgId = _recallDialog.value.msgId ?: return
+        val recalledMessage = _uiState.value.messages.firstOrNull { it.msgId == msgId }
 
         viewModelScope.launch {
             repository.recallMessage(
@@ -880,6 +967,7 @@ class ChatViewModel(
             ).onSuccess {
                 hideRecallDialog()
                 deleteMessage(msgId)
+                recalledMessage?.let(wsManager::publishLocalMessageRecalled)
                 _toastMessage.emit("撤回成功")
             }.onFailure { error ->
                 hideRecallDialog()
@@ -1241,21 +1329,36 @@ class ChatViewModel(
     }
 
     fun addReceivedMessage(message: MessageItem) {
-        if (message.msgId in msgIdCache) {
+        val resolvedMessage = withCurrentUserProfileFallback(message)
+        if (resolvedMessage.msgId in msgIdCache) {
             _uiState.update { state ->
-                state.copy(messages = upsertNewestMessage(state.messages, message))
+                state.copy(messages = upsertNewestMessage(state.messages, resolvedMessage))
             }
             return
         }
         
-        if (message.isRecalled) {
+        if (resolvedMessage.isRecalled) {
             return
         }
 
-        msgIdCache.add(message.msgId)
+        msgIdCache.add(resolvedMessage.msgId)
         _uiState.update {
-            it.copy(messages = upsertNewestMessage(it.messages, message))
+            it.copy(messages = upsertNewestMessage(it.messages, resolvedMessage))
         }
+    }
+
+    private fun withCurrentUserProfileFallback(message: MessageItem): MessageItem {
+        val belongsToCurrentUser = message.isMine ||
+            currentUserId.isNotBlank() && message.senderId == currentUserId
+        if (!belongsToCurrentUser) return message
+
+        return message.copy(
+            senderId = message.senderId.ifBlank {
+                currentUserId.ifBlank { wsManager.loggedInUserId.orEmpty() }
+            },
+            senderName = message.senderName.ifBlank { currentUserName },
+            senderAvatar = message.senderAvatar.ifBlank { currentUserAvatar }
+        )
     }
 
     private fun addSentMessage(
@@ -1271,9 +1374,11 @@ class ChatViewModel(
         val ownMessage = _uiState.value.messages.firstOrNull { it.isMine }
         val message = createOutgoingMessage(
             msgId = msgId,
-            senderId = wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty(),
-            senderName = ownMessage?.senderName.orEmpty(),
-            senderAvatar = ownMessage?.senderAvatar.orEmpty(),
+            senderId = currentUserId.ifBlank {
+                wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty()
+            },
+            senderName = currentUserName.ifBlank { ownMessage?.senderName.orEmpty() },
+            senderAvatar = currentUserAvatar.ifBlank { ownMessage?.senderAvatar.orEmpty() },
             chatId = chatId,
             chatType = chatType,
             content = content,
@@ -1384,6 +1489,7 @@ class ChatViewModel(
                 ).onSuccess {
                     successCount++
                     deleteMessage(message.msgId)
+                    wsManager.publishLocalMessageRecalled(message)
                 }.onFailure {
                     failCount++
                 }

@@ -14,7 +14,11 @@ data class ConversationItem(
     val at: Int = 0,
     val avatarUrl: String,
     val doNotDisturb: Int = 0,
-    val certificationLevel: Int = 0
+    val certificationLevel: Int = 0,
+    val sendTimestamp: Long = timestampMs,
+    val latestMessageId: String? = null,
+    val latestMessageSeq: Long = 0,
+    val latestContentType: Int = 0
 ) {
     val displayName: String
         get() = remark?.takeIf { it.isNotBlank() } ?: name
@@ -24,50 +28,154 @@ data class ConversationItem(
     
     val isAtMentioned: Boolean
         get() = at > 0
+
+    /** The original send time of the message represented by [chatContent]. */
+    val latestMessageTimestamp: Long
+        get() = sendTimestamp.takeIf { it > 0 } ?: timestampMs
 }
 
 internal fun List<ConversationItem>.withLatestMessage(
-    message: MessageItem
+    message: MessageItem,
+    incrementUnread: Boolean = true
 ): List<ConversationItem>? {
-    val index = indexOfFirst {
-        it.chatId == message.chatId ||
-            (message.chatType == 1 && it.chatId == message.senderId)
-    }
+    val index = findConversationIndex(message)
     if (index == -1) return null
 
-    val conversations = toMutableList()
-    val oldConversation = conversations.removeAt(index)
-    conversations.add(
-        0,
-        oldConversation.copy(
-            chatContent = message.getDisplayContent(),
-            timestampMs = message.timestamp,
-            unreadMessage = oldConversation.unreadMessage + if (message.isMine) 0 else 1
-        )
+    val oldConversation = this[index]
+    val sameMessage = message.msgId.isNotBlank() &&
+        oldConversation.latestMessageId == message.msgId
+    val order = message.compareToLatest(oldConversation, sameMessage)
+    if (order < 0) return this
+
+    val isStrictlyNewer = !sameMessage && order > 0
+    val useIncomingOrdering = message.timestamp > 0 &&
+        (!sameMessage || message.msgSeq > 0 || oldConversation.latestMessageSeq == 0L)
+    val updatedConversation = oldConversation.copy(
+        chatContent = message.getDisplayContent(),
+        timestampMs = if (useIncomingOrdering) message.timestamp else oldConversation.timestampMs,
+        sendTimestamp = if (useIncomingOrdering) message.timestamp else oldConversation.sendTimestamp,
+        unreadMessage = oldConversation.unreadMessage +
+            if (incrementUnread && isStrictlyNewer && !message.isMine) 1 else 0,
+        latestMessageId = message.msgId.takeIf { it.isNotBlank() }
+            ?: oldConversation.latestMessageId,
+        latestMessageSeq = message.msgSeq.takeIf { it > 0 }
+            ?: oldConversation.latestMessageSeq,
+        latestContentType = message.contentType.takeIf { it > 0 }
+            ?: oldConversation.latestContentType
     )
+
+    val conversations = toMutableList()
+    if (isStrictlyNewer) {
+        conversations.removeAt(index)
+        conversations.add(0, updatedConversation)
+    } else {
+        conversations[index] = updatedConversation
+    }
     return conversations
 }
 
 /**
  * Updates a conversation preview only when [message] is the conversation's latest message.
  *
- * Edit pushes do not expose the latest message id, so the original message timestamp is used
- * to avoid replacing the preview when an older message is edited. Incomplete or unrelated edit
- * events leave the current list untouched; an edit must never trigger a full conversation reload.
+ * The conversation response does not expose its latest message id. Prefer an id learned from a
+ * real-time push or chat snapshot, and fall back to the original send timestamp for server-loaded
+ * conversations. An older edited message must never replace the current preview.
  */
 internal fun List<ConversationItem>.withEditedLatestMessage(
     message: MessageItem
 ): List<ConversationItem> {
-    val index = indexOfFirst {
-        it.chatId == message.chatId ||
-            (message.chatType == 1 && it.chatId == message.senderId)
-    }
-    if (index == -1 || message.timestamp <= 0L) return this
+    val index = findConversationIndex(message)
+    if (index == -1) return this
 
     val conversation = this[index]
-    if (conversation.timestampMs != message.timestamp) return this
+    if (!conversation.represents(message)) return this
 
     return toMutableList().apply {
-        this[index] = conversation.copy(chatContent = message.getDisplayContent())
+        this[index] = conversation.copy(
+            chatContent = message.getDisplayContent(),
+            latestMessageId = message.msgId.takeIf { it.isNotBlank() }
+                ?: conversation.latestMessageId,
+            latestMessageSeq = message.msgSeq.takeIf { it > 0 }
+                ?: conversation.latestMessageSeq,
+            latestContentType = message.contentType.takeIf { it > 0 }
+                ?: conversation.latestContentType
+        )
     }
+}
+
+internal fun List<ConversationItem>.withStreamedLatestMessage(
+    msgId: String,
+    content: String
+): List<ConversationItem> {
+    if (msgId.isBlank() || content.isEmpty()) return this
+    val index = indexOfFirst { it.latestMessageId == msgId }
+    if (index == -1) return this
+
+    val conversation = this[index]
+    if (conversation.latestContentType != MessageItem.CONTENT_TYPE_TEXT) return this
+
+    return toMutableList().apply {
+        this[index] = conversation.copy(chatContent = conversation.chatContent + content)
+    }
+}
+
+internal fun List<ConversationItem>.withRecalledLatestMessage(
+    message: MessageItem
+): List<ConversationItem> {
+    val index = findConversationIndex(message)
+    if (index == -1) return this
+
+    val conversation = this[index]
+    if (!conversation.represents(message)) return this
+
+    return toMutableList().apply {
+        this[index] = conversation.copy(
+            chatContent = message.copy(isRecalled = true).getDisplayContent(),
+            latestMessageId = message.msgId.takeIf { it.isNotBlank() }
+                ?: conversation.latestMessageId,
+            latestMessageSeq = message.msgSeq.takeIf { it > 0 }
+                ?: conversation.latestMessageSeq
+        )
+    }
+}
+
+private fun List<ConversationItem>.findConversationIndex(message: MessageItem): Int {
+    if (message.msgId.isNotBlank()) {
+        val messageIndex = indexOfFirst { it.latestMessageId == message.msgId }
+        if (messageIndex != -1) return messageIndex
+    }
+
+    return indexOfFirst { conversation ->
+        conversation.chatType == message.chatType &&
+            (conversation.chatId == message.chatId ||
+                (message.chatType == 1 &&
+                    message.senderId.isNotBlank() &&
+                    conversation.chatId == message.senderId))
+    }
+}
+
+private fun MessageItem.compareToLatest(
+    conversation: ConversationItem,
+    sameMessage: Boolean
+): Int {
+    if (sameMessage) return 0
+
+    val latestTimestamp = conversation.latestMessageTimestamp
+    if (timestamp <= 0L) return if (latestTimestamp <= 0L) 0 else -1
+    if (latestTimestamp <= 0L) return 1
+    if (timestamp != latestTimestamp) return timestamp.compareTo(latestTimestamp)
+
+    val latestSeq = conversation.latestMessageSeq
+    return when {
+        msgSeq > 0L && latestSeq > 0L -> msgSeq.compareTo(latestSeq)
+        msgSeq > 0L && conversation.latestMessageId != null -> 1
+        else -> 0
+    }
+}
+
+private fun ConversationItem.represents(message: MessageItem): Boolean {
+    if (latestMessageId != null && message.msgId.isNotBlank()) {
+        return latestMessageId == message.msgId
+    }
+    return message.timestamp > 0L && latestMessageTimestamp == message.timestamp
 }
