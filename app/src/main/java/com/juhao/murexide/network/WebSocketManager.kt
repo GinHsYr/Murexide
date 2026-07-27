@@ -74,9 +74,17 @@ class WebSocketManager private constructor() {
     sealed class WsEvent {
         data class NewMessage(val message: MessageItem) : WsEvent()
         data class LocalMessageSent(val message: MessageItem) : WsEvent()
+        data class LatestMessageResolved(val message: MessageItem) : WsEvent()
         data class EditMessage(val message: MessageItem) : WsEvent()
-        data class StreamContent(val msgId: String, val content: String) : WsEvent()
-        data class MessageDeleted(val msgId: String) : WsEvent()
+        data class StreamContent(
+            val msgId: String,
+            val chatId: String,
+            val content: String
+        ) : WsEvent()
+        data class MessageDeleted(val message: MessageItem) : WsEvent() {
+            val msgId: String
+                get() = message.msgId
+        }
         data class BoardUpdate(
             val chatId: String,
             val chatType: Int,
@@ -99,6 +107,18 @@ class WebSocketManager private constructor() {
     fun publishLocalMessageEdited(message: MessageItem) {
         scope.launch {
             _messageFlow.emit(WsEvent.EditMessage(message))
+        }
+    }
+
+    fun publishLatestMessageResolved(message: MessageItem) {
+        scope.launch {
+            _messageFlow.emit(WsEvent.LatestMessageResolved(message))
+        }
+    }
+
+    fun publishLocalMessageRecalled(message: MessageItem) {
+        scope.launch {
+            _messageFlow.emit(WsEvent.MessageDeleted(message.copy(isRecalled = true)))
         }
     }
 
@@ -371,7 +391,13 @@ class WebSocketManager private constructor() {
                     val streamMessage = stream_message.ADAPTER.decode(data)
                     streamMessage.data_?.msg?.let { msg ->
                         scope.launch {
-                            _messageFlow.emit(WsEvent.StreamContent(msg.msg_id, msg.content))
+                            _messageFlow.emit(
+                                WsEvent.StreamContent(
+                                    msgId = msg.msg_id,
+                                    chatId = msg.chat_id,
+                                    content = msg.content
+                                )
+                            )
                         }
                     }
                 }
@@ -475,7 +501,7 @@ internal fun decodeEditMessageEvent(data: ByteArray): WebSocketManager.WsEvent? 
     val msg = edit_message.ADAPTER.decode(data).data_?.msg ?: return null
     val message = msg.toEditedMessageItem()
     return if (message.isRecalled) {
-        WebSocketManager.WsEvent.MessageDeleted(message.msgId)
+        WebSocketManager.WsEvent.MessageDeleted(message)
     } else {
         WebSocketManager.WsEvent.EditMessage(message)
     }

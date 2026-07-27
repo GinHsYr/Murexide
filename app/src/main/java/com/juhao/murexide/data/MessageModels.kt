@@ -56,6 +56,7 @@ data class MessageItem(
         get() = direction == "right"
 
     fun getDisplayContent(): String {
+        if (isRecalled) return "此消息已被撤回"
         return when (contentType) {
             CONTENT_TYPE_IMAGE -> "[图片消息]"
             CONTENT_TYPE_FILE -> "[文件消息]"

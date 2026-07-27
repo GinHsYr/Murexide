@@ -298,6 +298,7 @@ class ChatViewModel(
                         error = null
                     )
                 }
+                resolvedMessages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
                 if (resolvedMessages.isNotEmpty()) {
                     currentMsgId = resolvedMessages.last().msgId
                 }
@@ -878,6 +879,7 @@ class ChatViewModel(
 
     fun recallMessage() {
         val msgId = _recallDialog.value.msgId ?: return
+        val recalledMessage = _uiState.value.messages.firstOrNull { it.msgId == msgId }
 
         viewModelScope.launch {
             repository.recallMessage(
@@ -888,6 +890,7 @@ class ChatViewModel(
             ).onSuccess {
                 hideRecallDialog()
                 deleteMessage(msgId)
+                recalledMessage?.let(wsManager::publishLocalMessageRecalled)
                 _toastMessage.emit("撤回成功")
             }.onFailure { error ->
                 hideRecallDialog()
@@ -1409,6 +1412,7 @@ class ChatViewModel(
                 ).onSuccess {
                     successCount++
                     deleteMessage(message.msgId)
+                    wsManager.publishLocalMessageRecalled(message)
                 }.onFailure {
                     failCount++
                 }
