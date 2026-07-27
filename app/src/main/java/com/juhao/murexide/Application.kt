@@ -25,7 +25,6 @@ import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.network.WebSocketManager
-import com.juhao.murexide.repository.AuthRepository
 import com.juhao.murexide.ui.theme.UiCache
 import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.ui.components.MurexideBigImageHelper
@@ -177,23 +176,18 @@ class MyApplication : Application(), ImageLoaderFactory {
 
     private fun initWebSocket() {
         val accountStorage = AccountStorage.getInstance(this)
-        val authRepository = AuthRepository()
-        
+
         applicationScope.launch {
-            accountStorage.currentTokenFlow.collect { token ->
-                if (token != null) {
-                    Log.d("MyApplication", "Token found, fetching user info for WS")
-                    authRepository.getUserInfo(token).onSuccess { userInfo ->
-                        WebSocketManager.getInstance().connect(
-                            userId = userInfo.id,
-                            token = token,
-                            deviceId = DeviceIdProvider.get(this@MyApplication)
-                        )
-                    }.onFailure { e ->
-                        Log.e("MyApplication", "Failed to get user info for WS", e)
-                    }
+            accountStorage.currentAccountFlow.collect { account ->
+                if (account != null && account.token.isNotEmpty()) {
+                    Log.d("MyApplication", "Account found, connecting WS")
+                    WebSocketManager.getInstance().connect(
+                        userId = account.id,
+                        token = account.token,
+                        deviceId = DeviceIdProvider.get(this@MyApplication)
+                    )
                 } else {
-                    Log.d("MyApplication", "No token, disconnecting WS")
+                    Log.d("MyApplication", "No account, disconnecting WS")
                     WebSocketManager.getInstance().disconnect()
                 }
             }

@@ -70,6 +70,7 @@ class WebSocketManager private constructor() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val client = NetworkClient.okHttpClient
+    private val latestMessageCache = LatestConversationMessageCache()
 
     sealed class WsEvent {
         data class NewMessage(val message: MessageItem) : WsEvent()
@@ -98,28 +99,45 @@ class WebSocketManager private constructor() {
         object Disconnected : WsEvent()
     }
 
-    fun publishLocalMessageSent(message: MessageItem) {
+    private val eventQueue = Channel<WsEvent>(Channel.UNLIMITED)
+
+    init {
         scope.launch {
-            _messageFlow.emit(WsEvent.LocalMessageSent(message))
+            for (event in eventQueue) {
+                _messageFlow.emit(event)
+            }
         }
+    }
+
+    private fun publishEvent(event: WsEvent) {
+        if (eventQueue.trySend(event).isFailure) {
+            Log.w(TAG, "Failed to enqueue WebSocket event: ${event::class.simpleName}")
+        }
+    }
+
+    internal fun latestConversationMessagesSnapshot(): List<MessageItem> {
+        return latestMessageCache.snapshot()
+    }
+
+    fun publishLocalMessageSent(message: MessageItem) {
+        latestMessageCache.record(message, currentUserId)
+        publishEvent(WsEvent.LocalMessageSent(message))
     }
 
     fun publishLocalMessageEdited(message: MessageItem) {
-        scope.launch {
-            _messageFlow.emit(WsEvent.EditMessage(message))
-        }
+        latestMessageCache.updateIfLatest(message)
+        publishEvent(WsEvent.EditMessage(message))
     }
 
     fun publishLatestMessageResolved(message: MessageItem) {
-        scope.launch {
-            _messageFlow.emit(WsEvent.LatestMessageResolved(message))
-        }
+        latestMessageCache.record(message, currentUserId)
+        publishEvent(WsEvent.LatestMessageResolved(message))
     }
 
     fun publishLocalMessageRecalled(message: MessageItem) {
-        scope.launch {
-            _messageFlow.emit(WsEvent.MessageDeleted(message.copy(isRecalled = true)))
-        }
+        val recalled = message.copy(isRecalled = true)
+        latestMessageCache.updateIfLatest(recalled)
+        publishEvent(WsEvent.MessageDeleted(recalled))
     }
 
     fun connect(userId: String, token: String, deviceId: String, platform: String = "android") {
@@ -127,6 +145,10 @@ class WebSocketManager private constructor() {
                 currentToken != token ||
                 currentDeviceId != deviceId ||
                 currentPlatform != platform
+
+        if (credsChanged) {
+            latestMessageCache.clear()
+        }
 
         currentUserId = userId
         currentToken = token
@@ -197,7 +219,7 @@ class WebSocketManager private constructor() {
                     currentPlatform ?: "android"
                 )
                 startHeartbeat()
-                scope.launch { _messageFlow.emit(WsEvent.Connected) }
+                publishEvent(WsEvent.Connected)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -261,9 +283,7 @@ class WebSocketManager private constructor() {
         isConnected = false
         _connectionState.value = false
         webSocket = null
-        scope.launch {
-            _messageFlow.emit(WsEvent.Disconnected)
-        }
+        publishEvent(WsEvent.Disconnected)
     }
 
     fun manualReconnect() {
@@ -364,9 +384,8 @@ class WebSocketManager private constructor() {
                     pushMessage.data_?.msg?.let { msg ->
                         Log.d(TAG, "New message: msgId=${msg.msg_id}, chatId=${msg.chat_id}")
                         val messageItem = parseWsMessage(msg)
-                        scope.launch {
-                            _messageFlow.emit(WsEvent.NewMessage(messageItem))
-                        }
+                        latestMessageCache.record(messageItem, currentUserId)
+                        publishEvent(WsEvent.NewMessage(messageItem))
                     }
                 }
                 "edit_message" -> {
@@ -382,23 +401,25 @@ class WebSocketManager private constructor() {
                             )
                             else -> Unit
                         }
-                        scope.launch {
-                            _messageFlow.emit(event)
+                        when (event) {
+                            is WsEvent.EditMessage -> latestMessageCache.updateIfLatest(event.message)
+                            is WsEvent.MessageDeleted -> latestMessageCache.updateIfLatest(event.message)
+                            else -> Unit
                         }
+                        publishEvent(event)
                     }
                 }
                 "stream_message" -> {
                     val streamMessage = stream_message.ADAPTER.decode(data)
                     streamMessage.data_?.msg?.let { msg ->
-                        scope.launch {
-                            _messageFlow.emit(
-                                WsEvent.StreamContent(
-                                    msgId = msg.msg_id,
-                                    chatId = msg.chat_id,
-                                    content = msg.content
-                                )
+                        latestMessageCache.appendStreamContent(msg.msg_id, msg.content)
+                        publishEvent(
+                            WsEvent.StreamContent(
+                                msgId = msg.msg_id,
+                                chatId = msg.chat_id,
+                                content = msg.content
                             )
-                        }
+                        )
                     }
                 }
                 "file_send_message" -> {
@@ -413,19 +434,17 @@ class WebSocketManager private constructor() {
                     val boardMsg = bot_board_message.ADAPTER.decode(data)
                     boardMsg.data_?.board?.let { b ->
                         Log.d(TAG, "Bot board message from: ${b.bot_name}, chatId=${b.chat_id}")
-                        scope.launch {
-                            _messageFlow.emit(
-                                WsEvent.BoardUpdate(
-                                    chatId = b.chat_id,
-                                    chatType = b.chat_type,
-                                    botId = b.bot_id,
-                                    botName = b.bot_name,
-                                    content = b.content,
-                                    contentType = b.content_type,
-                                    lastUpdateTime = b.last_update_time
-                                )
+                        publishEvent(
+                            WsEvent.BoardUpdate(
+                                chatId = b.chat_id,
+                                chatType = b.chat_type,
+                                botId = b.bot_id,
+                                botName = b.bot_name,
+                                content = b.content,
+                                contentType = b.content_type,
+                                lastUpdateTime = b.last_update_time
                             )
-                        }
+                        )
                     }
                 }
                 else -> {
@@ -487,6 +506,9 @@ class WebSocketManager private constructor() {
     fun disconnect() {
         currentUserId = null
         currentToken = null
+        currentDeviceId = null
+        currentPlatform = null
+        latestMessageCache.clear()
         maintainerJob?.cancel()
         maintainerJob = null
         connectionVersion++

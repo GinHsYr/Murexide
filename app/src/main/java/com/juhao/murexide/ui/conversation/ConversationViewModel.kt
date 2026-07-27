@@ -256,7 +256,20 @@ class ConversationViewModel(
     private fun overlayRecentMessages(
         conversations: List<ConversationItem>
     ): List<ConversationItem> {
-        return recentMessages.values
+        val cachedMessages = wsManager.latestConversationMessagesSnapshot()
+        val cachedMessageIds = cachedMessages
+            .mapNotNull { message -> message.msgId.takeIf { it.isNotBlank() } }
+            .toSet()
+        val messagesToOverlay = cachedMessages.map { message ->
+            RecentMessage(
+                message = message,
+                incrementUnread = recentMessages[message.msgId]?.incrementUnread ?: false
+            )
+        } + recentMessages.values.filter { recent ->
+            recent.message.msgId.isBlank() || recent.message.msgId !in cachedMessageIds
+        }
+
+        return messagesToOverlay
             .sortedWith(
                 compareBy<RecentMessage> { it.message.timestamp }
                     .thenBy { it.message.msgSeq }

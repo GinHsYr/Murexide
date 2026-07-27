@@ -35,6 +35,8 @@ import java.util.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +46,15 @@ fun ConversationListScreen(
     bigScreenMode: Boolean,
     onConversationClick: (ConversationItem) -> Unit,
     currentConversation: ConversationItem? = null,
-    viewModel: ConversationViewModel = remember { ConversationViewModel(token) }
+    viewModel: ConversationViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        key = "conversation_$token",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ConversationViewModel(token) as T
+            }
+        }
+    )
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -136,11 +146,13 @@ fun ConversationListScreen(
                     } else {
                         items(
                             items = state.conversations,
-                            key = { item -> item.chatId }
+                            key = { item -> "${item.chatType}:${item.chatId}" }
                         ) { conversation ->
                             ConversationItem(
                                 conversation = conversation,
-                                isSelected = currentConversation?.chatId == conversation.chatId && bigScreenMode,
+                                isSelected = currentConversation?.chatId == conversation.chatId &&
+                                    currentConversation?.chatType == conversation.chatType &&
+                                    bigScreenMode,
                                 onClick = {
                                     viewModel.clearUnread(conversation.chatId)
                                     onConversationClick(conversation)

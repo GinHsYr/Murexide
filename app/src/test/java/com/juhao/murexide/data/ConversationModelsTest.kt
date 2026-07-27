@@ -137,6 +137,56 @@ class ConversationModelsTest {
     }
 
     @Test
+    fun `newer message sequence replaces preview even when timestamp moves backwards`() {
+        val conversations = listOf(
+            conversation(
+                chatId = "target",
+                content = "old message",
+                timestamp = 2_000L,
+                latestMessageId = "old-id",
+                latestMessageSeq = 20L
+            )
+        )
+        val latestMessage = outgoingMessage(
+            chatId = "target",
+            content = "latest message",
+            timestamp = 1_999L,
+            msgId = "latest-id",
+            msgSeq = 21L
+        )
+
+        val updated = conversations.withLatestMessage(latestMessage)!!
+
+        assertEquals("latest message", updated.single().chatContent)
+        assertEquals(21L, updated.single().latestMessageSeq)
+    }
+
+    @Test
+    fun `older message sequence cannot replace preview with a later timestamp`() {
+        val conversations = listOf(
+            conversation(
+                chatId = "target",
+                content = "latest message",
+                timestamp = 2_000L,
+                latestMessageId = "latest-id",
+                latestMessageSeq = 21L
+            )
+        )
+        val delayedMessage = outgoingMessage(
+            chatId = "target",
+            content = "delayed message",
+            timestamp = 3_000L,
+            msgId = "older-id",
+            msgSeq = 20L
+        )
+
+        val updated = conversations.withLatestMessage(delayedMessage)
+
+        assertSame(conversations, updated)
+        assertEquals("latest message", updated!!.single().chatContent)
+    }
+
+    @Test
     fun `duplicate latest push does not reorder or increase unread count`() {
         val otherConversation = conversation(chatId = "other", timestamp = 3_000L)
         val targetConversation = conversation(
