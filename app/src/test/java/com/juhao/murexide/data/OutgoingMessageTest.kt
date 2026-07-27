@@ -104,6 +104,29 @@ class OutgoingMessageTest {
         assertEquals(serverMessage, messages.single())
     }
 
+    @Test
+    fun `keeps the local sender profile when the server message omits it`() {
+        val localMessage = textMessage("same", "local content").copy(
+            senderId = "me",
+            senderName = "My name",
+            senderAvatar = "https://example.com/me.png"
+        )
+        val serverMessage = textMessage("same", "server content").copy(
+            senderId = "",
+            senderName = "",
+            senderAvatar = "",
+            msgSeq = 42
+        )
+
+        val message = upsertNewestMessage(listOf(localMessage), serverMessage).single()
+
+        assertEquals("me", message.senderId)
+        assertEquals("My name", message.senderName)
+        assertEquals("https://example.com/me.png", message.senderAvatar)
+        assertEquals("server content", message.content)
+        assertEquals(42L, message.msgSeq)
+    }
+
     private fun textMessage(id: String, text: String): MessageItem {
         return createOutgoingMessage(
             msgId = id,

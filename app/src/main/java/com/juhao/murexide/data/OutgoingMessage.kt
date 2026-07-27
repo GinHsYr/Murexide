@@ -54,7 +54,15 @@ internal fun upsertNewestMessage(
         return listOf(message) + messages
     }
     return messages.map { existing ->
-        if (existing.msgId == message.msgId) message else existing
+        if (existing.msgId == message.msgId) {
+            message.copy(
+                senderId = message.senderId.ifBlank { existing.senderId },
+                senderName = message.senderName.ifBlank { existing.senderName },
+                senderAvatar = message.senderAvatar.ifBlank { existing.senderAvatar }
+            )
+        } else {
+            existing
+        }
     }
 }
 

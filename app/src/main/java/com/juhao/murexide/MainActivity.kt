@@ -51,6 +51,7 @@ import com.juhao.murexide.ui.theme.MurexideTheme
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.datastore.UserAccount
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
 import com.juhao.murexide.ui.community.CommunityScreen
@@ -93,8 +94,8 @@ class MainActivity : ComponentActivity() {
         val accountStorage = AccountStorage.getInstance(this)
 
         lifecycleScope.launch {
-            val token = accountStorage.getCurrentToken()
-            if (token == null) {
+            val account = accountStorage.getCurrentUserInfo()
+            if (account == null || account.token.isEmpty()) {
                 LoginActivity.start(this@MainActivity)
                 finish()
                 return@launch
@@ -103,7 +104,7 @@ class MainActivity : ComponentActivity() {
             setContent {
                 MurexideTheme {
                     Surface(modifier = Modifier.fillMaxSize()) {
-                        MainScreen(token)
+                        MainScreen(account)
                     }
                 }
             }
@@ -113,7 +114,8 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(token: String) {
+fun MainScreen(account: UserAccount) {
+    val token = account.token
     val navController = rememberNavController()
     val context = LocalContext.current
     
@@ -280,7 +282,10 @@ fun MainScreen(token: String) {
                                                 return ChatViewModel(
                                                     token = token,
                                                     chatId = currentConversation!!.chatId,
-                                                    chatType = currentConversation!!.chatType
+                                                    chatType = currentConversation!!.chatType,
+                                                    currentUserId = account.id,
+                                                    currentUserName = account.username,
+                                                    currentUserAvatar = account.avatar
                                                 ) as T
                                             }
                                         }

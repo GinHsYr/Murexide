@@ -50,7 +50,10 @@ class ChatViewModel(
     private val friendRepository: FriendRepository = FriendRepository(),
     private val groupMemberRepository: GroupMemberRepository = GroupMemberRepository(),
     private val boardRepository: BoardRepository = BoardRepository(),
-    private val wsManager: WebSocketManager = WebSocketManager.getInstance()
+    private val wsManager: WebSocketManager = WebSocketManager.getInstance(),
+    private val currentUserId: String = "",
+    private val currentUserName: String = "",
+    private val currentUserAvatar: String = ""
 ) : ViewModel() {
 
     companion object {
@@ -282,19 +285,20 @@ class ChatViewModel(
                 chatId = chatId,
                 chatType = chatType
             ).onSuccess { messages ->
+                val resolvedMessages = messages.map(::withCurrentUserProfileFallback)
                 msgIdCache.clear()
-                msgIdCache.addAll(messages.map { it.msgId })
+                msgIdCache.addAll(resolvedMessages.map { it.msgId })
 
                 _uiState.update {
                     it.copy(
-                        messages = messages,
+                        messages = resolvedMessages,
                         isLoading = false,
-                        hasMore = messages.isNotEmpty(),
+                        hasMore = resolvedMessages.isNotEmpty(),
                         error = null
                     )
                 }
-                if (messages.isNotEmpty()) {
-                    currentMsgId = messages.last().msgId
+                if (resolvedMessages.isNotEmpty()) {
+                    currentMsgId = resolvedMessages.last().msgId
                 }
             }.onFailure { error ->
                 _uiState.update {
@@ -320,8 +324,9 @@ class ChatViewModel(
                 chatType = chatType,
                 msgId = currentMsgId
             ).onSuccess { messages ->
-                if (messages.isNotEmpty()) {
-                    val newMessages = messages.filter { it.msgId !in msgIdCache }
+                val resolvedMessages = messages.map(::withCurrentUserProfileFallback)
+                if (resolvedMessages.isNotEmpty()) {
+                    val newMessages = resolvedMessages.filter { it.msgId !in msgIdCache }
                     if (newMessages.isNotEmpty()) {
                         msgIdCache.addAll(newMessages.map { it.msgId })
                         _uiState.update {
@@ -334,7 +339,7 @@ class ChatViewModel(
                     } else {
                         _uiState.update { it.copy(isLoadingMore = false, hasMore = true) }
                     }
-                    currentMsgId = messages.last().msgId
+                    currentMsgId = resolvedMessages.last().msgId
                 } else {
                     _uiState.update { it.copy(isLoadingMore = false, hasMore = false) }
                 }
@@ -1241,21 +1246,36 @@ class ChatViewModel(
     }
 
     fun addReceivedMessage(message: MessageItem) {
-        if (message.msgId in msgIdCache) {
+        val resolvedMessage = withCurrentUserProfileFallback(message)
+        if (resolvedMessage.msgId in msgIdCache) {
             _uiState.update { state ->
-                state.copy(messages = upsertNewestMessage(state.messages, message))
+                state.copy(messages = upsertNewestMessage(state.messages, resolvedMessage))
             }
             return
         }
         
-        if (message.isRecalled) {
+        if (resolvedMessage.isRecalled) {
             return
         }
 
-        msgIdCache.add(message.msgId)
+        msgIdCache.add(resolvedMessage.msgId)
         _uiState.update {
-            it.copy(messages = upsertNewestMessage(it.messages, message))
+            it.copy(messages = upsertNewestMessage(it.messages, resolvedMessage))
         }
+    }
+
+    private fun withCurrentUserProfileFallback(message: MessageItem): MessageItem {
+        val belongsToCurrentUser = message.isMine ||
+            currentUserId.isNotBlank() && message.senderId == currentUserId
+        if (!belongsToCurrentUser) return message
+
+        return message.copy(
+            senderId = message.senderId.ifBlank {
+                currentUserId.ifBlank { wsManager.loggedInUserId.orEmpty() }
+            },
+            senderName = message.senderName.ifBlank { currentUserName },
+            senderAvatar = message.senderAvatar.ifBlank { currentUserAvatar }
+        )
     }
 
     private fun addSentMessage(
@@ -1271,9 +1291,11 @@ class ChatViewModel(
         val ownMessage = _uiState.value.messages.firstOrNull { it.isMine }
         val message = createOutgoingMessage(
             msgId = msgId,
-            senderId = wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty(),
-            senderName = ownMessage?.senderName.orEmpty(),
-            senderAvatar = ownMessage?.senderAvatar.orEmpty(),
+            senderId = currentUserId.ifBlank {
+                wsManager.loggedInUserId ?: ownMessage?.senderId.orEmpty()
+            },
+            senderName = currentUserName.ifBlank { ownMessage?.senderName.orEmpty() },
+            senderAvatar = currentUserAvatar.ifBlank { ownMessage?.senderAvatar.orEmpty() },
             chatId = chatId,
             chatType = chatType,
             content = content,
