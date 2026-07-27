@@ -35,6 +35,8 @@ internal fun createOutgoingMessage(
         quoteMsgText = content.quoteMsgText,
         quoteImageUrl = content.quoteImageUrl,
         imageUrl = content.image.toMediaUrl(IMAGE_BASE_URL),
+        imageWidth = content.media?.width,
+        imageHeight = content.media?.height,
         audioUrl = content.audio.toMediaUrl(AUDIO_BASE_URL),
         audioTime = content.audioTime,
         videoUrl = content.video.toMediaUrl(VIDEO_BASE_URL),

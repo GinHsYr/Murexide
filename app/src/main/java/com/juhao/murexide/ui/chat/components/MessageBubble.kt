@@ -54,6 +54,7 @@ import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.utils.imageAspectRatio
 import com.juhao.murexide.utils.imageThumbnailUrl
+import com.juhao.murexide.utils.videoAspectRatio
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -561,7 +562,10 @@ fun MessageBubble(
                                                         null
                                                     }
                                                     val imageRatio = if (isVideoMessage) {
-                                                        16f / 9f
+                                                        videoAspectRatio(
+                                                            message.imageWidth,
+                                                            message.imageHeight
+                                                        )
                                                     } else {
                                                         imageAspectRatio(
                                                             message.imageWidth,

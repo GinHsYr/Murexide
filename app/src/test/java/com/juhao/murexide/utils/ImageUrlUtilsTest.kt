@@ -86,6 +86,12 @@ class ImageUrlUtilsTest {
     }
 
     @Test
+    fun `video aspect ratio uses metadata before falling back to widescreen`() {
+        assertEquals(9f / 16f, videoAspectRatio(1080, 1920), 0.0001f)
+        assertEquals(16f / 9f, videoAspectRatio(null, null), 0.0001f)
+    }
+
+    @Test
     fun `referer host matching rejects lookalike domains`() {
         assertTrue(isYunhuImageUrl("https://chat-img.jwznb.com/photo.jpg"))
         assertTrue(isYunhuImageUrl("https://cdn.jwzhd.com/photo.jpg"))

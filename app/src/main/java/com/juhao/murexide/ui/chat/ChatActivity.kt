@@ -38,8 +38,8 @@ class ChatActivity : ComponentActivity() {
 
         setContent {
             MurexideTheme {
-                val token = tokenState.value
-                if (token == null) {
+                val account = accountState.value
+                if (account == null) {
                     Surface {
                         Box(
                             modifier = Modifier.fillMaxSize(),

@@ -21,6 +21,7 @@ import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
 import com.juhao.murexide.utils.MentionUtils
+import com.juhao.murexide.utils.QiniuUploadResponse
 import com.juhao.murexide.utils.QiniuUploader
 import com.juhao.murexide.network.WebSocketManager
 import kotlinx.coroutines.CancellationException
@@ -479,7 +480,7 @@ class ChatViewModel(
                             uploadImagePath = null
                         )
                     }
-                    sendVideoMessage(response.key)
+                    sendVideoMessage(response)
                 }.onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -512,18 +513,19 @@ class ChatViewModel(
         }
     }
     
-    private fun sendVideoMessage(videoUrl: String) {
+    private fun sendVideoMessage(upload: QiniuUploadResponse) {
         val state = _uiState.value
         
         viewModelScope.launch {
             val content = MessageContent(
-                video = videoUrl,
+                video = upload.key,
                 text = "",
                 quoteMsgText = state.replyTo?.let {
                     "${it.senderName}: ${it.content}"
                 },
                 quoteImageUrl = state.replyTo?.imageUrl,
-                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment
+                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment,
+                media = upload.toMessageMedia()
             )
             
             repository.sendMessage(
@@ -599,7 +601,7 @@ class ChatViewModel(
                             uploadImagePath = null
                         )
                     }
-                    sendImageMessage(response.key)
+                    sendImageMessage(response)
                 }.onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -643,18 +645,19 @@ class ChatViewModel(
         }
     }
     
-    private fun sendImageMessage(imageUrl: String) {
+    private fun sendImageMessage(upload: QiniuUploadResponse) {
         val state = _uiState.value
         
         viewModelScope.launch {
             val content = MessageContent(
-                image = imageUrl,
+                image = upload.key,
                 text = "",
                 quoteMsgText = state.replyTo?.let {
                     "${it.senderName}: ${it.content}"
                 },
                 quoteImageUrl = state.replyTo?.imageUrl,
-                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment
+                quoteImageName = state.replyTo?.imageUrl?.toUri()?.lastPathSegment,
+                media = upload.toMessageMedia()
             )
             
             repository.sendMessage(
