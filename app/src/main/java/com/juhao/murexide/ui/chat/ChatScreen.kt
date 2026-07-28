@@ -72,6 +72,7 @@ import com.juhao.murexide.ui.chat.components.UploadProgressBar
 import com.juhao.murexide.ui.chat.components.ScreenshotBottomSheet
 import com.juhao.murexide.ui.chat.components.GroupMemberSheet
 import com.juhao.murexide.datastore.SettingsStorage
+import com.juhao.murexide.data.DefaultEmoji
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.DefaultEmojiCatalog
 import com.juhao.murexide.data.resolveStickerMessageUrl
@@ -340,6 +341,13 @@ fun ChatScreen(
     val showMyBubbleAvatarSetting by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     val showMsgTagsSetting by settingsStorage.showMsgTagsFlow.collectAsState(initial = false)
     val backgroundOpacity by settingsStorage.backgroundOpacityFlow.collectAsState(initial = 0.5f)
+    val recentDefaultEmojiNames by settingsStorage.recentDefaultEmojiNamesFlow.collectAsState(
+        initial = emptyList()
+    )
+    val recentDefaultEmojis = remember(defaultEmojis, recentDefaultEmojiNames) {
+        val emojisByName = defaultEmojis.associateBy(DefaultEmoji::name)
+        recentDefaultEmojiNames.mapNotNull(emojisByName::get)
+    }
     
     val hazeState = remember { HazeState() }
 
@@ -1195,6 +1203,7 @@ fun ChatScreen(
                                 expressions.isVisible -> {
                                     EmojiPanel(
                                         defaultEmojis = defaultEmojis,
+                                        recentDefaultEmojis = recentDefaultEmojis,
                                         expressions = expressions.expressions,
                                         isLoading = expressions.isLoading,
                                         onExpressionClick = { expression ->
@@ -1205,6 +1214,9 @@ fun ChatScreen(
                                         },
                                         onDefaultEmojiClick = { emoji ->
                                             viewModel.insertDefaultEmoji(emoji)
+                                            scope.launch {
+                                                settingsStorage.recordRecentDefaultEmoji(emoji.name)
+                                            }
                                         },
                                         stickerPacks = expressions.stickerPacks,
                                         modifier = Modifier

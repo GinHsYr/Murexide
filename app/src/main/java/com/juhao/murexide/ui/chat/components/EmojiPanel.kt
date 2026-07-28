@@ -2,11 +2,14 @@ package com.juhao.murexide.ui.chat.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
@@ -32,9 +35,12 @@ import com.juhao.murexide.data.StickerPack
 import com.juhao.murexide.data.resolveStickerUrl
 import kotlinx.coroutines.launch
 
+private const val DEFAULT_EMOJI_COLUMNS = 8
+
 @Composable
 fun EmojiPanel(
     defaultEmojis: List<DefaultEmoji>,
+    recentDefaultEmojis: List<DefaultEmoji>,
     expressions: List<ExpressionItem>,
     stickerPacks: List<StickerPack>,
     isLoading: Boolean,
@@ -87,6 +93,7 @@ fun EmojiPanel(
             if (page == 0) {
                 DefaultEmojiGridPage(
                     emojis = defaultEmojis,
+                    recentEmojis = recentDefaultEmojis,
                     onItemClick = onDefaultEmojiClick
                 )
             } else if (isLoading && page == 1 && expressions.isEmpty() && stickerPacks.isEmpty()) {
@@ -114,6 +121,7 @@ fun EmojiPanel(
 @Composable
 private fun DefaultEmojiGridPage(
     emojis: List<DefaultEmoji>,
+    recentEmojis: List<DefaultEmoji>,
     onItemClick: (DefaultEmoji) -> Unit
 ) {
     if (emojis.isEmpty()) {
@@ -127,16 +135,111 @@ private fun DefaultEmojiGridPage(
         return
     }
 
-    EmojiGrid(
-        count = emojis.size,
-        columns = 8,
-        contentPadding = PaddingValues(8.dp)
-    ) { index ->
-        val emoji = emojis[index]
-        EmojiGridItem(
-            url = emoji.assetUri,
-            fillGridCell = true,
-            onClick = { onItemClick(emoji) }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(DEFAULT_EMOJI_COLUMNS),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (recentEmojis.isNotEmpty()) {
+            item(
+                key = "recent_default_emojis",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                RecentDefaultEmojiBar(
+                    emojis = recentEmojis,
+                    onItemClick = onItemClick
+                )
+            }
+        }
+
+        items(
+            count = emojis.size,
+            key = { index -> "default_${emojis[index].name}" }
+        ) { index ->
+            val emoji = emojis[index]
+            DefaultEmojiItem(
+                emoji = emoji,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                onClick = { onItemClick(emoji) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentDefaultEmojiBar(
+    emojis: List<DefaultEmoji>,
+    onItemClick: (DefaultEmoji) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val spacing = 4.dp
+        val itemSize = (maxWidth - spacing * (DEFAULT_EMOJI_COLUMNS - 1)) /
+            DEFAULT_EMOJI_COLUMNS
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "最近使用",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+            )
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemSize),
+                horizontalArrangement = Arrangement.spacedBy(spacing)
+            ) {
+                items(
+                    count = emojis.size,
+                    key = { index -> emojis[index].name }
+                ) { index ->
+                    val emoji = emojis[index]
+                    DefaultEmojiItem(
+                        emoji = emoji,
+                        modifier = Modifier.size(itemSize),
+                        onClick = { onItemClick(emoji) }
+                    )
+                }
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DefaultEmojiItem(
+    emoji: DefaultEmoji,
+    modifier: Modifier,
+    contentPadding: androidx.compose.ui.unit.Dp = 10.dp,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val imageRequest = remember(emoji.assetUri) {
+        ImageRequest.Builder(context)
+            .data(emoji.assetUri)
+            .crossfade(true)
+            .build()
+    }
+
+    Box(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .clickable(onClick = onClick)
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = emoji.name,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
         )
     }
 }
@@ -200,13 +303,14 @@ private fun StickerPackGridPage(
 @Composable
 private fun EmojiGrid(
     count: Int,
+    modifier: Modifier = Modifier,
     columns: Int = 4,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable (index: Int) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -221,7 +325,6 @@ private fun EmojiGrid(
 private fun EmojiGridItem(
     url: String?,
     name: String? = null,
-    fillGridCell: Boolean = false,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -236,15 +339,6 @@ private fun EmojiGridItem(
             .crossfade(true)
             .build()
     }
-    val imageModifier = if (fillGridCell) {
-        Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .padding(10.dp)
-    } else {
-        Modifier.size(80.dp)
-    }
-
     Column(
         modifier = Modifier
             .clip(MaterialTheme.shapes.extraSmall)
@@ -254,7 +348,7 @@ private fun EmojiGridItem(
         AsyncImage(
             model = imageRequest,
             contentDescription = null,
-            modifier = imageModifier.clip(MaterialTheme.shapes.extraSmall),
+            modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.extraSmall),
             contentScale = ContentScale.Fit
         )
         name?.let {
