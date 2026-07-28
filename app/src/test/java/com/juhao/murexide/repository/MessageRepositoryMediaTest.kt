@@ -9,6 +9,25 @@ import org.junit.Test
 
 class MessageRepositoryMediaTest {
     @Test
+    fun `send request preserves default emoji markers as ordinary text`() {
+        val request = createSendMessageRequest(
+            msgId = "message-id",
+            chatId = "chat-id",
+            chatType = 2,
+            content = MessageContent(text = "这是一个猪头表情:[.猪头]"),
+            contentType = MessageItem.CONTENT_TYPE_TEXT,
+            quoteMsgId = null,
+            commandId = null
+        )
+
+        assertEquals("这是一个猪头表情:[.猪头]", requireNotNull(request.content).text)
+        assertEquals(MessageItem.CONTENT_TYPE_TEXT.toLong(), request.content_type)
+        assertEquals("", requireNotNull(request.content).image)
+        assertEquals(0L, requireNotNull(request.content).sticker_item_id)
+        assertEquals(0L, requireNotNull(request.content).sticker_pack_id)
+    }
+
+    @Test
     fun `send request includes uploaded media dimensions and identity`() {
         val request = createSendMessageRequest(
             msgId = "message-id",

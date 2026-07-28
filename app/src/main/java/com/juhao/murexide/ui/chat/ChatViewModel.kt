@@ -3,6 +3,7 @@ package com.juhao.murexide.ui.chat
 import android.net.Uri
 import android.content.Context
 import android.util.Log
+import androidx.compose.ui.text.TextRange
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -436,10 +437,49 @@ class ChatViewModel(
         loadMessages()
     }
 
-    fun updateInputText(text: String, mentions: List<MentionToken>) {
+    fun updateInputText(
+        text: String,
+        mentions: List<MentionToken>,
+        selectionStart: Int,
+        selectionEnd: Int
+    ) {
         val state = _uiState.value
-        if (state.inputText == text && state.mentions == mentions) return
-        _uiState.update { it.copy(inputText = text, mentions = mentions) }
+        val safeStart = selectionStart.coerceIn(0, text.length)
+        val safeEnd = selectionEnd.coerceIn(0, text.length)
+        if (
+            state.inputText == text &&
+            state.mentions == mentions &&
+            state.inputSelectionStart == safeStart &&
+            state.inputSelectionEnd == safeEnd
+        ) return
+        _uiState.update {
+            it.copy(
+                inputText = text,
+                mentions = mentions,
+                inputSelectionStart = safeStart,
+                inputSelectionEnd = safeEnd
+            )
+        }
+    }
+
+    fun insertDefaultEmoji(emoji: DefaultEmoji) {
+        _uiState.update { state ->
+            val result = MentionUtils.replaceRange(
+                text = state.inputText,
+                mentions = state.mentions,
+                selection = TextRange(
+                    start = state.inputSelectionStart,
+                    end = state.inputSelectionEnd
+                ),
+                replacement = emoji.marker
+            )
+            state.copy(
+                inputText = result.text,
+                mentions = result.mentions,
+                inputSelectionStart = result.selection.start,
+                inputSelectionEnd = result.selection.end
+            )
+        }
     }
 
     fun setReplyTo(message: MessageItem) {
@@ -497,6 +537,8 @@ class ChatViewModel(
                 _uiState.update {
                     it.copy(
                         inputText = "",
+                        inputSelectionStart = 0,
+                        inputSelectionEnd = 0,
                         replyTo = null,
                         isSending = false,
                         mentions = emptyList(),
@@ -985,6 +1027,8 @@ class ChatViewModel(
             it.copy(
                 editingMessage = message,
                 inputText = message.content,
+                inputSelectionStart = message.content.length,
+                inputSelectionEnd = message.content.length,
                 mentions = emptyList(),
                 sendType = when (message.contentType) {
                     MessageItem.CONTENT_TYPE_MARKDOWN -> "markdown"
@@ -1005,6 +1049,8 @@ class ChatViewModel(
             it.copy(
                 editingMessage = null,
                 inputText = "",
+                inputSelectionStart = 0,
+                inputSelectionEnd = 0,
                 mentions = emptyList(),
                 sendType = "text"
             )
@@ -1040,6 +1086,8 @@ class ChatViewModel(
                         isSending = false,
                         editingMessage = null,
                         inputText = "",
+                        inputSelectionStart = 0,
+                        inputSelectionEnd = 0,
                         mentions = emptyList(),
                         sendType = "text"
                     )
@@ -1248,6 +1296,8 @@ class ChatViewModel(
                 _uiState.update {
                     it.copy(
                         inputText = item.defaultText,
+                        inputSelectionStart = item.defaultText.length,
+                        inputSelectionEnd = item.defaultText.length,
                         mentions = emptyList(),
                         pendingCommandId = item.id,
                         pendingCommandName = item.name,
@@ -1588,7 +1638,12 @@ class ChatViewModel(
                     userId = userId,
                     displayName = name
                 )
-                state.copy(inputText = result.text, mentions = result.mentions)
+                state.copy(
+                    inputText = result.text,
+                    mentions = result.mentions,
+                    inputSelectionStart = result.selection.start,
+                    inputSelectionEnd = result.selection.end
+                )
             }
         }
     }
@@ -1617,6 +1672,8 @@ class ChatViewModel(
             state.copy(
                 inputText = result.text,
                 mentions = result.mentions,
+                inputSelectionStart = result.selection.start,
+                inputSelectionEnd = result.selection.end,
                 mentionPicker = MentionPickerState()
             )
         }

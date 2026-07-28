@@ -14,7 +14,14 @@ object MentionUtils {
 
     data class InsertResult(
         val text: String,
-        val mentions: List<MentionToken>
+        val mentions: List<MentionToken>,
+        val selection: TextRange
+    )
+
+    data class ReplaceResult(
+        val text: String,
+        val mentions: List<MentionToken>,
+        val selection: TextRange
     )
 
     fun validMentions(text: String, mentions: List<MentionToken>): List<MentionToken> {
@@ -74,19 +81,33 @@ object MentionUtils {
         )
         return InsertResult(
             text = newText,
-            mentions = (shiftedMentions + newMention).sortedBy { it.start }
+            mentions = (shiftedMentions + newMention).sortedBy { it.start },
+            selection = TextRange(insertAt + insertedText.length)
         )
     }
 
     fun processEdit(
         old: TextFieldValue,
         new: TextFieldValue,
-        mentions: List<MentionToken>
+        mentions: List<MentionToken>,
+        protectedRanges: List<TextRange> = emptyList()
     ): EditResult {
         val currentMentions = validMentions(old.text, mentions)
+        val currentProtectedRanges = validProtectedRanges(old.text, protectedRanges)
+        val atomicRanges = (
+            currentMentions.map { TextRange(it.start, it.endExclusive) } +
+                currentProtectedRanges
+            ).sortedBy { it.start }
         if (old.text == new.text) {
             return EditResult(
-                new.copy(selection = clampSelection(new.text, new.selection, currentMentions)),
+                new.copy(
+                    selection = clampSelection(
+                        text = new.text,
+                        selection = new.selection,
+                        mentions = currentMentions,
+                        protectedRanges = currentProtectedRanges
+                    )
+                ),
                 currentMentions,
                 "", -1
             )
@@ -107,9 +128,9 @@ object MentionUtils {
         val inserted = newText.substring(prefix, newText.length - suffix)
 
         if (delStart == delEnd) {
-            for (mention in currentMentions) {
-                if (delStart > mention.start && delStart < mention.endExclusive) {
-                    val insertAt = mention.endExclusive
+            for (range in atomicRanges) {
+                if (delStart > range.start && delStart < range.end) {
+                    val insertAt = range.end
                     val result = oldText.substring(0, insertAt) + inserted + oldText.substring(insertAt)
                     val updatedMentions = transformMentions(
                         currentMentions,
@@ -117,8 +138,22 @@ object MentionUtils {
                         insertAt,
                         inserted.length
                     )
+                    val updatedProtectedRanges = transformRanges(
+                        currentProtectedRanges,
+                        insertAt,
+                        insertAt,
+                        inserted.length
+                    )
                     return EditResult(
-                        TextFieldValue(result, TextRange(insertAt + inserted.length)),
+                        TextFieldValue(
+                            result,
+                            clampSelection(
+                                text = result,
+                                selection = TextRange(insertAt + inserted.length),
+                                mentions = updatedMentions,
+                                protectedRanges = updatedProtectedRanges
+                            )
+                        ),
                         updatedMentions,
                         inserted,
                         insertAt
@@ -133,12 +168,12 @@ object MentionUtils {
             var expanded: Boolean
             do {
                 expanded = false
-                currentMentions.forEach { mention ->
-                    val intersects = editStart < mention.endExclusive && editEnd > mention.start
-                    val fullyCovered = editStart <= mention.start && editEnd >= mention.endExclusive
+                atomicRanges.forEach { range ->
+                    val intersects = editStart < range.end && editEnd > range.start
+                    val fullyCovered = editStart <= range.start && editEnd >= range.end
                     if (intersects && !fullyCovered) {
-                        val expandedStart = minOf(editStart, mention.start)
-                        val expandedEnd = maxOf(editEnd, mention.endExclusive)
+                        val expandedStart = minOf(editStart, range.start)
+                        val expandedEnd = maxOf(editEnd, range.end)
                         if (expandedStart != editStart || expandedEnd != editEnd) {
                             editStart = expandedStart
                             editEnd = expandedEnd
@@ -156,6 +191,12 @@ object MentionUtils {
             editEnd,
             inserted.length
         )
+        val updatedProtectedRanges = transformRanges(
+            currentProtectedRanges,
+            editStart,
+            editEnd,
+            inserted.length
+        )
         val selection = if (editStart == delStart && editEnd == delEnd) {
             new.selection
         } else {
@@ -164,11 +205,39 @@ object MentionUtils {
         return EditResult(
             TextFieldValue(
                 resultText,
-                clampSelection(resultText, selection, updatedMentions)
+                clampSelection(
+                    text = resultText,
+                    selection = selection,
+                    mentions = updatedMentions,
+                    protectedRanges = updatedProtectedRanges
+                )
             ),
             updatedMentions,
             inserted,
             editStart
+        )
+    }
+
+    fun replaceRange(
+        text: String,
+        mentions: List<MentionToken>,
+        selection: TextRange,
+        replacement: String
+    ): ReplaceResult {
+        val start = minOf(selection.start, selection.end).coerceIn(0, text.length)
+        val end = maxOf(selection.start, selection.end).coerceIn(start, text.length)
+        val currentMentions = validMentions(text, mentions)
+        val updatedMentions = transformMentions(
+            mentions = currentMentions,
+            editStart = start,
+            editEnd = end,
+            insertedLength = replacement.length
+        )
+        val resultText = text.substring(0, start) + replacement + text.substring(end)
+        return ReplaceResult(
+            text = resultText,
+            mentions = updatedMentions,
+            selection = TextRange(start + replacement.length)
         )
     }
 
@@ -191,21 +260,57 @@ object MentionUtils {
         }.sortedBy { it.start }
     }
 
+    private fun transformRanges(
+        ranges: List<TextRange>,
+        editStart: Int,
+        editEnd: Int,
+        insertedLength: Int
+    ): List<TextRange> {
+        val offset = insertedLength - (editEnd - editStart)
+        return ranges.mapNotNull { range ->
+            when {
+                range.end <= editStart -> range
+                range.start >= editEnd -> TextRange(
+                    start = range.start + offset,
+                    end = range.end + offset
+                )
+                else -> null
+            }
+        }.sortedBy { it.start }
+    }
+
+    private fun validProtectedRanges(text: String, ranges: List<TextRange>): List<TextRange> {
+        return ranges.mapNotNull { range ->
+            val start = minOf(range.start, range.end)
+            val end = maxOf(range.start, range.end)
+            if (start >= 0 && end <= text.length && start < end) {
+                TextRange(start, end)
+            } else {
+                null
+            }
+        }.distinct().sortedBy { it.start }
+    }
+
     private fun clampSelection(
         text: String,
         selection: TextRange,
-        mentions: List<MentionToken>
+        mentions: List<MentionToken>,
+        protectedRanges: List<TextRange> = emptyList()
     ): TextRange {
         val validMentions = validMentions(text, mentions)
-        if (validMentions.isEmpty()) return selection
+        val atomicRanges = (
+            validMentions.map { TextRange(it.start, it.endExclusive) } +
+                validProtectedRanges(text, protectedRanges)
+            ).sortedBy { it.start }
+        if (atomicRanges.isEmpty()) return selection
 
         fun clampPos(p: Int): Int {
-            for (mention in validMentions) {
-                if (p > mention.start && p < mention.endExclusive) {
-                    return if (p - mention.start < mention.endExclusive - p) {
-                        mention.start
+            for (range in atomicRanges) {
+                if (p > range.start && p < range.end) {
+                    return if (p - range.start < range.end - p) {
+                        range.start
                     } else {
-                        mention.endExclusive
+                        range.end
                     }
                 }
             }
