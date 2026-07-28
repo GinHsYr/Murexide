@@ -22,7 +22,6 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.view.doOnPreDraw
 import com.flyjingfish.openimagelib.OpenImage
-import com.flyjingfish.openimagelib.beans.ClickViewParam
 import com.flyjingfish.openimagelib.beans.DownloadParams
 import com.flyjingfish.openimagelib.beans.OpenImageUrl
 import com.flyjingfish.openimagelib.enums.MediaType
@@ -145,7 +144,7 @@ fun showImageViewer(
             }
 
             if (transitionSource == null) {
-                showWithBoundsFallback(viewer, decorView, origin, selectedIndex)
+                showWithBoundsFallback(viewer, selectedIndex)
                 return@captureTransitionSource
             }
 
@@ -185,31 +184,12 @@ fun showImageViewer(
 
 private fun showWithBoundsFallback(
     viewer: OpenImage,
-    decorView: View,
-    bounds: ImageViewerSourceBounds,
     selectedIndex: Int
 ) {
-    if (decorView.width > 0) {
-        viewer
-            .setClickWebView(
-                decorView,
-                ClickViewParam(
-                    bounds.width,
-                    bounds.height,
-                    bounds.top,
-                    bounds.left,
-                    decorView.width
-                )
-            )
-            .setClickPosition(selectedIndex, 0)
-            .setSrcImageViewScaleType(sourceScaleType(bounds), true)
-    } else {
-        viewer
-            .setNoneClickView()
-            .setClickPosition(selectedIndex)
-    }
-
-    viewer.show()
+    viewer
+        .setNoneClickView()
+        .setClickPosition(selectedIndex)
+        .show()
 }
 
 @Suppress("DEPRECATION")

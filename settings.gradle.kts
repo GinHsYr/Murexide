@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Murexide"
 include(":app")
+include(":benchmark")

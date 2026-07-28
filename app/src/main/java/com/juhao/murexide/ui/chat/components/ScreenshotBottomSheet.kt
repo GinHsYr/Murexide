@@ -18,6 +18,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -233,6 +234,13 @@ private fun ScreenshotContent(
 ) {
     val anonymousCache = remember { mutableMapOf<String, String>() }
     var counter by remember { mutableIntStateOf(0) }
+    val configuration = LocalConfiguration.current
+    @Suppress("DEPRECATION")
+    val locale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        configuration.locales[0]
+    } else {
+        configuration.locale
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -275,7 +283,7 @@ private fun ScreenshotContent(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()),
+                        text = SimpleDateFormat("yyyy-MM-dd HH:mm", locale).format(Date()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

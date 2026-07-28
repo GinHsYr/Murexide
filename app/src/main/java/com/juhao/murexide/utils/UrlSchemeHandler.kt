@@ -18,7 +18,7 @@ import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
  * - yunhu://alley-detail?id=xxx    跳转文章分区页面
  * - yunhu://ad?id=xxx              观看广告（不支持）
  *
- * 供 markdown 链接、HTML WebView、消息点击等各处复用。
+ * 供 Markdown 链接、静态 HTML 消息、消息点击等各处复用。
  */
 object UrlSchemeHandler {
 

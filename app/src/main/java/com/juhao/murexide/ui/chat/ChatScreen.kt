@@ -93,7 +93,7 @@ import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.conversationdetail.GroupSettingsActivity
 import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
-import com.juhao.murexide.ui.webview.WebViewActivity
+import com.juhao.murexide.ui.components.handleStaticHtmlLink
 import com.juhao.murexide.utils.NotificationHelper
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -459,10 +459,7 @@ fun ChatScreen(
         viewModel.buttonEvent.collect { event ->
             when (event) {
                 is ButtonEvent.OpenUrl -> {
-                    val intent = Intent(context, WebViewActivity::class.java).apply {
-                        putExtra(WebViewActivity.EXTRA_URL, event.url)
-                    }
-                    context.startActivity(intent)
+                    handleStaticHtmlLink(context, event.url)
                 }
                 is ButtonEvent.CopyText -> {
                     clipboardManager.setClipEntry(
@@ -1337,7 +1334,8 @@ fun ChatScreen(
                 ) {
                     items(
                         items = displayItems,
-                        key = { it.message.msgId }
+                        key = { it.message.msgId },
+                        contentType = { it.message.contentType }
                     ) { item ->
                         val message = item.message
                         
