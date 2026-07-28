@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.juhao.murexide.data.DefaultEmoji
 import com.juhao.murexide.data.ExpressionItem
 import com.juhao.murexide.data.StickerItem
 import com.juhao.murexide.data.StickerPack
@@ -33,14 +34,17 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun EmojiPanel(
+    defaultEmojis: List<DefaultEmoji>,
     expressions: List<ExpressionItem>,
     stickerPacks: List<StickerPack>,
     isLoading: Boolean,
     onExpressionClick: (ExpressionItem) -> Unit,
     onStickerItemClick: (StickerItem) -> Unit,
+    onDefaultEmojiClick: (DefaultEmoji) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabTitles = buildList {
+        add("默认")
         add("收藏")
         stickerPacks.forEach { add(it.name) }
     }
@@ -80,17 +84,22 @@ fun EmojiPanel(
                 .fillMaxWidth()
                 .weight(1f)
         ) { page ->
-            if (isLoading && page == 0 && expressions.isEmpty() && stickerPacks.isEmpty()) {
+            if (page == 0) {
+                DefaultEmojiGridPage(
+                    emojis = defaultEmojis,
+                    onItemClick = onDefaultEmojiClick
+                )
+            } else if (isLoading && page == 1 && expressions.isEmpty() && stickerPacks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 }
-            } else if (page == 0) {
+            } else if (page == 1) {
                 ExpressionGridPage(
                     expressions = expressions,
                     onItemClick = onExpressionClick
                 )
             } else {
-                val packIndex = page - 1
+                val packIndex = page - 2
                 if (packIndex in stickerPacks.indices) {
                     StickerPackGridPage(
                         items = stickerPacks[packIndex].stickerItems,
@@ -99,6 +108,36 @@ fun EmojiPanel(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DefaultEmojiGridPage(
+    emojis: List<DefaultEmoji>,
+    onItemClick: (DefaultEmoji) -> Unit
+) {
+    if (emojis.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = "暂无默认表情",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+        }
+        return
+    }
+
+    EmojiGrid(
+        count = emojis.size,
+        columns = 8,
+        contentPadding = PaddingValues(8.dp)
+    ) { index ->
+        val emoji = emojis[index]
+        EmojiGridItem(
+            url = emoji.assetUri,
+            fillGridCell = true,
+            onClick = { onItemClick(emoji) }
+        )
     }
 }
 
@@ -157,15 +196,16 @@ private fun StickerPackGridPage(
     }
 }
 
-/** 通用表情网格：4 列 LazyVerticalGrid */
+/** 通用表情网格 */
 @Composable
 private fun EmojiGrid(
     count: Int,
+    columns: Int = 4,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable (index: Int) -> Unit
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
+        columns = GridCells.Fixed(columns),
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -181,6 +221,7 @@ private fun EmojiGrid(
 private fun EmojiGridItem(
     url: String?,
     name: String? = null,
+    fillGridCell: Boolean = false,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -195,6 +236,14 @@ private fun EmojiGridItem(
             .crossfade(true)
             .build()
     }
+    val imageModifier = if (fillGridCell) {
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .padding(10.dp)
+    } else {
+        Modifier.size(80.dp)
+    }
 
     Column(
         modifier = Modifier
@@ -205,7 +254,7 @@ private fun EmojiGridItem(
         AsyncImage(
             model = imageRequest,
             contentDescription = null,
-            modifier = Modifier.size(80.dp).clip(MaterialTheme.shapes.extraSmall),
+            modifier = imageModifier.clip(MaterialTheme.shapes.extraSmall),
             contentScale = ContentScale.Fit
         )
         name?.let {

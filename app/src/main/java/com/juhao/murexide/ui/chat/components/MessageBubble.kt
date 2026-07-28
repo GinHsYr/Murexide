@@ -46,6 +46,8 @@ import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.juhao.murexide.data.MessageButton
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.DefaultEmojiCatalog
+import com.juhao.murexide.data.DefaultEmojiParser
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.ImageViewerSourceBounds
@@ -107,6 +109,7 @@ fun MessageBubble(
 
     val isMine = if (hideMyInfo) false else message.isMine
     val context = LocalContext.current
+    val defaultEmojis = remember(context) { DefaultEmojiCatalog.load(context.assets) }
 
     val timestampDisplay = remember(message.timestamp) {
         try {
@@ -464,16 +467,56 @@ fun MessageBubble(
                                                     with(density) { widthPx.toSp() }
                                                 }
                                                 
-                                                val textWithTime = remember(message.content, timeId) {
+                                                val emojiMatches = remember(message.content, defaultEmojis) {
+                                                    DefaultEmojiParser.findMatches(
+                                                        text = message.content,
+                                                        emojis = defaultEmojis
+                                                    )
+                                                }
+
+                                                val textWithTime = remember(
+                                                    message.content,
+                                                    message.msgId,
+                                                    emojiMatches,
+                                                    timeId
+                                                ) {
                                                     buildAnnotatedString {
-                                                        append(message.content)
+                                                        var cursor = 0
+                                                        emojiMatches.forEachIndexed { index, match ->
+                                                            append(message.content.substring(cursor, match.start))
+                                                            appendInlineContent(
+                                                                id = "emoji_${message.msgId}_$index",
+                                                                alternateText = match.emoji.marker
+                                                            )
+                                                            cursor = match.endExclusive
+                                                        }
+                                                        append(message.content.substring(cursor))
                                                         append(" ")
                                                         appendInlineContent(timeId, " ")
                                                     }
                                                 }
                                                 
-                                                val inlineContent = mapOf(
-                                                    timeId to InlineTextContent(
+                                                val inlineContent = buildMap {
+                                                    emojiMatches.forEachIndexed { index, match ->
+                                                        put(
+                                                            "emoji_${message.msgId}_$index",
+                                                            InlineTextContent(
+                                                                placeholder = Placeholder(
+                                                                    width = 1.2.em,
+                                                                    height = 1.2.em,
+                                                                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
+                                                                )
+                                                            ) {
+                                                                AsyncImage(
+                                                                    model = match.emoji.assetUri,
+                                                                    contentDescription = match.emoji.name,
+                                                                    modifier = Modifier.fillMaxSize(),
+                                                                    contentScale = ContentScale.Fit
+                                                                )
+                                                            }
+                                                        )
+                                                    }
+                                                    put(timeId, InlineTextContent(
                                                         placeholder = Placeholder(
                                                             width = timeWidthSp,
                                                             height = 1.em,
@@ -498,8 +541,8 @@ fun MessageBubble(
                                                                 )
                                                             }
                                                         }
-                                                    }
-                                                )
+                                                    })
+                                                }
                                                 
                                                 Text(
                                                     text = textWithTime,

@@ -17,13 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,10 +33,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -62,8 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.juhao.murexide.R
+import com.juhao.murexide.data.DefaultEmoji
 import com.juhao.murexide.data.MentionToken
-import com.juhao.murexide.utils.MentionUtils
 import kotlin.math.roundToInt
 
 private val SendButtonSize = 44.dp
@@ -99,8 +95,11 @@ internal fun sendFormatOptionIndex(
 @Composable
 fun MessageInput(
     inputText: String,
+    inputSelectionStart: Int,
+    inputSelectionEnd: Int,
+    defaultEmojis: List<DefaultEmoji>,
     isSending: Boolean = false,
-    onTextChange: (String, List<MentionToken>) -> Unit,
+    onTextChange: (String, List<MentionToken>, Int, Int) -> Unit,
     onSendClick: () -> Unit,
     onSendWithType: (String) -> Unit,
     onAddImageClick: () -> Unit,
@@ -115,12 +114,13 @@ fun MessageInput(
     focusRequester: FocusRequester,
     onInputFocused: () -> Unit = {}
 ) {
-    var fieldValue by remember { mutableStateOf(TextFieldValue(inputText)) }
-    LaunchedEffect(inputText) {
-        if (fieldValue.text != inputText) {
-            fieldValue = TextFieldValue(inputText, TextRange(inputText.length))
-        }
-    }
+    val fieldValue = TextFieldValue(
+        text = inputText,
+        selection = TextRange(
+            start = inputSelectionStart.coerceIn(0, inputText.length),
+            end = inputSelectionEnd.coerceIn(0, inputText.length)
+        )
+    )
 
     Row(
         modifier = Modifier
@@ -150,50 +150,29 @@ fun MessageInput(
             )
         }
 
-        BasicTextField(
+        DefaultEmojiTextField(
             value = fieldValue,
-            onValueChange = { new ->
-                val result = MentionUtils.processEdit(fieldValue, new, mentions)
-                fieldValue = result.value
-                if (result.value.text != inputText) {
-                    onTextChange(result.value.text, result.mentions)
-                }
-                if (result.insertedText == "@") {
-                    onMentionTriggered(result.insertPos)
-                }
+            mentions = mentions,
+            emojis = defaultEmojis,
+            enabled = true,
+            textColor = MaterialTheme.colorScheme.onSurface,
+            hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+            textSizeSp = MaterialTheme.typography.bodyLarge.fontSize.value,
+            focusRequester = focusRequester,
+            onValueChange = { new, updatedMentions, insertedText, insertPosition ->
+                onTextChange(
+                    new.text,
+                    updatedMentions,
+                    new.selection.start,
+                    new.selection.end
+                )
+                if (insertedText == "@") onMentionTriggered(insertPosition)
             },
+            onFocused = onInputFocused,
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 48.dp, max = 144.dp)
                 .padding(horizontal = 4.dp)
-                .focusRequester(focusRequester)
-                .onFocusChanged { state ->
-                    if (state.isFocused) onInputFocused()
-                },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            minLines = 1,
-            maxLines = 5,
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (fieldValue.text.isEmpty()) {
-                        Text(
-                            text = "输入消息...",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
-                            maxLines = 1
-                        )
-                    }
-                    innerTextField()
-                }
-            }
         )
 
         AnimatedContent(

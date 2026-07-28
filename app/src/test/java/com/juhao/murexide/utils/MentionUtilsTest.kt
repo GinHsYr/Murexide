@@ -84,4 +84,55 @@ class MentionUtilsTest {
         assertEquals(" hello", edited.value.text)
         assertTrue(edited.mentions.isEmpty())
     }
+
+    @Test
+    fun `partial deletion removes an entire protected emoji marker`() {
+        val text = "你好[.猪头]世界"
+        val markerStart = 2
+        val markerEnd = markerStart + "[.猪头]".length
+        val edited = MentionUtils.processEdit(
+            old = TextFieldValue(text, TextRange(markerEnd)),
+            new = TextFieldValue("你好[.猪]世界", TextRange(markerEnd - 1)),
+            mentions = emptyList(),
+            protectedRanges = listOf(TextRange(markerStart, markerEnd))
+        )
+
+        assertEquals("你好世界", edited.value.text)
+        assertEquals(TextRange(markerStart), edited.value.selection)
+    }
+
+    @Test
+    fun `selection cannot remain inside a protected emoji marker`() {
+        val text = "A[.猪头]B"
+        val markerStart = 1
+        val markerEnd = markerStart + "[.猪头]".length
+        val edited = MentionUtils.processEdit(
+            old = TextFieldValue(text, TextRange(markerEnd)),
+            new = TextFieldValue(text, TextRange(markerStart + 2)),
+            mentions = emptyList(),
+            protectedRanges = listOf(TextRange(markerStart, markerEnd))
+        )
+
+        assertEquals(TextRange(markerStart), edited.value.selection)
+    }
+
+    @Test
+    fun `replacing selection with emoji marker shifts following mention`() {
+        val mention = MentionToken(
+            userId = "user-1",
+            displayName = "Ann",
+            start = 6,
+            endExclusive = 10
+        )
+        val result = MentionUtils.replaceRange(
+            text = "hello @Ann ",
+            mentions = listOf(mention),
+            selection = TextRange(0, 5),
+            replacement = "[.猪头]"
+        )
+
+        assertEquals("[.猪头] @Ann ", result.text)
+        assertEquals("[.猪头] ".length, result.mentions.single().start)
+        assertEquals(TextRange("[.猪头]".length), result.selection)
+    }
 }

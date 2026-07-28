@@ -73,6 +73,7 @@ import com.juhao.murexide.ui.chat.components.ScreenshotBottomSheet
 import com.juhao.murexide.ui.chat.components.GroupMemberSheet
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.DefaultEmojiCatalog
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -168,6 +169,7 @@ fun ChatScreen(
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
+    val defaultEmojis = remember(context) { DefaultEmojiCatalog.load(context.assets) }
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
     val uiState by viewModel.uiState.collectAsState()
@@ -1113,9 +1115,17 @@ fun ChatScreen(
 
                             MessageInput(
                                 inputText = uiState.inputText,
+                                inputSelectionStart = uiState.inputSelectionStart,
+                                inputSelectionEnd = uiState.inputSelectionEnd,
+                                defaultEmojis = defaultEmojis,
                                 isSending = uiState.isSending,
-                                onTextChange = { text, mentions ->
-                                    viewModel.updateInputText(text, mentions)
+                                onTextChange = { text, mentions, selectionStart, selectionEnd ->
+                                    viewModel.updateInputText(
+                                        text = text,
+                                        mentions = mentions,
+                                        selectionStart = selectionStart,
+                                        selectionEnd = selectionEnd
+                                    )
                                 },
                                 onSendClick = { viewModel.sendMessage() },
                                 onSendWithType = { type -> viewModel.sendMessage(type) },
@@ -1184,6 +1194,7 @@ fun ChatScreen(
                                 }
                                 expressions.isVisible -> {
                                     EmojiPanel(
+                                        defaultEmojis = defaultEmojis,
                                         expressions = expressions.expressions,
                                         isLoading = expressions.isLoading,
                                         onExpressionClick = { expression ->
@@ -1191,6 +1202,9 @@ fun ChatScreen(
                                         },
                                         onStickerItemClick = { stickerItem ->
                                             viewModel.sendStickerItem(stickerItem)
+                                        },
+                                        onDefaultEmojiClick = { emoji ->
+                                            viewModel.insertDefaultEmoji(emoji)
                                         },
                                         stickerPacks = expressions.stickerPacks,
                                         modifier = Modifier
