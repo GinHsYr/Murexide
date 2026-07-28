@@ -51,7 +51,7 @@ import com.juhao.murexide.data.DefaultEmojiParser
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.ImageViewerSourceBounds
-import com.juhao.murexide.ui.components.UnifiedHtmlWebView
+import com.juhao.murexide.ui.components.LiteHtmlContent
 import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.showImageViewer
@@ -555,7 +555,7 @@ fun MessageBubble(
                                         }
                                         
                                         MessageItem.CONTENT_TYPE_HTML -> {
-                                            UnifiedHtmlWebView(
+                                            LiteHtmlContent(
                                                 htmlContent = message.content,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onImageClick = { imageUrl ->
@@ -566,7 +566,7 @@ fun MessageBubble(
                                                         initialIndex = allImages.indexOf(imageUrl).coerceAtLeast(0)
                                                     )
                                                 },
-                                                bgColor = if (isMine)
+                                                backgroundColor = if (isMine)
                                                     MaterialTheme.colorScheme.primaryContainer
                                                 else
                                                     MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)

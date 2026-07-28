@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.juhao.murexide.data.BoardItem
 import com.juhao.murexide.ui.components.MarkdownText
-import com.juhao.murexide.ui.components.UnifiedHtmlWebView
+import com.juhao.murexide.ui.components.LiteHtmlContent
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -126,7 +126,7 @@ private fun BoardContent(
                 markdown = board.content,
                 onImageClick = onImageClick
             )
-            BoardItem.CONTENT_TYPE_HTML -> UnifiedHtmlWebView(
+            BoardItem.CONTENT_TYPE_HTML -> LiteHtmlContent(
                 htmlContent = board.content,
                 onImageClick = onImageClick
             )

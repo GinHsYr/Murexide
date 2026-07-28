@@ -23,6 +23,9 @@ multiplatformMarkdownRendererCoil2 = "0.43.0"
 navigation = "2.8.4"
 haze = "1.7.2"
 junit = "4.13.2"
+benchmark = "1.4.1"
+testExtJunit = "1.3.0"
+uiautomator = "2.3.0"
 material3 = "1.5.0-alpha23"
 
 [libraries]
@@ -66,6 +69,9 @@ androidx-material-icons-extended = { group = "androidx.compose.material", name =
 # Wire (Protobuf)
 wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "testExtJunit" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
@@ -77,6 +83,7 @@ haze-materials = { module = "dev.chrisbanes.haze:haze-materials", version.ref = 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 wire-plugin = { id = "com.squareup.wire", version.ref = "wire" }
