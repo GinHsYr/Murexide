@@ -70,7 +70,6 @@ class WebSocketManager private constructor() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val client = NetworkClient.okHttpClient
-    private val latestMessageCache = LatestConversationMessageCache()
 
     sealed class WsEvent {
         data class NewMessage(val message: MessageItem) : WsEvent()
@@ -115,28 +114,20 @@ class WebSocketManager private constructor() {
         }
     }
 
-    internal fun latestConversationMessagesSnapshot(): List<MessageItem> {
-        return latestMessageCache.snapshot()
-    }
-
     fun publishLocalMessageSent(message: MessageItem) {
-        latestMessageCache.record(message, currentUserId)
         publishEvent(WsEvent.LocalMessageSent(message))
     }
 
     fun publishLocalMessageEdited(message: MessageItem) {
-        latestMessageCache.updateIfLatest(message)
         publishEvent(WsEvent.EditMessage(message))
     }
 
     fun publishLatestMessageResolved(message: MessageItem) {
-        latestMessageCache.record(message, currentUserId)
         publishEvent(WsEvent.LatestMessageResolved(message))
     }
 
     fun publishLocalMessageRecalled(message: MessageItem) {
         val recalled = message.copy(isRecalled = true)
-        latestMessageCache.updateIfLatest(recalled)
         publishEvent(WsEvent.MessageDeleted(recalled))
     }
 
@@ -145,10 +136,6 @@ class WebSocketManager private constructor() {
                 currentToken != token ||
                 currentDeviceId != deviceId ||
                 currentPlatform != platform
-
-        if (credsChanged) {
-            latestMessageCache.clear()
-        }
 
         currentUserId = userId
         currentToken = token
@@ -384,7 +371,6 @@ class WebSocketManager private constructor() {
                     pushMessage.data_?.msg?.let { msg ->
                         Log.d(TAG, "New message: msgId=${msg.msg_id}, chatId=${msg.chat_id}")
                         val messageItem = parseWsMessage(msg)
-                        latestMessageCache.record(messageItem, currentUserId)
                         publishEvent(WsEvent.NewMessage(messageItem))
                     }
                 }
@@ -401,18 +387,12 @@ class WebSocketManager private constructor() {
                             )
                             else -> Unit
                         }
-                        when (event) {
-                            is WsEvent.EditMessage -> latestMessageCache.updateIfLatest(event.message)
-                            is WsEvent.MessageDeleted -> latestMessageCache.updateIfLatest(event.message)
-                            else -> Unit
-                        }
                         publishEvent(event)
                     }
                 }
                 "stream_message" -> {
                     val streamMessage = stream_message.ADAPTER.decode(data)
                     streamMessage.data_?.msg?.let { msg ->
-                        latestMessageCache.appendStreamContent(msg.msg_id, msg.content)
                         publishEvent(
                             WsEvent.StreamContent(
                                 msgId = msg.msg_id,
@@ -508,7 +488,6 @@ class WebSocketManager private constructor() {
         currentToken = null
         currentDeviceId = null
         currentPlatform = null
-        latestMessageCache.clear()
         maintainerJob?.cancel()
         maintainerJob = null
         connectionVersion++

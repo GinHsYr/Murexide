@@ -96,6 +96,14 @@ message list_message_by_seq {
     int32 total = 3; // 消息数
 }
 
+// 按更新时间列出消息
+message list_message_by_update_send {
+    uint64 update_time = 3;
+    int64 chat_type = 4;
+    string chat_id = 5;
+    uint64 msg_count = 7;
+}
+
 // 列出消息
 message list_message_send {
     int64 msg_count = 2; // 获取消息数

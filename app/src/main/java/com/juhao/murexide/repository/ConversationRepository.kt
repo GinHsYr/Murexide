@@ -1,9 +1,12 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.conversation.ConversationListSend
 import com.juhao.murexide.proto.conversation.ConversationList
+import com.juhao.murexide.proto.list_message
+import com.juhao.murexide.proto.list_message_by_update_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -59,6 +62,70 @@ class ConversationRepository {
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))
                     }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getLatestMessageByUpdate(
+        token: String,
+        chatId: String,
+        chatType: Int,
+        updateTime: Long
+    ): Result<MessageItem?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestBody = list_message_by_update_send(
+                    update_time = updateTime,
+                    chat_type = chatType.toLong(),
+                    chat_id = chatId,
+                    msg_count = 1
+                ).encode().toRequestBody("application/octet-stream".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/msg/list-message-by-update")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure<MessageItem?>(
+                            Exception("HTTP error: ${response.code}")
+                        )
+                    }
+
+                    val messageList = list_message.ADAPTER.decode(response.body.bytes())
+                    if (messageList.status?.code != 1) {
+                        return@use Result.failure<MessageItem?>(
+                            Exception(messageList.status?.msg ?: "获取消息预览失败")
+                        )
+                    }
+
+                    val message = messageList.msg.firstOrNull()
+                    Result.success(
+                        message?.let { msg ->
+                            MessageItem(
+                                msgId = msg.msg_id,
+                                senderId = msg.sender?.chat_id ?: "",
+                                senderName = msg.sender?.name ?: "",
+                                senderAvatar = msg.sender?.avatar_url ?: "",
+                                senderType = msg.sender?.chat_type ?: 1,
+                                chatId = chatId,
+                                chatType = chatType,
+                                content = msg.content?.text ?: "",
+                                contentType = msg.content_type,
+                                timestamp = msg.send_time,
+                                deleteTime = msg.msg_delete_time,
+                                msgSeq = msg.msg_seq,
+                                direction = msg.direction,
+                                isRecalled = msg.msg_delete_time > 0,
+                                isEdited = msg.edit_time > 0
+                            )
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 Result.failure(e)
