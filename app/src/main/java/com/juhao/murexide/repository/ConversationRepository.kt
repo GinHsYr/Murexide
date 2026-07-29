@@ -107,6 +107,7 @@ class ConversationRepository {
                     val message = messageList.msg.firstOrNull()
                     Result.success(
                         message?.let { msg ->
+                            val isRecalled = msg.msg_delete_time > 0
                             MessageItem(
                                 msgId = msg.msg_id,
                                 senderId = msg.sender?.chat_id ?: "",
@@ -121,7 +122,10 @@ class ConversationRepository {
                                 deleteTime = msg.msg_delete_time,
                                 msgSeq = msg.msg_seq,
                                 direction = msg.direction,
-                                isRecalled = msg.msg_delete_time > 0,
+                                isRecalled = isRecalled,
+                                recalledById = msg.sender?.chat_id?.takeIf { isRecalled && it.isNotEmpty() },
+                                recalledByName = msg.sender?.name?.takeIf { isRecalled && it.isNotEmpty() },
+                                hasReliableSender = !isRecalled,
                                 isEdited = msg.edit_time > 0
                             )
                         }

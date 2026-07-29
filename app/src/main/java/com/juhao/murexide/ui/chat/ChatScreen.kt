@@ -470,7 +470,9 @@ fun ChatScreen(
     
                 val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
     
-                if (hasEnoughSpace) {
+                if (message.isRecalled && !message.hasReliableSender) {
+                    Triple(false, "", false)
+                } else if (hasEnoughSpace) {
                     Triple(true, message.senderAvatar, message.isMine)
                 } else if (!displayItem.isLastFromSender) {
                     Triple(true, message.senderAvatar, message.isMine)
@@ -1374,11 +1376,12 @@ fun ChatScreen(
                         
                         val isTopVisibleItem = message.msgId == topVisibleMessageId
 
-                        val shouldShowItemAvatar = if (isTopVisibleItem) {
-                            !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
-                        } else {
-                            item.isFirstFromSender
-                        }
+                        val shouldShowItemAvatar = message.hasReliableSender &&
+                            if (isTopVisibleItem) {
+                                !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
+                            } else {
+                                item.isFirstFromSender
+                            }
 
                         val avatarAlignment =
                             if (isTopVisibleItem && shouldShowItemAvatar && avatarFollowEnabled) {
@@ -1390,6 +1393,10 @@ fun ChatScreen(
                         MessageBubble(
                             message = message,
                             roleLabel = item.roleLabel,
+                            recallText = message.getRecallDisplayContent(
+                                ownerId = uiState.ownerId,
+                                adminIds = uiState.adminIds
+                            ),
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
                             onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },
@@ -1622,16 +1629,24 @@ fun ChatScreen(
 
     if (recallDialog.isOpen) {
         AlertDialog(
-            onDismissRequest = { viewModel.hideRecallDialog() },
+            onDismissRequest = {
+                if (!recallDialog.isSubmitting) viewModel.hideRecallDialog()
+            },
             title = { Text("撤回消息") },
             text = { Text("确定要撤回这条消息吗？") },
             confirmButton = {
-                TextButton(onClick = { viewModel.recallMessage() }) {
-                    Text("确定")
+                TextButton(
+                    onClick = { viewModel.recallMessage() },
+                    enabled = !recallDialog.isSubmitting
+                ) {
+                    Text(if (recallDialog.isSubmitting) "撤回中…" else "确定")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.hideRecallDialog() }) {
+                TextButton(
+                    onClick = { viewModel.hideRecallDialog() },
+                    enabled = !recallDialog.isSubmitting
+                ) {
                     Text("取消")
                 }
             }

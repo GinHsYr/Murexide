@@ -217,7 +217,7 @@ message button_report {
 
 // 撤回消息
 message recall_msg_send {
-    string msg_id = 2; // 消息息ID
+    repeated string msg_id = 2; // 消息ID（单条撤回时传一个元素）
     string chat_id = 3; // 消息所属对象ID
     int64 chat_type = 4; // 消息所属对象类型, 1-用户 2-群聊 3-机器人
 }

@@ -97,6 +97,7 @@ fun MessageBubble(
     hideImages: Boolean = false,
     anonymousNameProvider: ((String) -> String)? = null,
     roleLabel: String? = null,
+    recallText: String = message.getRecallDisplayContent(),
     isHighlighted: Boolean = false
 ) {
     val clipboardManager = LocalClipboard.current
@@ -175,7 +176,27 @@ fun MessageBubble(
                 }
             )
     ) {
-        if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
+        if (message.isRecalled && !message.hasReliableSender) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ) {
+                    Text(
+                        text = recallText,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        } else if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -424,7 +445,7 @@ fun MessageBubble(
 
                                 if (message.isRecalled) {
                                     Text(
-                                        text = "此消息已被撤回",
+                                        text = recallText,
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )

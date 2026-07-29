@@ -26,6 +26,8 @@ import com.juhao.murexide.utils.MentionUtils
 import com.juhao.murexide.utils.QiniuUploadResponse
 import com.juhao.murexide.utils.QiniuUploader
 import com.juhao.murexide.network.WebSocketManager
+import com.juhao.murexide.network.RecallActor
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -42,6 +44,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
@@ -89,6 +92,7 @@ class ChatViewModel(
 
     companion object {
         private const val TAG = "ChatViewModel"
+        private const val RECALL_CONFIRMATION_GRACE_MS = 1_500L
     }
 
     private var uploadJob: Job? = null
@@ -122,6 +126,7 @@ class ChatViewModel(
 
     private val _recallDialog = MutableStateFlow(RecallDialogState())
     val recallDialog: StateFlow<RecallDialogState> = _recallDialog.asStateFlow()
+    private val pendingRecallConfirmations = mutableMapOf<String, CompletableDeferred<Unit>>()
 
     private val _stickerPanel = MutableStateFlow(StickerPanelState())
     val stickerPanel: StateFlow<StickerPanelState> = _stickerPanel.asStateFlow()
@@ -310,7 +315,8 @@ class ChatViewModel(
                     }
                     is WebSocketManager.WsEvent.MessageDeleted -> {
                         Log.d(TAG, "Message deleted: msgId=${event.msgId}")
-                        deleteMessage(event.msgId)
+                        pendingRecallConfirmations[event.msgId]?.complete(Unit)
+                        applyRecalledMessage(event.message, event.actor)
                     }
                     is WebSocketManager.WsEvent.BoardUpdate -> {
                         Log.d(TAG, "Board update: chatId=${event.chatId}, expected=$chatId")
@@ -333,7 +339,11 @@ class ChatViewModel(
                 chatId = chatId,
                 chatType = chatType
             ).onSuccess { messages ->
-                val resolvedMessages = messages.map(::withCurrentUserProfileFallback)
+                val loadedMessages = messages.map(::withCurrentUserProfileFallback)
+                val resolvedMessages = reconcileLoadedMessages(
+                    existingMessages = _uiState.value.messages,
+                    loadedMessages = loadedMessages
+                )
                 msgIdCache.clear()
                 msgIdCache.addAll(resolvedMessages.map { it.msgId })
 
@@ -1032,34 +1042,76 @@ class ChatViewModel(
     }
 
     fun showRecallDialog(msgId: String) {
+        if (_recallDialog.value.isSubmitting) return
         _recallDialog.value = RecallDialogState(isOpen = true, msgId = msgId)
     }
 
     fun hideRecallDialog() {
+        if (_recallDialog.value.isSubmitting) return
         _recallDialog.value = RecallDialogState(isOpen = false)
     }
 
     fun recallMessage() {
-        val msgId = _recallDialog.value.msgId ?: return
+        val dialog = _recallDialog.value
+        val msgId = dialog.msgId ?: return
+        if (dialog.isSubmitting || msgId in pendingRecallConfirmations) return
+
         val recalledMessage = _uiState.value.messages.firstOrNull { it.msgId == msgId }
+        if (recalledMessage == null || recalledMessage.isRecalled) {
+            _recallDialog.value = RecallDialogState()
+            return
+        }
+
+        val confirmation = CompletableDeferred<Unit>()
+        pendingRecallConfirmations[msgId] = confirmation
+        _recallDialog.value = dialog.copy(isSubmitting = true)
 
         viewModelScope.launch {
-            repository.recallMessage(
-                token = token,
-                msgId = msgId,
-                chatId = chatId,
-                chatType = chatType
-            ).onSuccess {
-                hideRecallDialog()
-                deleteMessage(msgId)
-                recalledMessage?.let(wsManager::publishLocalMessageRecalled)
+            val result = repository.recallMessage(
+                    token = token,
+                    msgId = msgId,
+                    chatId = chatId,
+                    chatType = chatType
+                )
+            val confirmedByWebSocket = if (result.isFailure) {
+                withTimeoutOrNull(RECALL_CONFIRMATION_GRACE_MS) {
+                    confirmation.await()
+                    true
+                } ?: false
+            } else {
+                false
+            }
+            pendingRecallConfirmations.remove(msgId, confirmation)
+
+            if (result.isSuccess) {
+                val actor = currentRecallActor()
+                applyRecalledMessage(recalledMessage.copy(isRecalled = true), actor)
+                wsManager.publishLocalMessageRecalled(recalledMessage, actor)
+                closeRecallDialog()
                 _toastMessage.emit("撤回成功")
-            }.onFailure { error ->
-                hideRecallDialog()
-                _toastMessage.emit("撤回失败: ${error.message}")
-                error.printStackTrace()
+            } else if (confirmedByWebSocket) {
+                closeRecallDialog()
+                _toastMessage.emit("撤回成功")
+            } else {
+                _recallDialog.update { state ->
+                    if (state.msgId == msgId) state.copy(isSubmitting = false) else state
+                }
+                val error = result.exceptionOrNull()
+                _toastMessage.emit("撤回失败: ${error?.message ?: "未知错误"}")
+                Log.e(TAG, "recall-msg failed: msgId=$msgId", error)
             }
         }
+    }
+
+    private fun closeRecallDialog() {
+        _recallDialog.value = RecallDialogState()
+    }
+
+    private fun currentRecallActor(): RecallActor {
+        return RecallActor(
+            id = currentUserId.ifBlank { wsManager.loggedInUserId.orEmpty() },
+            name = currentUserName
+        )
     }
 
     /** 进入内联编辑模式：把消息内容填入主输入框，并按原类型设置发送类型 */
@@ -1441,6 +1493,8 @@ class ChatViewModel(
     }
 
     private fun withCurrentUserProfileFallback(message: MessageItem): MessageItem {
+        if (!message.hasReliableSender) return message
+
         val belongsToCurrentUser = message.isMine ||
             currentUserId.isNotBlank() && message.senderId == currentUserId
         if (!belongsToCurrentUser) return message
@@ -1516,12 +1570,13 @@ class ChatViewModel(
         }
     }
 
-    fun deleteMessage(msgId: String) {
+    private fun applyRecalledMessage(
+        recalledMessage: MessageItem,
+        actor: RecallActor? = null
+    ) {
         _uiState.update {
             it.copy(
-                messages = it.messages.map { msg ->
-                    if (msg.msgId == msgId) msg.copy(isRecalled = true) else msg
-                }
+                messages = it.messages.withRecalledMessage(recalledMessage, actor)
             )
         }
     }
@@ -1581,8 +1636,9 @@ class ChatViewModel(
                     chatType = chatType
                 ).onSuccess {
                     successCount++
-                    deleteMessage(message.msgId)
-                    wsManager.publishLocalMessageRecalled(message)
+                    val actor = currentRecallActor()
+                    applyRecalledMessage(message.copy(isRecalled = true), actor)
+                    wsManager.publishLocalMessageRecalled(message, actor)
                 }.onFailure {
                     failCount++
                 }
@@ -1750,8 +1806,29 @@ sealed class ButtonEvent {
 
 data class RecallDialogState(
     val isOpen: Boolean = false,
-    val msgId: String? = null
+    val msgId: String? = null,
+    val isSubmitting: Boolean = false
 )
+
+internal fun List<MessageItem>.withRecalledMessage(
+    recalledMessage: MessageItem,
+    actor: RecallActor? = null
+): List<MessageItem> {
+    return map { existing ->
+        if (existing.msgId != recalledMessage.msgId) return@map existing
+
+        existing.copy(
+            isRecalled = true,
+            deleteTime = recalledMessage.deleteTime.takeIf { it > 0 } ?: existing.deleteTime,
+            recalledById = actor?.id?.takeIf(String::isNotBlank)
+                ?: recalledMessage.recalledById
+                ?: existing.recalledById,
+            recalledByName = actor?.name?.takeIf(String::isNotBlank)
+                ?: recalledMessage.recalledByName
+                ?: existing.recalledByName
+        )
+    }
+}
 
 data class StickerPanelState(
     val isVisible: Boolean = false,
