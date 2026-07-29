@@ -1,5 +1,6 @@
 package com.juhao.murexide.ui.chat.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,8 +21,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,10 +52,12 @@ fun EmojiPanel(
     onDefaultEmojiClick: (DefaultEmoji) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tabTitles = buildList {
-        add("默认")
-        add("收藏")
-        stickerPacks.forEach { add(it.name) }
+    val tabTitles = remember(stickerPacks) {
+        buildList {
+            add("默认")
+            add("收藏")
+            stickerPacks.forEach { add(it.name) }
+        }
     }
 
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
@@ -156,7 +161,8 @@ private fun DefaultEmojiGridPage(
 
         items(
             count = emojis.size,
-            key = { index -> "default_${emojis[index].name}" }
+            key = { index -> "default_${emojis[index].name}" },
+            contentType = { "default_emoji" }
         ) { index ->
             val emoji = emojis[index]
             DefaultEmojiItem(
@@ -195,7 +201,8 @@ private fun RecentDefaultEmojiBar(
             ) {
                 items(
                     count = emojis.size,
-                    key = { index -> emojis[index].name }
+                    key = { index -> emojis[index].name },
+                    contentType = { "recent_default_emoji" }
                 ) { index ->
                     val emoji = emojis[index]
                     DefaultEmojiItem(
@@ -221,12 +228,11 @@ private fun DefaultEmojiItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val imageRequest = remember(emoji.assetUri) {
-        ImageRequest.Builder(context)
-            .data(emoji.assetUri)
-            .crossfade(true)
-            .build()
-    }
+    val density = LocalDensity.current
+
+    // 统一缩略图尺寸，避免为同一资源创建大量近似尺寸缓存项。
+    val targetHeightPx = with(density) { 40.dp.roundToPx() }.coerceAtLeast(1)
+    val bitmap = rememberDefaultEmojiBitmap(context, emoji, targetHeightPx)
 
     Box(
         modifier = modifier
@@ -235,12 +241,20 @@ private fun DefaultEmojiItem(
             .padding(contentPadding),
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = emoji.name,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
-        )
+        if (bitmap != null && !bitmap.isRecycled) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = emoji.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            // 固定尺寸占位，避免 Coil 在大量本地资源上创建请求和解码线程。
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) { }
+        }
     }
 }
 
@@ -315,7 +329,11 @@ private fun EmojiGrid(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(count) { index ->
+        items(
+            count = count,
+            key = { index -> "remote_emoji_$index" },
+            contentType = { "remote_emoji" }
+        ) { index ->
             content(index)
         }
     }

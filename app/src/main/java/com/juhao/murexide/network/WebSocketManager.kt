@@ -24,6 +24,11 @@ import org.json.JSONObject
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
+data class RecallActor(
+    val id: String,
+    val name: String
+)
+
 class WebSocketManager private constructor() {
     companion object {
         private const val TAG = "WebSocketManager"
@@ -70,7 +75,6 @@ class WebSocketManager private constructor() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val client = NetworkClient.okHttpClient
-    private val latestMessageCache = LatestConversationMessageCache()
 
     sealed class WsEvent {
         data class NewMessage(val message: MessageItem) : WsEvent()
@@ -82,7 +86,10 @@ class WebSocketManager private constructor() {
             val chatId: String,
             val content: String
         ) : WsEvent()
-        data class MessageDeleted(val message: MessageItem) : WsEvent() {
+        data class MessageDeleted(
+            val message: MessageItem,
+            val actor: RecallActor? = null
+        ) : WsEvent() {
             val msgId: String
                 get() = message.msgId
         }
@@ -115,29 +122,25 @@ class WebSocketManager private constructor() {
         }
     }
 
-    internal fun latestConversationMessagesSnapshot(): List<MessageItem> {
-        return latestMessageCache.snapshot()
-    }
-
     fun publishLocalMessageSent(message: MessageItem) {
-        latestMessageCache.record(message, currentUserId)
         publishEvent(WsEvent.LocalMessageSent(message))
     }
 
     fun publishLocalMessageEdited(message: MessageItem) {
-        latestMessageCache.updateIfLatest(message)
         publishEvent(WsEvent.EditMessage(message))
     }
 
     fun publishLatestMessageResolved(message: MessageItem) {
-        latestMessageCache.record(message, currentUserId)
         publishEvent(WsEvent.LatestMessageResolved(message))
     }
 
-    fun publishLocalMessageRecalled(message: MessageItem) {
-        val recalled = message.copy(isRecalled = true)
-        latestMessageCache.updateIfLatest(recalled)
-        publishEvent(WsEvent.MessageDeleted(recalled))
+    fun publishLocalMessageRecalled(message: MessageItem, actor: RecallActor) {
+        val recalled = message.copy(
+            isRecalled = true,
+            recalledById = actor.id.takeIf(String::isNotBlank),
+            recalledByName = actor.name.takeIf(String::isNotBlank)
+        )
+        publishEvent(WsEvent.MessageDeleted(recalled, actor))
     }
 
     fun connect(userId: String, token: String, deviceId: String, platform: String = "android") {
@@ -145,10 +148,6 @@ class WebSocketManager private constructor() {
                 currentToken != token ||
                 currentDeviceId != deviceId ||
                 currentPlatform != platform
-
-        if (credsChanged) {
-            latestMessageCache.clear()
-        }
 
         currentUserId = userId
         currentToken = token
@@ -384,7 +383,6 @@ class WebSocketManager private constructor() {
                     pushMessage.data_?.msg?.let { msg ->
                         Log.d(TAG, "New message: msgId=${msg.msg_id}, chatId=${msg.chat_id}")
                         val messageItem = parseWsMessage(msg)
-                        latestMessageCache.record(messageItem, currentUserId)
                         publishEvent(WsEvent.NewMessage(messageItem))
                     }
                 }
@@ -401,18 +399,12 @@ class WebSocketManager private constructor() {
                             )
                             else -> Unit
                         }
-                        when (event) {
-                            is WsEvent.EditMessage -> latestMessageCache.updateIfLatest(event.message)
-                            is WsEvent.MessageDeleted -> latestMessageCache.updateIfLatest(event.message)
-                            else -> Unit
-                        }
                         publishEvent(event)
                     }
                 }
                 "stream_message" -> {
                     val streamMessage = stream_message.ADAPTER.decode(data)
                     streamMessage.data_?.msg?.let { msg ->
-                        latestMessageCache.appendStreamContent(msg.msg_id, msg.content)
                         publishEvent(
                             WsEvent.StreamContent(
                                 msgId = msg.msg_id,
@@ -457,6 +449,7 @@ class WebSocketManager private constructor() {
     }
 
     private fun parseWsMessage(msg: WsMsg): MessageItem {
+        val isRecalled = msg.delete_time > 0
         return MessageItem(
             msgId = msg.msg_id,
             senderId = msg.sender?.chat_id ?: "",
@@ -470,7 +463,11 @@ class WebSocketManager private constructor() {
             timestamp = msg.timestamp,
             msgSeq = msg.msg_seq,
             direction = if (msg.sender?.chat_id == currentUserId) "right" else "left",
-            isRecalled = msg.delete_time > 0,
+            isRecalled = isRecalled,
+            recalledById = msg.sender?.chat_id?.takeIf { isRecalled && it.isNotEmpty() },
+            recalledByName = msg.sender?.name?.takeIf { isRecalled && it.isNotEmpty() },
+            hasReliableSender = !isRecalled,
+            deleteTime = msg.delete_time,
             isEdited = msg.edit_time > 0,
             quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
             quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
@@ -508,7 +505,6 @@ class WebSocketManager private constructor() {
         currentToken = null
         currentDeviceId = null
         currentPlatform = null
-        latestMessageCache.clear()
         maintainerJob?.cancel()
         maintainerJob = null
         connectionVersion++
@@ -523,7 +519,14 @@ internal fun decodeEditMessageEvent(data: ByteArray): WebSocketManager.WsEvent? 
     val msg = edit_message.ADAPTER.decode(data).data_?.msg ?: return null
     val message = msg.toEditedMessageItem()
     return if (message.isRecalled) {
-        WebSocketManager.WsEvent.MessageDeleted(message)
+        val actor = msg.sender?.let { sender ->
+            if (sender.chat_id.isBlank() && sender.name.isBlank()) {
+                null
+            } else {
+                RecallActor(id = sender.chat_id, name = sender.name)
+            }
+        }
+        WebSocketManager.WsEvent.MessageDeleted(message, actor)
     } else {
         WebSocketManager.WsEvent.EditMessage(message)
     }
@@ -543,6 +546,10 @@ private fun WsMsg.toEditedMessageItem(): MessageItem {
         msgSeq = msg_seq,
         direction = "left",
         isRecalled = delete_time > 0,
+        recalledById = sender?.chat_id?.takeIf { delete_time > 0 && it.isNotEmpty() },
+        recalledByName = sender?.name?.takeIf { delete_time > 0 && it.isNotEmpty() },
+        hasReliableSender = false,
+        deleteTime = delete_time,
         isEdited = true,
         quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
         quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },

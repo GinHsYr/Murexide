@@ -1,6 +1,7 @@
 package com.juhao.murexide.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -132,6 +133,65 @@ class OutgoingMessageTest {
         assertEquals("https://example.com/me.png", message.senderAvatar)
         assertEquals("server content", message.content)
         assertEquals(42L, message.msgSeq)
+    }
+
+    @Test
+    fun `recalled update keeps original author and direction`() {
+        val original = textMessage("same", "member message").copy(
+            senderId = "member-id",
+            senderName = "Member",
+            senderAvatar = "member.png",
+            direction = "left"
+        )
+        val recalledFromServer = original.copy(
+            senderId = "owner-id",
+            senderName = "Group owner",
+            senderAvatar = "owner.png",
+            direction = "right",
+            isRecalled = true,
+            recalledById = "owner-id",
+            recalledByName = "Group owner",
+            hasReliableSender = false
+        )
+
+        val message = upsertNewestMessage(listOf(original), recalledFromServer).single()
+
+        assertEquals("member-id", message.senderId)
+        assertEquals("Member", message.senderName)
+        assertEquals("member.png", message.senderAvatar)
+        assertEquals("left", message.direction)
+        assertEquals("owner-id", message.recalledById)
+        assertEquals("Group owner", message.recalledByName)
+        assertTrue(message.hasReliableSender)
+    }
+
+    @Test
+    fun `cold loaded recall keeps sender marked as unreliable`() {
+        val recalled = textMessage("same", "message").copy(
+            isRecalled = true,
+            recalledById = "owner-id",
+            hasReliableSender = false
+        )
+
+        val message = reconcileLoadedMessages(emptyList(), listOf(recalled)).single()
+
+        assertFalse(message.hasReliableSender)
+    }
+
+    @Test
+    fun `recall display names operator with role fallback`() {
+        val recalled = textMessage("same", "message").copy(
+            isRecalled = true,
+            recalledById = "owner-id",
+            recalledByName = "Group owner"
+        )
+        assertEquals("此消息已被「Group owner」撤回", recalled.getRecallDisplayContent())
+
+        val withoutName = recalled.copy(recalledByName = null)
+        assertEquals(
+            "此消息已被群主撤回",
+            withoutName.getRecallDisplayContent(ownerId = "owner-id")
+        )
     }
 
     private fun textMessage(id: String, text: String): MessageItem {

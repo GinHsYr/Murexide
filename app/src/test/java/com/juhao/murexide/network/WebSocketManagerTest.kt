@@ -5,6 +5,7 @@ import com.juhao.murexide.proto.chat_ws_go.WsMsg
 import com.juhao.murexide.proto.chat_ws_go.edit_message
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,13 +28,22 @@ class WebSocketManagerTest {
         val event = decodeEditMessageEvent(editPayload(deleteTime = 1_234))
 
         assertTrue(event is WebSocketManager.WsEvent.MessageDeleted)
-        val message = (event as WebSocketManager.WsEvent.MessageDeleted).message
+        val deletedEvent = event as WebSocketManager.WsEvent.MessageDeleted
+        val message = deletedEvent.message
         assertEquals("message-id", message.msgId)
         assertEquals("chat-id", message.chatId)
         assertEquals(2, message.chatType)
         assertEquals(1_000L, message.timestamp)
         assertEquals(42L, message.msgSeq)
         assertTrue(message.isRecalled)
+        assertFalse(message.hasReliableSender)
+        assertEquals("owner-id", message.recalledById)
+        assertEquals("Group owner", message.recalledByName)
+
+        val actor = deletedEvent.actor
+        assertNotNull(actor)
+        assertEquals("owner-id", actor?.id)
+        assertEquals("Group owner", actor?.name)
     }
 
     private fun editPayload(deleteTime: Long): ByteArray {
@@ -42,6 +52,10 @@ class WebSocketManagerTest {
             data_ = edit_message.EditData(
                 msg = WsMsg(
                     msg_id = "message-id",
+                    sender = WsMsg.WsSender(
+                        chat_id = "owner-id",
+                        name = "Group owner"
+                    ),
                     chat_id = "chat-id",
                     chat_type = 2,
                     content = WsMsg.WsContent(text = "updated"),

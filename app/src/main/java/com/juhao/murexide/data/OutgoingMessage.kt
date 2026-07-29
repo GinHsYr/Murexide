@@ -57,15 +57,54 @@ internal fun upsertNewestMessage(
     }
     return messages.map { existing ->
         if (existing.msgId == message.msgId) {
-            message.copy(
-                senderId = message.senderId.ifBlank { existing.senderId },
-                senderName = message.senderName.ifBlank { existing.senderName },
-                senderAvatar = message.senderAvatar.ifBlank { existing.senderAvatar }
-            )
+            mergeMessageIdentity(existing, message)
         } else {
             existing
         }
     }
+}
+
+/**
+ * Reconciles a freshly loaded history page with messages already visible in this chat.
+ *
+ * YunHu recall payloads can identify the recall operator as `sender`. Once a message is recalled,
+ * that value is therefore not a reliable source for the original author's profile or direction.
+ */
+internal fun reconcileLoadedMessages(
+    existingMessages: List<MessageItem>,
+    loadedMessages: List<MessageItem>
+): List<MessageItem> {
+    val existingById = existingMessages.associateBy(MessageItem::msgId)
+    return loadedMessages.map { loaded ->
+        val existing = existingById[loaded.msgId]
+        if (existing != null && loaded.isRecalled && existing.hasReliableSender) {
+            mergeMessageIdentity(existing, loaded)
+        } else {
+            loaded
+        }
+    }
+}
+
+private fun mergeMessageIdentity(
+    existing: MessageItem,
+    incoming: MessageItem
+): MessageItem {
+    if (incoming.isRecalled && !incoming.hasReliableSender && existing.hasReliableSender) {
+        return incoming.copy(
+            senderId = existing.senderId,
+            senderName = existing.senderName,
+            senderAvatar = existing.senderAvatar,
+            senderType = existing.senderType,
+            direction = existing.direction,
+            hasReliableSender = true
+        )
+    }
+
+    return incoming.copy(
+        senderId = incoming.senderId.ifBlank { existing.senderId },
+        senderName = incoming.senderName.ifBlank { existing.senderName },
+        senderAvatar = incoming.senderAvatar.ifBlank { existing.senderAvatar }
+    )
 }
 
 private fun String?.toMediaUrl(baseUrl: String): String? {

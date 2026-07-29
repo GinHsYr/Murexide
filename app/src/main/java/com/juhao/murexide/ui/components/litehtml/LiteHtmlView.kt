@@ -388,9 +388,10 @@ class LiteHtmlView @JvmOverloads constructor(
             MotionEvent.ACTION_UP -> {
                 if (activeHit == 0) return false
                 if (!moved) {
-                    synchronized(nativeLock) {
-                        if (nativeHandle != 0L) nativePointerUp(nativeHandle, x, y)
+                    val needsRelayout = synchronized(nativeLock) {
+                        nativeHandle != 0L && nativePointerUp(nativeHandle, x, y)
                     }
+                    if (needsRelayout) scheduleLayout()
                     performClick()
                 }
                 activeHit = 0
@@ -709,7 +710,7 @@ class LiteHtmlView @JvmOverloads constructor(
     private external fun nativeSetImageSize(handle: Long, url: String, width: Int, height: Int)
     private external fun nativeHitTest(handle: Long, x: Float, y: Float): Int
     private external fun nativePointerDown(handle: Long, x: Float, y: Float)
-    private external fun nativePointerUp(handle: Long, x: Float, y: Float)
+    private external fun nativePointerUp(handle: Long, x: Float, y: Float): Boolean
     private external fun nativePointerCancel(handle: Long)
     private external fun nativeDestroy(handle: Long)
 

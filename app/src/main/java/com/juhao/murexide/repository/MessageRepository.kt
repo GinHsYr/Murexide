@@ -21,6 +21,16 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 
+internal fun createRecallMessageRequest(
+    msgId: String,
+    chatId: String,
+    chatType: Int
+) = recall_msg_send(
+    msg_id = listOf(msgId),
+    chat_id = chatId,
+    chat_type = chatType.toLong()
+)
+
 internal fun createSendMessageRequest(
     msgId: String,
     chatId: String,
@@ -106,6 +116,7 @@ class MessageRepository {
 
                         if (messageList.status?.code == 1) {
                             val messages = messageList.msg.map { msg ->
+                                val isRecalled = msg.msg_delete_time > 0
                                 MessageItem(
                                     msgId = msg.msg_id,
                                     senderId = msg.sender?.chat_id ?: "",
@@ -119,7 +130,10 @@ class MessageRepository {
                                     timestamp = msg.send_time,
                                     msgSeq = msg.msg_seq,
                                     direction = msg.direction,
-                                    isRecalled = msg.msg_delete_time > 0,
+                                    isRecalled = isRecalled,
+                                    recalledById = msg.sender?.chat_id?.takeIf { isRecalled && it.isNotEmpty() },
+                                    recalledByName = msg.sender?.name?.takeIf { isRecalled && it.isNotEmpty() },
+                                    hasReliableSender = !isRecalled,
                                     deleteTime = msg.msg_delete_time,
                                     isEdited = msg.edit_time > 0,
                                     quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
@@ -371,12 +385,7 @@ class MessageRepository {
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                // 构建 ProtoBuf 请求
-                val requestProto = recall_msg_send(
-                    msg_id = msgId,
-                    chat_id = chatId,
-                    chat_type = chatType.toLong()
-                )
+                val requestProto = createRecallMessageRequest(msgId, chatId, chatType)
                 val requestBody = requestProto.encode().toRequestBody("application/octet-stream".toMediaType())
 
                 val httpRequest = Request.Builder()

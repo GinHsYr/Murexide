@@ -1,15 +1,14 @@
 package com.juhao.murexide.ui.chat.components
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.Editable
 import android.text.Spanned
 import android.text.TextWatcher
 import android.text.style.ReplacementSpan
-import android.util.LruCache
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -17,7 +16,6 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.text.InputType
 import androidx.appcompat.widget.AppCompatEditText
-import androidx.core.graphics.scale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -30,49 +28,50 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.viewinterop.AndroidView
 import com.juhao.murexide.data.DefaultEmoji
+import com.juhao.murexide.data.DefaultEmojiBitmapCache
 import com.juhao.murexide.data.DefaultEmojiParser
+import com.juhao.murexide.data.DefaultEmojiMatch
 import com.juhao.murexide.data.MentionToken
 import com.juhao.murexide.utils.MentionUtils
 import kotlin.math.roundToInt
 
-private object DefaultEmojiBitmapCache : LruCache<String, Bitmap>(4 * 1024) {
-    override fun sizeOf(key: String, value: Bitmap): Int {
-        return (value.byteCount / 1024).coerceAtLeast(1)
-    }
-
-    fun load(context: Context, emoji: DefaultEmoji, targetHeight: Int): Bitmap? {
-        val key = "${emoji.assetPath}@$targetHeight"
-        get(key)?.let { return it }
-
-        val source = runCatching {
-            context.assets.open(emoji.assetPath).use(BitmapFactory::decodeStream)
-        }.getOrNull() ?: return null
-        val width = (
-            source.width.toFloat() / source.height.coerceAtLeast(1) * targetHeight
-            ).roundToInt().coerceAtLeast(1)
-        val scaled = if (source.width == width && source.height == targetHeight) {
-            source
-        } else {
-            source.scale(width, targetHeight, true).also {
-                source.recycle()
-            }
-        }
-        put(key, scaled)
-        return scaled
-    }
-}
-
+/**
+ * 带尺寸缓存的 Emoji ReplacementSpan。
+ * 首次 getSize() 时记录 bitmap 尺寸，后续调用直接返回缓存值，避免重复访问 bitmap.width。
+ */
 private class DefaultEmojiSpan(
     val emojiName: String,
-    private val bitmap: Bitmap
+    private val bitmap: Bitmap?,
+    private val placeholderWidth: Int,
+    private val placeholderHeight: Int
 ) : ReplacementSpan() {
+    /** 缓存 bitmap 宽度，避免重复 getter 调用 */
+    private var cachedWidth: Int = -1
+    private var cachedHeight: Int = -1
+    private val placeholderPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private val width: Int
+        get() {
+            if (cachedWidth < 0) cachedWidth = bitmap?.width ?: placeholderWidth
+            return cachedWidth
+        }
+
+    private val height: Int
+        get() {
+            if (cachedHeight < 0) cachedHeight = bitmap?.height ?: placeholderHeight
+            return cachedHeight
+        }
+
+    val isPlaceholder: Boolean
+        get() = bitmap == null
+
     override fun getSize(
         paint: Paint,
         text: CharSequence?,
         start: Int,
         end: Int,
         fm: Paint.FontMetricsInt?
-    ): Int = bitmap.width
+    ): Int = width
 
     override fun draw(
         canvas: Canvas,
@@ -85,8 +84,24 @@ private class DefaultEmojiSpan(
         bottom: Int,
         paint: Paint
     ) {
-        val drawTop = top + (bottom - top - bitmap.height) / 2f
-        canvas.drawBitmap(bitmap, x, drawTop, paint)
+        val drawTop = top + (bottom - top - height) / 2f
+        val image = bitmap
+        if (image != null && !image.isRecycled) {
+            canvas.drawBitmap(image, x, drawTop, paint)
+        } else {
+            // A fixed-size placeholder keeps text layout stable until the background
+            // decoder returns. It is intentionally cheap and has no allocation in draw.
+            placeholderPaint.color = paint.color and 0x22FFFFFF
+            canvas.drawRoundRect(
+                x,
+                drawTop,
+                x + width,
+                drawTop + height,
+                height / 4f,
+                height / 4f,
+                placeholderPaint
+            )
+        }
     }
 }
 
@@ -104,6 +119,20 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         insertedText: String,
         insertPosition: Int
     ) -> Unit = { _, _, _, _ -> }
+
+    /** 缓存表情绘制高度，避免每次 applyEmojiSpans 重新计算 */
+    private var cachedEmojiHeight = 24
+    private var currentEmojiMatches: List<DefaultEmojiMatch> = emptyList()
+    private var currentProtectedRanges: List<TextRange> = emptyList()
+    private var currentEmojisByName: Map<String, DefaultEmoji> = emptyMap()
+    private val pendingEmojiLoads = HashMap<String, kotlinx.coroutines.Deferred<Bitmap?>>()
+    private var refreshPosted = false
+    private var spansInitialized = false
+    private var lastEmojiHeight = -1
+    private var boundTextColor: Int? = null
+    private var boundHintColor: Int? = null
+    private var boundTextSizeSp = Float.NaN
+    private var boundEnabled: Boolean? = null
 
     init {
         background = null
@@ -148,26 +177,24 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
             override fun afterTextChanged(editable: Editable?) {
                 if (internalChange || editable == null) return
 
+                val oldText = previousValue.text
+                val rawText = editable.toString()
                 val rawValue = TextFieldValue(
-                    text = editable.toString(),
+                    text = rawText,
                     selection = currentSelection(editable.length)
                 )
-                val protectedRanges = DefaultEmojiParser.findMatches(
-                    text = previousValue.text,
-                    emojis = currentEmojis
-                ).map { TextRange(it.start, it.endExclusive) }
                 val result = MentionUtils.processEdit(
                     old = previousValue,
                     new = rawValue,
                     mentions = currentMentions,
-                    protectedRanges = protectedRanges
+                    protectedRanges = currentProtectedRanges
                 )
 
                 internalChange = true
-                if (editable.toString() != result.value.text) {
+                if (rawText != result.value.text) {
                     editable.replace(0, editable.length, result.value.text)
                 }
-                applyEmojiSpans(editable)
+                updateEmojiSpans(editable, oldText, result.value.text)
                 setSelectionSafely(result.value.selection, editable.length)
                 internalChange = false
                 textChangeInProgress = false
@@ -195,9 +222,16 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         if (ready && focused) this.focused()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val handled = super.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP) requestEditorFocus()
+        return handled
+    }
+
+    override fun performClick(): Boolean {
+        val handled = super.performClick()
+        requestEditorFocus()
         return handled
     }
 
@@ -228,20 +262,51 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         onFocused: () -> Unit
     ) {
         currentMentions = mentions
+        val emojisChanged = currentEmojis !== emojis
         currentEmojis = emojis
+        if (emojisChanged) currentEmojisByName = emojis.associateBy(DefaultEmoji::name)
         valueChanged = onValueChanged
         focused = onFocused
-        isEnabled = enabled
-        setTextColor(textColor.toArgb())
-        setHintTextColor(hintColor.toArgb())
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
+        if (boundEnabled != enabled) {
+            isEnabled = enabled
+            boundEnabled = enabled
+        }
+        val textColorArgb = textColor.toArgb()
+        if (boundTextColor != textColorArgb) {
+            setTextColor(textColorArgb)
+            boundTextColor = textColorArgb
+        }
+        val hintColorArgb = hintColor.toArgb()
+        if (boundHintColor != hintColorArgb) {
+            setHintTextColor(hintColorArgb)
+            boundHintColor = hintColorArgb
+        }
+        if (boundTextSizeSp != textSizeSp) {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
+            boundTextSizeSp = textSizeSp
+        }
+
+        // 更新缓存的表情高度
+        cachedEmojiHeight = (paint.textSize * 1.2f).roundToInt().coerceAtLeast(1)
 
         val currentText = text?.toString().orEmpty()
+        val textChanged = currentText != value.text
+        val heightChanged = lastEmojiHeight != cachedEmojiHeight
         internalChange = true
-        if (currentText != value.text) {
+        if (textChanged) {
             setText(value.text)
         }
-        applyEmojiSpans(editableText)
+        if (emojisChanged || textChanged || heightChanged || !spansInitialized) {
+            if (emojisChanged || heightChanged || !spansInitialized) {
+                currentEmojiMatches = DefaultEmojiParser.findMatches(value.text, currentEmojis)
+                refreshProtectedRanges()
+                rebuildEmojiSpans(editableText, currentEmojiMatches)
+            } else {
+                updateEmojiSpans(editableText, currentText, value.text)
+            }
+            spansInitialized = true
+            lastEmojiHeight = cachedEmojiHeight
+        }
         setSelectionSafely(value.selection, value.text.length)
         internalChange = false
         textChangeInProgress = false
@@ -256,15 +321,13 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         ) return
 
         val currentText = text?.toString().orEmpty()
-        val protectedRanges = DefaultEmojiParser.findMatches(
-            text = currentText,
-            emojis = currentEmojis
-        ).map { TextRange(it.start, it.endExclusive) }
+
+        val oldMentions = currentMentions
         val result = MentionUtils.processEdit(
             old = previousValue.copy(text = currentText),
             new = TextFieldValue(currentText, TextRange(selectionStart, selectionEnd)),
-            mentions = currentMentions,
-            protectedRanges = protectedRanges
+            mentions = oldMentions,
+            protectedRanges = currentProtectedRanges
         )
 
         if (result.value.selection.start != selectionStart || result.value.selection.end != selectionEnd) {
@@ -272,25 +335,145 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
             setSelectionSafely(result.value.selection, currentText.length)
             internalChange = false
         }
+        val changed = result.value.selection != previousValue.selection ||
+            result.mentions != oldMentions
         previousValue = result.value
-        valueChanged(result.value, result.mentions, "", -1)
+        currentMentions = result.mentions
+        if (changed) valueChanged(result.value, result.mentions, "", -1)
     }
 
-    private fun applyEmojiSpans(editable: Editable?) {
+    private fun rebuildEmojiSpans(
+        editable: Editable?,
+        matches: List<DefaultEmojiMatch>
+    ) {
         if (editable == null) return
         editable.getSpans(0, editable.length, DefaultEmojiSpan::class.java)
             .forEach(editable::removeSpan)
+        matches.forEach { match -> addEmojiSpan(editable, match) }
+    }
 
-        val emojiHeight = (paint.textSize * 1.2f).roundToInt().coerceAtLeast(1)
-        DefaultEmojiParser.findMatches(editable.toString(), currentEmojis).forEach { match ->
-            val bitmap = DefaultEmojiBitmapCache.load(context, match.emoji, emojiHeight)
-                ?: return@forEach
-            editable.setSpan(
-                DefaultEmojiSpan(match.emoji.name, bitmap),
-                match.start,
-                match.endExclusive,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
+    /**
+     * Applies only the marker-safe edit window. Bitmap misses create a fixed-size
+     * placeholder and schedule a background decode; no AssetManager I/O occurs here.
+     */
+    private fun updateEmojiSpans(
+        editable: Editable?,
+        oldText: String,
+        newText: String
+    ) {
+        if (editable == null) return
+        if (oldText == newText && spansInitialized) return
+
+        val oldMatches = currentEmojiMatches
+        val window = DefaultEmojiParser.editWindow(oldText, newText)
+        currentEmojiMatches = DefaultEmojiParser.updateMatchesIncrementally(
+            oldText = oldText,
+            newText = newText,
+            oldMatches = oldMatches,
+            emojis = currentEmojis
+        )
+        refreshProtectedRanges()
+
+        val existing = editable
+            .getSpans(0, editable.length, DefaultEmojiSpan::class.java)
+            .toList()
+        existing.forEach { span ->
+            val start = editable.getSpanStart(span)
+            val end = editable.getSpanEnd(span)
+            if (
+                end <= start ||
+                (start < window.newEndExclusive && end > window.newStart)
+            ) {
+                editable.removeSpan(span)
+            }
+        }
+
+        currentEmojiMatches.forEach { match ->
+            if (match.start >= window.newStart && match.start < window.newEndExclusive) {
+                addEmojiSpan(editable, match)
+            }
+        }
+        spansInitialized = true
+    }
+
+    private fun addEmojiSpan(editable: Editable, match: DefaultEmojiMatch) {
+        if (match.start < 0 || match.endExclusive > editable.length || match.start >= match.endExclusive) {
+            return
+        }
+        val bitmap = DefaultEmojiBitmapCache.get(match.emoji, cachedEmojiHeight)
+        editable.setSpan(
+            DefaultEmojiSpan(
+                emojiName = match.emoji.name,
+                bitmap = bitmap,
+                placeholderWidth = cachedEmojiHeight,
+                placeholderHeight = cachedEmojiHeight
+            ),
+            match.start,
+            match.endExclusive,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        if (bitmap == null) requestEmojiBitmap(match.emoji)
+    }
+
+    private fun requestEmojiBitmap(emoji: DefaultEmoji) {
+        val key = DefaultEmojiBitmapCache.cacheKey(emoji.assetPath, cachedEmojiHeight)
+        if (pendingEmojiLoads.containsKey(key)) return
+        val deferred = DefaultEmojiBitmapCache.requestAsync(
+            context.assets,
+            emoji,
+            cachedEmojiHeight
+        )
+        pendingEmojiLoads[key] = deferred
+        deferred.invokeOnCompletion {
+            post {
+                pendingEmojiLoads.remove(key)
+                scheduleReadySpanRefresh()
+            }
+        }
+    }
+
+    private fun scheduleReadySpanRefresh() {
+        if (refreshPosted) return
+        refreshPosted = true
+        post {
+            refreshPosted = false
+            val editable = editableText ?: return@post
+            val placeholders = editable
+                .getSpans(0, editable.length, DefaultEmojiSpan::class.java)
+                .filter(DefaultEmojiSpan::isPlaceholder)
+                .toList()
+            var replacedAny = false
+            placeholders.forEach { span ->
+                val start = editable.getSpanStart(span)
+                val end = editable.getSpanEnd(span)
+                val emoji = currentEmojisByName[span.emojiName]
+                val bitmap = emoji?.let { DefaultEmojiBitmapCache.get(it, cachedEmojiHeight) }
+                if (start >= 0 && end > start && bitmap != null) {
+                    editable.removeSpan(span)
+                    editable.setSpan(
+                        DefaultEmojiSpan(
+                            emojiName = span.emojiName,
+                            bitmap = bitmap,
+                            placeholderWidth = cachedEmojiHeight,
+                            placeholderHeight = cachedEmojiHeight
+                        ),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    replacedAny = true
+                }
+            }
+            if (replacedAny) {
+                requestLayout()
+                invalidate()
+            }
+        }
+    }
+
+    private fun refreshProtectedRanges() {
+        currentProtectedRanges = currentEmojiMatches.map { match ->
+            TextRange(match.start, match.endExclusive)
         }
     }
 

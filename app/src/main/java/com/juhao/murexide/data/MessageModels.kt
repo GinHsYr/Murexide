@@ -27,6 +27,9 @@ data class MessageItem(
     val msgSeq: Long = 0,
     val direction: String,
     val isRecalled: Boolean = false,
+    val recalledById: String? = null,
+    val recalledByName: String? = null,
+    val hasReliableSender: Boolean = true,
     val isEdited: Boolean = false,
     val quoteMsgId: String? = null,
     val quoteMsgText: String? = null,
@@ -67,6 +70,21 @@ data class MessageItem(
             CONTENT_TYPE_HTML -> "[HTML消息]"
             CONTENT_TYPE_POST -> "[文章]"
             else -> content.takeIf { it.isNotEmpty() } ?: "[消息]"
+        }
+    }
+
+    fun getRecallDisplayContent(
+        ownerId: String? = null,
+        adminIds: Set<String> = emptySet()
+    ): String {
+        val actorName = recalledByName?.trim().orEmpty()
+        if (actorName.isNotEmpty()) return "此消息已被「$actorName」撤回"
+
+        val actorId = recalledById?.trim().orEmpty()
+        return when {
+            actorId.isNotEmpty() && actorId == ownerId -> "此消息已被群主撤回"
+            actorId.isNotEmpty() && actorId in adminIds -> "此消息已被管理员撤回"
+            else -> "此消息已被撤回"
         }
     }
 
