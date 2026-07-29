@@ -67,8 +67,8 @@ internal fun upsertNewestMessage(
 /**
  * Reconciles a freshly loaded history page with messages already visible in this chat.
  *
- * YunHu recall payloads can identify the recall operator as `sender`. Once a message is recalled,
- * that value is therefore not a reliable source for the original author's profile or direction.
+ * History responses retain the original message sender, including for recalled messages. Merge a
+ * loaded recall with an already visible copy only to preserve identity when a partial event omitted it.
  */
 internal fun reconcileLoadedMessages(
     existingMessages: List<MessageItem>,
@@ -83,6 +83,71 @@ internal fun reconcileLoadedMessages(
             loaded
         }
     }
+}
+
+/**
+ * Applies an incremental-update response without turning an edited old message into a new one.
+ * Messages are stored newest-first; [anchorMessage] is the latest item that supplied the cursor.
+ */
+internal fun mergeIncrementalMessages(
+    existingMessages: List<MessageItem>,
+    updatedMessages: List<MessageItem>,
+    anchorMessage: MessageItem
+): List<MessageItem> {
+    if (updatedMessages.isEmpty()) return existingMessages
+
+    val updateById = updatedMessages
+        .asSequence()
+        .filter { it.msgId.isNotBlank() }
+        .groupBy(MessageItem::msgId)
+        .mapValues { (_, messages) -> messages.maxBy(MessageItem::updateTimestamp) }
+    if (updateById.isEmpty()) return existingMessages
+
+    val existingIds = existingMessages.mapTo(mutableSetOf(), MessageItem::msgId)
+    val replacedMessages = existingMessages.map { existing ->
+        updateById[existing.msgId]?.let { incoming ->
+            if (incoming.updateTimestamp >= existing.updateTimestamp) {
+                mergeMessageIdentity(existing, incoming)
+            } else {
+                existing
+            }
+        } ?: existing
+    }
+    val newlyReceived = updateById.values.filter { incoming ->
+        incoming.msgId !in existingIds && incoming.isStrictlyNewerThan(anchorMessage)
+    }
+    if (newlyReceived.isEmpty()) return replacedMessages
+
+    val anchorIndex = replacedMessages.indexOfFirst { it.msgId == anchorMessage.msgId }
+    val existingNewerPrefix = if (anchorIndex >= 0) {
+        replacedMessages.take(anchorIndex)
+    } else {
+        emptyList()
+    }
+    val unchangedTail = if (anchorIndex >= 0) {
+        replacedMessages.drop(anchorIndex)
+    } else {
+        replacedMessages
+    }
+    val newPrefix = (existingNewerPrefix + newlyReceived)
+        .distinctBy(MessageItem::msgId)
+        .sortedWith(newestMessageFirstComparator)
+
+    return newPrefix + unchangedTail
+}
+
+private val newestMessageFirstComparator = Comparator<MessageItem> { left, right ->
+    when {
+        left.msgSeq > 0L && right.msgSeq > 0L && left.msgSeq != right.msgSeq ->
+            right.msgSeq.compareTo(left.msgSeq)
+        left.timestamp != right.timestamp -> right.timestamp.compareTo(left.timestamp)
+        else -> right.updateTimestamp.compareTo(left.updateTimestamp)
+    }
+}
+
+private fun MessageItem.isStrictlyNewerThan(other: MessageItem): Boolean {
+    if (msgSeq > 0L && other.msgSeq > 0L) return msgSeq > other.msgSeq
+    return timestamp > other.timestamp
 }
 
 private fun mergeMessageIdentity(

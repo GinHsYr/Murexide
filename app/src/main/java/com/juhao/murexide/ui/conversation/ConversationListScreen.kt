@@ -60,6 +60,12 @@ fun ConversationListScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val uiState by viewModel.uiState.collectAsState()
     val isWsConnected by viewModel.isWsConnected.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+
+    DisposableEffect(viewModel) {
+        viewModel.setForegroundSyncEnabled(true)
+        onDispose { viewModel.setForegroundSyncEnabled(false) }
+    }
 
     val settingsStorage = remember { SettingsStorage(context) }
     var showSticky by remember { mutableStateOf(false) }
@@ -102,7 +108,7 @@ fun ConversationListScreen(
         }
     ) {
         PullToRefreshBox(
-            isRefreshing = uiState is ConversationUiState.Loading,
+            isRefreshing = isRefreshing,
             onRefresh = { viewModel.refresh() },
             modifier = Modifier
                 .fillMaxSize()

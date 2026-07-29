@@ -232,6 +232,11 @@ fun ChatScreen(
     val inputFocusRequester = remember { FocusRequester() }
     val composeView = LocalView.current
 
+    DisposableEffect(viewModel) {
+        viewModel.setForegroundSyncEnabled(true)
+        onDispose { viewModel.setForegroundSyncEnabled(false) }
+    }
+
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val imeTargetBottomPx = WindowInsets.imeAnimationTarget.getBottom(density)
     var pendingInputPanel by remember { mutableStateOf<ChatInputPanel?>(null) }
@@ -470,9 +475,7 @@ fun ChatScreen(
     
                 val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
     
-                if (message.isRecalled && !message.hasReliableSender) {
-                    Triple(false, "", false)
-                } else if (hasEnoughSpace) {
+                if (hasEnoughSpace) {
                     Triple(true, message.senderAvatar, message.isMine)
                 } else if (!displayItem.isLastFromSender) {
                     Triple(true, message.senderAvatar, message.isMine)
@@ -1376,8 +1379,7 @@ fun ChatScreen(
                         
                         val isTopVisibleItem = message.msgId == topVisibleMessageId
 
-                        val shouldShowItemAvatar = message.hasReliableSender &&
-                            if (isTopVisibleItem) {
+                        val shouldShowItemAvatar = if (isTopVisibleItem) {
                                 !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
                             } else {
                                 item.isFirstFromSender
@@ -1393,10 +1395,6 @@ fun ChatScreen(
                         MessageBubble(
                             message = message,
                             roleLabel = item.roleLabel,
-                            recallText = message.getRecallDisplayContent(
-                                ownerId = uiState.ownerId,
-                                adminIds = uiState.adminIds
-                            ),
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
                             onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },

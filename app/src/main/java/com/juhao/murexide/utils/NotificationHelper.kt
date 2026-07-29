@@ -16,6 +16,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.juhao.murexide.R
 import com.juhao.murexide.ui.chat.ChatActivity
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -107,6 +110,11 @@ object NotificationHelper {
 
 object AppForegroundState {
     private val activityCount = AtomicInteger(0)
+    private val _returnedToForeground = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private var hasEnteredForeground = false
+
+    /** Emitted only when the running app returns after all activities had stopped. */
+    val returnedToForeground: SharedFlow<Unit> = _returnedToForeground.asSharedFlow()
 
     val isInForeground: Boolean
         get() = activityCount.get() > 0
@@ -116,6 +124,11 @@ object AppForegroundState {
             override fun onActivityStarted(activity: Activity) {
                 val count = activityCount.incrementAndGet()
                 if (count == 1) {
+                    if (hasEnteredForeground) {
+                        _returnedToForeground.tryEmit(Unit)
+                    } else {
+                        hasEnteredForeground = true
+                    }
                     onForegroundChanged(true)
                 }
             }

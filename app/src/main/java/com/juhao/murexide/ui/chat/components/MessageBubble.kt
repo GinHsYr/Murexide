@@ -97,7 +97,6 @@ fun MessageBubble(
     hideImages: Boolean = false,
     anonymousNameProvider: ((String) -> String)? = null,
     roleLabel: String? = null,
-    recallText: String = message.getRecallDisplayContent(),
     isHighlighted: Boolean = false
 ) {
     val clipboardManager = LocalClipboard.current
@@ -176,27 +175,7 @@ fun MessageBubble(
                 }
             )
     ) {
-        if (message.isRecalled && !message.hasReliableSender) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ) {
-                    Text(
-                        text = recallText,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        } else if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
+        if (message.contentType == MessageItem.CONTENT_TYPE_TIP) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -289,13 +268,15 @@ fun MessageBubble(
                                 modifier = Modifier.padding(if (hideCard) 0.dp else 8.dp),
                                 horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
                             ) {
-                                val displayName = if (hideSenderInfo && anonymousNameProvider != null) {
-                                    anonymousNameProvider(message.senderId)
-                                } else {
-                                    message.senderName
+                                val displayName = when {
+                                    hideSenderInfo && anonymousNameProvider != null ->
+                                        anonymousNameProvider(message.senderId)
+                                    message.senderName.isNotBlank() -> message.senderName
+                                    isMine -> "我"
+                                    else -> "原发送者"
                                 }
                                 
-                                if (!hideCard && !isMine && isLastFromSender) {
+                                if (!hideCard && (message.isRecalled || (!isMine && isLastFromSender))) {
                                     Row(
                                         modifier = Modifier.padding(bottom = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically
@@ -445,7 +426,7 @@ fun MessageBubble(
 
                                 if (message.isRecalled) {
                                     Text(
-                                        text = recallText,
+                                        text = message.getRecallDisplayContent(),
                                         style = MaterialTheme.typography.bodySmall.copy(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )

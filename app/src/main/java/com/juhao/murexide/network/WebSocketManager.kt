@@ -464,9 +464,6 @@ class WebSocketManager private constructor() {
             msgSeq = msg.msg_seq,
             direction = if (msg.sender?.chat_id == currentUserId) "right" else "left",
             isRecalled = isRecalled,
-            recalledById = msg.sender?.chat_id?.takeIf { isRecalled && it.isNotEmpty() },
-            recalledByName = msg.sender?.name?.takeIf { isRecalled && it.isNotEmpty() },
-            hasReliableSender = !isRecalled,
             deleteTime = msg.delete_time,
             isEdited = msg.edit_time > 0,
             quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
@@ -496,7 +493,8 @@ class WebSocketManager private constructor() {
                     text = tag.text,
                     color = tag.color
                 )
-            } ?: emptyList()
+            } ?: emptyList(),
+            updateTimestamp = maxOf(msg.timestamp, msg.edit_time, msg.delete_time)
         )
     }
 
@@ -553,6 +551,7 @@ private fun WsMsg.toEditedMessageItem(): MessageItem {
         isEdited = true,
         quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
         quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },
-        buttons = parseMessageButtons(content?.buttons)
+        buttons = parseMessageButtons(content?.buttons),
+        updateTimestamp = maxOf(timestamp, edit_time, delete_time)
     )
 }
