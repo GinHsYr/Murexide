@@ -123,9 +123,6 @@ class ConversationRepository {
                                 msgSeq = msg.msg_seq,
                                 direction = msg.direction,
                                 isRecalled = isRecalled,
-                                recalledById = msg.sender?.chat_id?.takeIf { isRecalled && it.isNotEmpty() },
-                                recalledByName = msg.sender?.name?.takeIf { isRecalled && it.isNotEmpty() },
-                                hasReliableSender = !isRecalled,
                                 isEdited = msg.edit_time > 0
                             )
                         }

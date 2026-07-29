@@ -67,8 +67,8 @@ internal fun upsertNewestMessage(
 /**
  * Reconciles a freshly loaded history page with messages already visible in this chat.
  *
- * YunHu recall payloads can identify the recall operator as `sender`. Once a message is recalled,
- * that value is therefore not a reliable source for the original author's profile or direction.
+ * History responses retain the original message sender, including for recalled messages. Merge a
+ * loaded recall with an already visible copy only to preserve identity when a partial event omitted it.
  */
 internal fun reconcileLoadedMessages(
     existingMessages: List<MessageItem>,

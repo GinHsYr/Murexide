@@ -1,7 +1,6 @@
 package com.juhao.murexide.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -166,32 +165,38 @@ class OutgoingMessageTest {
     }
 
     @Test
-    fun `cold loaded recall keeps sender marked as unreliable`() {
+    fun `cold loaded recall keeps original sender marked as reliable`() {
         val recalled = textMessage("same", "message").copy(
+            senderId = "member-id",
+            senderName = "Member",
+            senderAvatar = "member.png",
+            direction = "left",
             isRecalled = true,
-            recalledById = "owner-id",
-            hasReliableSender = false
+            deleteTime = 1234
         )
 
         val message = reconcileLoadedMessages(emptyList(), listOf(recalled)).single()
 
-        assertFalse(message.hasReliableSender)
+        assertTrue(message.hasReliableSender)
+        assertEquals("member-id", message.senderId)
+        assertEquals("Member", message.senderName)
+        assertEquals("member.png", message.senderAvatar)
+        assertEquals("left", message.direction)
+        assertEquals(null, message.recalledById)
+        assertEquals(null, message.recalledByName)
     }
 
     @Test
-    fun `recall display names operator with role fallback`() {
+    fun `recall display never exposes the operator`() {
         val recalled = textMessage("same", "message").copy(
             isRecalled = true,
             recalledById = "owner-id",
             recalledByName = "Group owner"
         )
-        assertEquals("此消息已被「Group owner」撤回", recalled.getRecallDisplayContent())
+        assertEquals("此消息已被撤回", recalled.getRecallDisplayContent())
 
         val withoutName = recalled.copy(recalledByName = null)
-        assertEquals(
-            "此消息已被群主撤回",
-            withoutName.getRecallDisplayContent(ownerId = "owner-id")
-        )
+        assertEquals("此消息已被撤回", withoutName.getRecallDisplayContent())
     }
 
     private fun textMessage(id: String, text: String): MessageItem {

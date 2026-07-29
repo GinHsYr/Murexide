@@ -1081,7 +1081,9 @@ class ChatViewModel(
             } else {
                 false
             }
-            pendingRecallConfirmations.remove(msgId, confirmation)
+            if (pendingRecallConfirmations[msgId] === confirmation) {
+                pendingRecallConfirmations.remove(msgId)
+            }
 
             if (result.isSuccess) {
                 val actor = currentRecallActor()
@@ -1848,12 +1850,16 @@ fun computeDisplayItems(
         val newer = messages.getOrNull(index - 1)
         val older = messages.getOrNull(index + 1)
 
-        val isFirstFromSender = newer == null
+        val isFirstFromSender = message.isRecalled
+                || newer == null
                 || newer.contentType == MessageItem.CONTENT_TYPE_TIP
+                || newer.isRecalled
                 || newer.senderId != message.senderId
 
-        val isLastFromSender = older == null
+        val isLastFromSender = message.isRecalled
+                || older == null
                 || older.contentType == MessageItem.CONTENT_TYPE_TIP
+                || older.isRecalled
                 || older.senderId != message.senderId
 
         val roleLabel: String? = when {

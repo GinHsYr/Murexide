@@ -303,12 +303,16 @@ private fun ScreenshotContent(
                     val olderMessage = messages.getOrNull(index - 1)
                     val newerMessage = messages.getOrNull(index + 1)
 
-                    val isFirstFromSender = newerMessage == null ||
+                    val isFirstFromSender = message.isRecalled ||
+                            newerMessage == null ||
                             newerMessage.contentType == MessageItem.CONTENT_TYPE_TIP ||
+                            newerMessage.isRecalled ||
                             newerMessage.senderId != message.senderId
 
-                    val isLastFromSender = olderMessage == null ||
+                    val isLastFromSender = message.isRecalled ||
+                            olderMessage == null ||
                             olderMessage.contentType == MessageItem.CONTENT_TYPE_TIP ||
+                            olderMessage.isRecalled ||
                             olderMessage.senderId != message.senderId
 
                     MessageBubble(

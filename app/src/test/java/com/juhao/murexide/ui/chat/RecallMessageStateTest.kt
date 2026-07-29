@@ -49,6 +49,28 @@ class RecallMessageStateTest {
         assertFalse(result.single().isRecalled)
     }
 
+    @Test
+    fun `recalled bubble is separated from adjacent messages by the same author`() {
+        val messages = listOf(
+            message("newer", "member-id", "Member", "left"),
+            message("recalled", "member-id", "Member", "left").copy(isRecalled = true),
+            message("older", "member-id", "Member", "left")
+        )
+
+        val items = computeDisplayItems(
+            messages = messages,
+            chatType = 2,
+            ownerId = null,
+            adminIds = emptySet()
+        )
+        val recalled = items.single { it.message.msgId == "recalled" }
+
+        assertTrue(recalled.isFirstFromSender)
+        assertTrue(recalled.isLastFromSender)
+        assertEquals("member-id", recalled.message.senderId)
+        assertEquals("Member", recalled.message.senderName)
+    }
+
     private fun message(
         id: String,
         senderId: String,

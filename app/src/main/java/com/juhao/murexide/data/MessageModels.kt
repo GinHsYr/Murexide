@@ -73,20 +73,7 @@ data class MessageItem(
         }
     }
 
-    fun getRecallDisplayContent(
-        ownerId: String? = null,
-        adminIds: Set<String> = emptySet()
-    ): String {
-        val actorName = recalledByName?.trim().orEmpty()
-        if (actorName.isNotEmpty()) return "此消息已被「$actorName」撤回"
-
-        val actorId = recalledById?.trim().orEmpty()
-        return when {
-            actorId.isNotEmpty() && actorId == ownerId -> "此消息已被群主撤回"
-            actorId.isNotEmpty() && actorId in adminIds -> "此消息已被管理员撤回"
-            else -> "此消息已被撤回"
-        }
-    }
+    fun getRecallDisplayContent(): String = "此消息已被撤回"
 
     companion object {
         const val CONTENT_TYPE_TEXT = 1
