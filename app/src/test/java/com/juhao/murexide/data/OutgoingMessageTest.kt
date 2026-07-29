@@ -199,6 +199,72 @@ class OutgoingMessageTest {
         assertEquals("此消息已被撤回", withoutName.getRecallDisplayContent())
     }
 
+    @Test
+    fun `incremental sync replaces known edits and prepends new messages`() {
+        val anchor = textMessage("latest", "latest").copy(
+            timestamp = 100,
+            msgSeq = 10,
+            updateTimestamp = 100
+        )
+        val older = textMessage("older", "older").copy(timestamp = 90, msgSeq = 9)
+        val editedAnchor = anchor.copy(content = "edited", isEdited = true, updateTimestamp = 120)
+        val newMessage = textMessage("new", "new").copy(
+            timestamp = 110,
+            msgSeq = 11,
+            updateTimestamp = 110
+        )
+
+        val merged = mergeIncrementalMessages(
+            existingMessages = listOf(anchor, older),
+            updatedMessages = listOf(editedAnchor, newMessage),
+            anchorMessage = anchor
+        )
+
+        assertEquals(listOf("new", "latest", "older"), merged.map(MessageItem::msgId))
+        assertEquals("edited", merged[1].content)
+    }
+
+    @Test
+    fun `incremental sync does not surface an edited old unknown message`() {
+        val anchor = textMessage("latest", "latest").copy(
+            timestamp = 100,
+            msgSeq = 10,
+            updateTimestamp = 100
+        )
+        val editedOldMessage = textMessage("old-edit", "edited old").copy(
+            timestamp = 50,
+            msgSeq = 5,
+            isEdited = true,
+            updateTimestamp = 200
+        )
+
+        val merged = mergeIncrementalMessages(
+            existingMessages = listOf(anchor),
+            updatedMessages = listOf(editedOldMessage),
+            anchorMessage = anchor
+        )
+
+        assertEquals(listOf(anchor), merged)
+    }
+
+    @Test
+    fun `incremental sync keeps a concurrent websocket message ahead of catch-up results`() {
+        val anchor = textMessage("anchor", "anchor").copy(timestamp = 100, msgSeq = 10)
+        val websocketMessage = textMessage("ws", "ws").copy(timestamp = 120, msgSeq = 12)
+        val caughtUpMessage = textMessage("caught-up", "caught-up").copy(
+            timestamp = 110,
+            msgSeq = 11
+        )
+
+        val merged = mergeIncrementalMessages(
+            existingMessages = listOf(websocketMessage, anchor),
+            updatedMessages = listOf(caughtUpMessage),
+            anchorMessage = anchor
+        )
+
+        assertEquals(listOf("ws", "caught-up", "anchor"), merged.map(MessageItem::msgId))
+    }
+
     private fun textMessage(id: String, text: String): MessageItem {
         return createOutgoingMessage(
             msgId = id,

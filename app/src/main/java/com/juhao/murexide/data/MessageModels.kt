@@ -53,7 +53,9 @@ data class MessageItem(
     val postContent: String? = null,
     val postContentType: Int? = null,
     val buttons: List<List<MessageButton>> = emptyList(),
-    val tags: List<MessageTag> = emptyList()
+    val tags: List<MessageTag> = emptyList(),
+    /** Latest server-side send/edit/recall timestamp used as the incremental-sync cursor. */
+    val updateTimestamp: Long = timestamp
 ) {
     val isMine: Boolean
         get() = direction == "right"

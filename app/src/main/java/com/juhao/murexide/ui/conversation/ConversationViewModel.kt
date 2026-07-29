@@ -4,9 +4,14 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.LatestMessageRelation
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.findConversationFor
+import com.juhao.murexide.data.mergeRefreshedConversations
+import com.juhao.murexide.data.relationToLatest
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
+import com.juhao.murexide.data.withLatestMessageIdentity
 import com.juhao.murexide.data.withRecalledLatestMessage
 import com.juhao.murexide.data.withStreamedLatestMessage
 import com.juhao.murexide.network.WebSocketManager
@@ -17,10 +22,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.ui.theme.UiCache
+import com.juhao.murexide.utils.AppForegroundState
 import kotlinx.serialization.json.Json
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -66,20 +73,45 @@ class ConversationViewModel(
     private val repository: ConversationRepository = ConversationRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
+    companion object {
+        private const val PREVIEW_REFRESH_BATCH_SIZE = 10
+    }
     
     private val _uiState = MutableStateFlow<ConversationUiState>(ConversationUiState.Loading)
     val uiState: StateFlow<ConversationUiState> = _uiState
 
     private val _isWsConnected = MutableStateFlow(true)
     val isWsConnected: StateFlow<Boolean> = _isWsConnected
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
     
     private val json = Json { ignoreUnknownKeys = true }
     private var stickyConversations: List<StickyItem> = emptyList()
+    private var loadJob: Job? = null
+    private var loadGeneration = 0
+    private val resolvingLatestMutations = mutableSetOf<String>()
+    private var realtimePreviewVersion = 0L
+    private val realtimePreviewVersionByConversation = mutableMapOf<Pair<Int, String>, Long>()
+    private var foregroundSyncEnabled = false
 
     init {
         loadConversations()
         observeWebSocket()
         observeWsConnection()
+        observeAppForeground()
+    }
+
+    private fun observeAppForeground() {
+        viewModelScope.launch {
+            AppForegroundState.returnedToForeground.collect {
+                if (foregroundSyncEnabled) refresh()
+            }
+        }
+    }
+
+    fun setForegroundSyncEnabled(enabled: Boolean) {
+        foregroundSyncEnabled = enabled
     }
 
     private fun observeWsConnection() {
@@ -131,6 +163,7 @@ class ConversationViewModel(
         if (conversationMissing) {
             refresh()
         } else {
+            markRealtimePreview(message)
             val state = _uiState.value
             if (state is ConversationUiState.Success) {
                 UiCache.conversation.value = state.conversations
@@ -139,19 +172,104 @@ class ConversationViewModel(
     }
 
     private fun handleEditedMessage(message: MessageItem) {
-        _uiState.update { state ->
-            if (state is ConversationUiState.Success) {
-                state.copy(
-                    conversations = state.conversations.withEditedLatestMessage(message)
-                )
-            } else {
-                state
-            }
-        }
+        handleLatestMutation(message = message, recalled = false)
+    }
 
-        val state = _uiState.value
-        if (state is ConversationUiState.Success) {
-            UiCache.conversation.value = state.conversations
+    private fun handleLatestMutation(message: MessageItem, recalled: Boolean) {
+        val state = _uiState.value as? ConversationUiState.Success ?: return
+        val conversation = state.conversations.findConversationFor(message) ?: return
+
+        when (conversation.relationToLatest(message)) {
+            LatestMessageRelation.MATCHES -> applyLatestMutation(message, recalled)
+            LatestMessageRelation.DIFFERENT -> Unit
+            LatestMessageRelation.UNKNOWN -> resolveLatestMutation(
+                conversation = conversation,
+                eventMessage = message,
+                recalled = recalled
+            )
+        }
+    }
+
+    private fun applyLatestMutation(message: MessageItem, recalled: Boolean) {
+        _uiState.update { state ->
+            if (state !is ConversationUiState.Success) return@update state
+            val conversations = if (recalled) {
+                state.conversations.withRecalledLatestMessage(message.copy(isRecalled = true))
+            } else {
+                state.conversations.withEditedLatestMessage(message.copy(isEdited = true))
+            }
+            state.copy(conversations = conversations)
+        }
+        markRealtimePreview(message)
+        syncConversationCache()
+    }
+
+    private fun resolveLatestMutation(
+        conversation: ConversationItem,
+        eventMessage: MessageItem,
+        recalled: Boolean
+    ) {
+        val resolutionKey = buildString {
+            append(conversation.chatType)
+            append(':')
+            append(conversation.chatId)
+            append(':')
+            append(eventMessage.msgId)
+            append(':')
+            append(recalled)
+        }
+        if (!resolvingLatestMutations.add(resolutionKey)) return
+
+        viewModelScope.launch {
+            try {
+                val latest = repository.getLatestMessage(
+                    token = token,
+                    chatId = conversation.chatId,
+                    chatType = conversation.chatType
+                ).getOrNull() ?: return@launch
+
+                if (latest.msgId == eventMessage.msgId) {
+                    val resolvedMutation = if (recalled) {
+                        latest.copy(
+                            isRecalled = true,
+                            deleteTime = maxOf(latest.deleteTime, eventMessage.deleteTime),
+                            updateTimestamp = maxOf(
+                                latest.updateTimestamp,
+                                eventMessage.updateTimestamp
+                            )
+                        )
+                    } else {
+                        latest.copy(
+                            content = eventMessage.content.takeIf { it.isNotEmpty() }
+                                ?: latest.content,
+                            contentType = eventMessage.contentType.takeIf { it > 0 }
+                                ?: latest.contentType,
+                            isEdited = true,
+                            buttons = eventMessage.buttons.takeIf { it.isNotEmpty() }
+                                ?: latest.buttons,
+                            updateTimestamp = maxOf(
+                                latest.updateTimestamp,
+                                eventMessage.updateTimestamp
+                            )
+                        )
+                    }
+                    applyLatestMutation(resolvedMutation, recalled)
+                } else {
+                    _uiState.update { currentState ->
+                        if (currentState is ConversationUiState.Success) {
+                            currentState.copy(
+                                conversations = currentState.conversations
+                                    .withLatestMessageIdentity(latest)
+                            )
+                        } else {
+                            currentState
+                        }
+                    }
+                    syncConversationCache()
+                }
+            } finally {
+                resolvingLatestMutations.remove(resolutionKey)
+            }
         }
     }
 
@@ -166,6 +284,7 @@ class ConversationViewModel(
                 state
             }
         }
+        markRealtimePreview(message)
         syncConversationCache()
     }
 
@@ -182,22 +301,12 @@ class ConversationViewModel(
                 state
             }
         }
+        markRealtimePreview(msgId)
         syncConversationCache()
     }
 
     private fun handleRecalledMessage(message: MessageItem) {
-        _uiState.update { state ->
-            if (state is ConversationUiState.Success) {
-                state.copy(
-                    conversations = state.conversations.withRecalledLatestMessage(
-                        message.copy(isRecalled = true)
-                    )
-                )
-            } else {
-                state
-            }
-        }
-        syncConversationCache()
+        handleLatestMutation(message = message, recalled = true)
     }
 
     private fun syncConversationCache() {
@@ -207,60 +316,127 @@ class ConversationViewModel(
         }
     }
 
-    fun loadConversations(refreshPreviews: Boolean = false) {
-        viewModelScope.launch {
-            _uiState.value = ConversationUiState.Loading
+    private fun markRealtimePreview(message: MessageItem) {
+        val state = _uiState.value as? ConversationUiState.Success ?: return
+        val conversation = state.conversations.findConversationFor(message) ?: return
+        markRealtimePreview(conversation.chatType to conversation.chatId)
+    }
 
+    private fun markRealtimePreview(messageId: String) {
+        val state = _uiState.value as? ConversationUiState.Success ?: return
+        val conversation = state.conversations.firstOrNull { it.latestMessageId == messageId }
+            ?: return
+        markRealtimePreview(conversation.chatType to conversation.chatId)
+    }
+
+    private fun markRealtimePreview(key: Pair<Int, String>) {
+        realtimePreviewVersion += 1L
+        realtimePreviewVersionByConversation[key] = realtimePreviewVersion
+    }
+
+    fun loadConversations(refreshPreviews: Boolean = false) {
+        loadJob?.cancel()
+        val generation = ++loadGeneration
+        val refreshStartVersion = realtimePreviewVersion
+        loadJob = viewModelScope.launch {
+            val hadVisibleConversations = _uiState.value is ConversationUiState.Success
+            _isRefreshing.value = true
+            if (!hadVisibleConversations) {
+                _uiState.value = ConversationUiState.Loading
+            }
             fetchStickyList()
             repository.getConversationList(token).onSuccess { conversations ->
-                val displayedConversations = if (refreshPreviews) {
-                    refreshMessagePreviews(conversations)
+                if (refreshPreviews) {
+                    refreshMessagePreviewsProgressively(
+                        conversations = conversations,
+                        generation = generation,
+                        refreshStartVersion = refreshStartVersion
+                    )
                 } else {
-                    conversations
-                }
-                _uiState.update { state ->
-                    UiCache.conversation.value = displayedConversations
-                    if (state is ConversationUiState.Success) {
-                        state.copy(
-                            conversations = displayedConversations,
-                            stickyConversations = stickyConversations
-                        )
-                    } else {
-                        ConversationUiState.Success(
-                            conversations = displayedConversations,
-                            stickyConversations = stickyConversations
-                        )
-                    }
+                    publishConversations(conversations, refreshStartVersion)
+                    if (generation == loadGeneration) _isRefreshing.value = false
                 }
             }.onFailure { error ->
-                _uiState.value = ConversationUiState.Error(error.message ?: "加载失败")
+                if (generation != loadGeneration) return@onFailure
+                _isRefreshing.value = false
+                if (_uiState.value !is ConversationUiState.Success) {
+                    _uiState.value = ConversationUiState.Error(error.message ?: "加载失败")
+                } else {
+                    Log.w("ConversationViewModel", "Conversation refresh failed", error)
+                }
             }
         }
     }
 
-    private suspend fun refreshMessagePreviews(
-        conversations: List<ConversationItem>
-    ): List<ConversationItem> = coroutineScope {
-        val updateTime = System.currentTimeMillis()
-        conversations.map { conversation ->
-            async {
-                repository.getLatestMessageByUpdate(
-                    token = token,
-                    chatId = conversation.chatId,
-                    chatType = conversation.chatType,
-                    updateTime = updateTime
-                ).getOrNull()?.let { message ->
-                    conversation.copy(
-                        chatContent = message.getDisplayContent(),
-                        timestampMs = message.timestamp,
-                        sendTimestamp = message.timestamp,
-                        latestMessageId = message.msgId,
-                        latestMessageSeq = message.msgSeq,
-                        latestContentType = message.contentType
-                    )
-                } ?: conversation
+    private suspend fun refreshMessagePreviewsProgressively(
+        conversations: List<ConversationItem>,
+        generation: Int,
+        refreshStartVersion: Long
+    ) {
+        if (conversations.isEmpty()) {
+            publishConversations(emptyList(), refreshStartVersion)
+            if (generation == loadGeneration) _isRefreshing.value = false
+            return
+        }
+
+        var refreshedConversations = conversations
+        conversations.chunked(PREVIEW_REFRESH_BATCH_SIZE).forEachIndexed { batchIndex, batch ->
+            val batchUpdates = coroutineScope {
+                batch.map { conversation ->
+                    async {
+                        val latestMessage = repository.getLatestMessage(
+                            token = token,
+                            chatId = conversation.chatId,
+                            chatType = conversation.chatType
+                        ).getOrNull()
+                        (conversation.chatType to conversation.chatId) to latestMessage
+                    }
+                }.awaitAll()
             }
-        }.awaitAll()
+
+            val latestByConversation = batchUpdates.toMap()
+            refreshedConversations = refreshedConversations.map { conversation ->
+                val latest = latestByConversation[conversation.chatType to conversation.chatId]
+                    ?: return@map conversation
+                listOf(conversation).withLatestMessage(
+                    message = latest,
+                    incrementUnread = false
+                )?.singleOrNull() ?: conversation
+            }
+            publishConversations(refreshedConversations, refreshStartVersion)
+
+            // The pull gesture completes as soon as the first visible batch is on screen. The
+            // remaining batches continue in this coroutine and publish independently.
+            if (batchIndex == 0 && generation == loadGeneration) {
+                _isRefreshing.value = false
+            }
+        }
+
+        if (generation == loadGeneration) _isRefreshing.value = false
+    }
+
+    private fun publishConversations(
+        conversations: List<ConversationItem>,
+        refreshStartVersion: Long
+    ) {
+        _uiState.update { state ->
+            val displayed = if (state is ConversationUiState.Success) {
+                mergeRefreshedConversations(
+                    refreshed = conversations,
+                    current = state.conversations,
+                    protectedKeys = realtimePreviewVersionByConversation
+                        .filterValues { it > refreshStartVersion }
+                        .keys
+                )
+            } else {
+                conversations
+            }
+            ConversationUiState.Success(
+                conversations = displayed,
+                stickyConversations = stickyConversations
+            )
+        }
+        syncConversationCache()
     }
 
     private fun fetchStickyList() {

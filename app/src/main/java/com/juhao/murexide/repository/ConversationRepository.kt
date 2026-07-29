@@ -6,7 +6,7 @@ import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.conversation.ConversationListSend
 import com.juhao.murexide.proto.conversation.ConversationList
 import com.juhao.murexide.proto.list_message
-import com.juhao.murexide.proto.list_message_by_update_send
+import com.juhao.murexide.proto.list_message_send
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -69,23 +69,22 @@ class ConversationRepository {
         }
     }
 
-    suspend fun getLatestMessageByUpdate(
+    suspend fun getLatestMessage(
         token: String,
         chatId: String,
-        chatType: Int,
-        updateTime: Long
+        chatType: Int
     ): Result<MessageItem?> {
         return withContext(Dispatchers.IO) {
             try {
-                val requestBody = list_message_by_update_send(
-                    update_time = updateTime,
+                val requestBody = list_message_send(
+                    msg_count = 1,
+                    msg_id = "",
                     chat_type = chatType.toLong(),
-                    chat_id = chatId,
-                    msg_count = 1
+                    chat_id = chatId
                 ).encode().toRequestBody("application/octet-stream".toMediaType())
 
                 val httpRequest = Request.Builder()
-                    .url("$baseUrl/v1/msg/list-message-by-update")
+                    .url("$baseUrl/v1/msg/list-message")
                     .post(requestBody)
                     .header("token", token)
                     .build()
@@ -104,28 +103,12 @@ class ConversationRepository {
                         )
                     }
 
-                    val message = messageList.msg.firstOrNull()
                     Result.success(
-                        message?.let { msg ->
-                            val isRecalled = msg.msg_delete_time > 0
-                            MessageItem(
-                                msgId = msg.msg_id,
-                                senderId = msg.sender?.chat_id ?: "",
-                                senderName = msg.sender?.name ?: "",
-                                senderAvatar = msg.sender?.avatar_url ?: "",
-                                senderType = msg.sender?.chat_type ?: 1,
-                                chatId = chatId,
-                                chatType = chatType,
-                                content = msg.content?.text ?: "",
-                                contentType = msg.content_type,
-                                timestamp = msg.send_time,
-                                deleteTime = msg.msg_delete_time,
-                                msgSeq = msg.msg_seq,
-                                direction = msg.direction,
-                                isRecalled = isRecalled,
-                                isEdited = msg.edit_time > 0
-                            )
-                        }
+                        messageList.msg
+                            .firstOrNull()
+                            ?.let { msg ->
+                                msg.toMessageItem(chatId = chatId, chatType = chatType)
+                            }
                     )
                 }
             } catch (e: Exception) {

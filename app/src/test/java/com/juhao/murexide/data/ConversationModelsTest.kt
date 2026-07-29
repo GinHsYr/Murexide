@@ -319,6 +319,82 @@ class ConversationModelsTest {
         assertEquals("此消息已被撤回", updated.single().chatContent)
     }
 
+    @Test
+    fun `message id is required before an equal timestamp edit is trusted`() {
+        val conversation = conversation(
+            chatId = "target",
+            timestamp = 2_000L,
+            latestMessageId = null
+        )
+        val edit = outgoingMessage(
+            chatId = "target",
+            content = "edited",
+            timestamp = 2_000L,
+            msgId = "unknown-id"
+        )
+
+        assertEquals(LatestMessageRelation.UNKNOWN, conversation.relationToLatest(edit))
+        assertEquals(
+            LatestMessageRelation.DIFFERENT,
+            conversation.relationToLatest(edit.copy(timestamp = 1_999L))
+        )
+    }
+
+    @Test
+    fun `refresh replaces stale known preview when no websocket update raced it`() {
+        val stale = conversation(
+            chatId = "target",
+            content = "stale",
+            timestamp = 2_000L,
+            latestMessageId = "same-id",
+            latestMessageSeq = 20L
+        )
+        val refreshed = stale.copy(chatContent = "server edited")
+
+        val merged = mergeRefreshedConversations(
+            refreshed = listOf(refreshed),
+            current = listOf(stale),
+            protectedKeys = emptySet()
+        )
+
+        assertEquals("server edited", merged.single().chatContent)
+    }
+
+    @Test
+    fun `refresh preserves a raced websocket preview and its front position`() {
+        val serverFirst = conversation(
+            chatId = "other",
+            content = "server first",
+            timestamp = 3_000L,
+            latestMessageId = "other-id",
+            latestMessageSeq = 30L
+        )
+        val staleTarget = conversation(
+            chatId = "target",
+            content = "stale target",
+            timestamp = 2_000L,
+            latestMessageId = "old-id",
+            latestMessageSeq = 20L
+        )
+        val websocketTarget = staleTarget.copy(
+            chatContent = "websocket latest",
+            timestampMs = 4_000L,
+            sendTimestamp = 4_000L,
+            latestMessageId = "ws-id",
+            latestMessageSeq = 40L
+        )
+
+        val merged = mergeRefreshedConversations(
+            refreshed = listOf(serverFirst, staleTarget),
+            current = listOf(websocketTarget, serverFirst),
+            protectedKeys = setOf(2 to "target")
+        )
+
+        assertEquals(listOf("target", "other"), merged.map(ConversationItem::chatId))
+        assertEquals("websocket latest", merged.first().chatContent)
+        assertEquals("ws-id", merged.first().latestMessageId)
+    }
+
     private fun conversation(
         chatId: String,
         content: String = "old message",

@@ -2,7 +2,9 @@ package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.*
 import com.juhao.murexide.network.NetworkClient
+import com.juhao.murexide.proto.Msg
 import com.juhao.murexide.proto.list_message
+import com.juhao.murexide.proto.list_message_by_update_send
 import com.juhao.murexide.proto.list_message_send
 import com.juhao.murexide.proto.pic_list_message_by_mid_seq
 import com.juhao.murexide.proto.pic_list_message_by_mid_seq_send
@@ -29,6 +31,18 @@ internal fun createRecallMessageRequest(
     msg_id = listOf(msgId),
     chat_id = chatId,
     chat_type = chatType.toLong()
+)
+
+internal fun createListMessageByUpdateRequest(
+    updateTime: Long,
+    chatId: String,
+    chatType: Int,
+    msgCount: Int
+) = list_message_by_update_send(
+    update_time = updateTime.coerceAtLeast(0),
+    chat_type = chatType.toLong(),
+    chat_id = chatId,
+    msg_count = msgCount.coerceAtLeast(1).toLong()
 )
 
 internal fun createSendMessageRequest(
@@ -116,52 +130,7 @@ class MessageRepository {
 
                         if (messageList.status?.code == 1) {
                             val messages = messageList.msg.map { msg ->
-                                val isRecalled = msg.msg_delete_time > 0
-                                MessageItem(
-                                    msgId = msg.msg_id,
-                                    senderId = msg.sender?.chat_id ?: "",
-                                    senderName = msg.sender?.name ?: "",
-                                    senderAvatar = msg.sender?.avatar_url ?: "",
-                                    senderType = msg.sender?.chat_type ?: 1,
-                                    chatId = chatId,
-                                    chatType = chatType,
-                                    content = msg.content?.text ?: "",
-                                    contentType = msg.content_type,
-                                    timestamp = msg.send_time,
-                                    msgSeq = msg.msg_seq,
-                                    direction = msg.direction,
-                                    isRecalled = isRecalled,
-                                    deleteTime = msg.msg_delete_time,
-                                    isEdited = msg.edit_time > 0,
-                                    quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
-                                    quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
-                                    quoteImageUrl = msg.content?.quote_image_url?.takeIf { it.isNotEmpty() },
-                                    stickerUrl = msg.content?.sticker_url?.takeIf { it.isNotEmpty() },
-                                    imageUrl = msg.content?.image_url?.takeIf { it.isNotEmpty() },
-                                    imageWidth = msg.content?.width?.takeIf { it > 0 },
-                                    imageHeight = msg.content?.height?.takeIf { it > 0 },
-                                    audioTime = if ((msg.content?.audio_time ?: 0) > 0) msg.content?.audio_time else null,
-                                    videoUrl = msg.content?.video_url?.takeIf { it.isNotEmpty() },
-                                    videoTime = if ((msg.content?.video_time ?: 0) > 0) msg.content?.video_time else null,
-                                    fileUrl = msg.content?.file_url?.takeIf { it.isNotEmpty() },
-                                    fileName = msg.content?.file_name?.takeIf { it.isNotEmpty() },
-                                    fileSize = if ((msg.content?.file_size ?: 0) > 0) msg.content?.file_size else null,
-                                    cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
-                                    cmdId = msg.cmd?.type?.toLong(),
-                                    cmdType = msg.cmd?.type,
-                                    postId = msg.content?.post_id,
-                                    postTitle = msg.content?.post_title,
-                                    postContent = msg.content?.post_content,
-                                    postContentType = msg.content?.post_content_type?.toIntOrNull(),
-                                    buttons = parseMessageButtons(msg.content?.buttons),
-                                    tags = msg.sender?.tag?.map { tag ->
-                                        MessageTag(
-                                            id = tag.id,
-                                            text = tag.text,
-                                            color = tag.color
-                                        )
-                                    } ?: emptyList()
-                                )
+                                msg.toMessageItem(chatId = chatId, chatType = chatType)
                             }
                             Result.success(messages)
                         } else {
@@ -218,6 +187,58 @@ class MessageRepository {
                     } else {
                         Result.failure(Exception(result.status?.msg ?: "获取图片列表失败"))
                     }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Returns messages whose server-side send/edit/recall time is newer than [updateTime].
+     * This is the API's incremental catch-up path used after the app returns to foreground.
+     */
+    suspend fun getMessagesByUpdate(
+        token: String,
+        chatId: String,
+        chatType: Int,
+        updateTime: Long,
+        msgCount: Int = 100
+    ): Result<List<MessageItem>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestBody = createListMessageByUpdateRequest(
+                    updateTime = updateTime,
+                    chatId = chatId,
+                    chatType = chatType,
+                    msgCount = msgCount
+                ).encode().toRequestBody("application/octet-stream".toMediaType())
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/v1/msg/list-message-by-update")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(httpRequest).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure<List<MessageItem>>(
+                            Exception("HTTP error: ${response.code}")
+                        )
+                    }
+
+                    val messageList = list_message.ADAPTER.decode(response.body.bytes())
+                    if (messageList.status?.code != 1) {
+                        return@use Result.failure<List<MessageItem>>(
+                            Exception(messageList.status?.msg ?: "增量同步消息失败")
+                        )
+                    }
+
+                    Result.success(
+                        messageList.msg.map { msg ->
+                            msg.toMessageItem(chatId = chatId, chatType = chatType)
+                        }
+                    )
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -410,6 +431,56 @@ class MessageRepository {
             }
         }
     }
+}
+
+internal fun Msg.toMessageItem(chatId: String, chatType: Int): MessageItem {
+    return MessageItem(
+        msgId = msg_id,
+        senderId = sender?.chat_id ?: "",
+        senderName = sender?.name ?: "",
+        senderAvatar = sender?.avatar_url ?: "",
+        senderType = sender?.chat_type ?: 1,
+        chatId = chatId,
+        chatType = chatType,
+        content = content?.text ?: "",
+        contentType = content_type,
+        timestamp = send_time,
+        msgSeq = msg_seq,
+        direction = direction,
+        isRecalled = msg_delete_time > 0,
+        deleteTime = msg_delete_time,
+        isEdited = edit_time > 0,
+        quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
+        quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },
+        quoteImageUrl = content?.quote_image_url?.takeIf { it.isNotEmpty() },
+        stickerUrl = content?.sticker_url?.takeIf { it.isNotEmpty() },
+        imageUrl = content?.image_url?.takeIf { it.isNotEmpty() },
+        imageWidth = content?.width?.takeIf { it > 0 },
+        imageHeight = content?.height?.takeIf { it > 0 },
+        audioUrl = content?.audio_url?.takeIf { it.isNotEmpty() },
+        audioTime = content?.audio_time?.takeIf { it > 0 },
+        videoUrl = content?.video_url?.takeIf { it.isNotEmpty() },
+        videoTime = content?.video_time?.takeIf { it > 0 },
+        fileUrl = content?.file_url?.takeIf { it.isNotEmpty() },
+        fileName = content?.file_name?.takeIf { it.isNotEmpty() },
+        fileSize = content?.file_size?.takeIf { it > 0 },
+        cmdName = cmd?.name?.takeIf { it.isNotEmpty() },
+        cmdId = cmd?.type?.toLong(),
+        cmdType = cmd?.type,
+        postId = content?.post_id,
+        postTitle = content?.post_title,
+        postContent = content?.post_content,
+        postContentType = content?.post_content_type?.toIntOrNull(),
+        buttons = parseMessageButtons(content?.buttons),
+        tags = sender?.tag?.map { tag ->
+            MessageTag(
+                id = tag.id,
+                text = tag.text,
+                color = tag.color
+            )
+        } ?: emptyList(),
+        updateTimestamp = maxOf(send_time, edit_time, msg_delete_time)
+    )
 }
 
 internal fun createImageMessageListRequestBody(

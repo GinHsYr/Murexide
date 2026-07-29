@@ -22,6 +22,7 @@ import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
+import com.juhao.murexide.utils.AppForegroundState
 import com.juhao.murexide.utils.MentionUtils
 import com.juhao.murexide.utils.QiniuUploadResponse
 import com.juhao.murexide.utils.QiniuUploader
@@ -96,6 +97,8 @@ class ChatViewModel(
     }
 
     private var uploadJob: Job? = null
+    private var foregroundSyncJob: Job? = null
+    private var foregroundSyncEnabled = false
 
     private val msgIdCache = mutableSetOf<String>()
 
@@ -144,6 +147,7 @@ class ChatViewModel(
     init {
         loadMessages()
         setupWebSocket()
+        observeAppForeground()
         loadBackground()
         if (chatType == 2) { // 群聊
             loadGroupInfo()
@@ -382,6 +386,18 @@ class ChatViewModel(
         }
     }
 
+    private fun observeAppForeground() {
+        viewModelScope.launch {
+            AppForegroundState.returnedToForeground.collect {
+                if (foregroundSyncEnabled) syncLatestMessages()
+            }
+        }
+    }
+
+    fun setForegroundSyncEnabled(enabled: Boolean) {
+        foregroundSyncEnabled = enabled
+    }
+
     /**
      * Ensures that a quoted message is present in the contiguous history currently shown.
      *
@@ -488,6 +504,46 @@ class ChatViewModel(
         msgIdCache.clear()
         currentMsgId = null
         loadMessages()
+    }
+
+    /**
+     * Catches up only changes newer than the latest message currently shown. This keeps foreground
+     * recovery cheap while still receiving new, edited, and recalled messages missed by WebSocket.
+     */
+    fun syncLatestMessages() {
+        if (foregroundSyncJob?.isActive == true) return
+
+        foregroundSyncJob = viewModelScope.launch {
+            val anchorMessage = _uiState.value.messages.firstOrNull()
+            if (anchorMessage == null) {
+                if (!_uiState.value.isLoading) loadMessages()
+                return@launch
+            }
+
+            repository.getMessagesByUpdate(
+                token = token,
+                chatId = chatId,
+                chatType = chatType,
+                updateTime = maxOf(anchorMessage.timestamp, anchorMessage.updateTimestamp)
+            ).onSuccess { updates ->
+                if (updates.isEmpty()) return@onSuccess
+
+                val resolvedUpdates = updates.map(::withCurrentUserProfileFallback)
+                var mergedMessages: List<MessageItem> = emptyList()
+                _uiState.update { state ->
+                    mergedMessages = mergeIncrementalMessages(
+                        existingMessages = state.messages,
+                        updatedMessages = resolvedUpdates,
+                        anchorMessage = anchorMessage
+                    )
+                    state.copy(messages = mergedMessages, error = null)
+                }
+                msgIdCache.addAll(mergedMessages.map(MessageItem::msgId))
+                mergedMessages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
+            }.onFailure { error ->
+                Log.w(TAG, "Failed to sync foreground message updates", error)
+            }
+        }
     }
 
     fun updateInputText(
@@ -1563,7 +1619,11 @@ class ChatViewModel(
                             contentType = message.contentType,
                             isEdited = true,
                             isRecalled = message.isRecalled,
-                            buttons = message.buttons
+                            buttons = message.buttons,
+                            updateTimestamp = maxOf(
+                                msg.updateTimestamp,
+                                message.updateTimestamp
+                            )
                         )
                     else 
                         msg
@@ -1827,7 +1887,11 @@ internal fun List<MessageItem>.withRecalledMessage(
                 ?: existing.recalledById,
             recalledByName = actor?.name?.takeIf(String::isNotBlank)
                 ?: recalledMessage.recalledByName
-                ?: existing.recalledByName
+                ?: existing.recalledByName,
+            updateTimestamp = maxOf(
+                existing.updateTimestamp,
+                recalledMessage.updateTimestamp
+            )
         )
     }
 }

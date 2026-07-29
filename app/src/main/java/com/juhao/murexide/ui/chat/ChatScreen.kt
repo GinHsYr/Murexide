@@ -232,6 +232,11 @@ fun ChatScreen(
     val inputFocusRequester = remember { FocusRequester() }
     val composeView = LocalView.current
 
+    DisposableEffect(viewModel) {
+        viewModel.setForegroundSyncEnabled(true)
+        onDispose { viewModel.setForegroundSyncEnabled(false) }
+    }
+
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val imeTargetBottomPx = WindowInsets.imeAnimationTarget.getBottom(density)
     var pendingInputPanel by remember { mutableStateOf<ChatInputPanel?>(null) }

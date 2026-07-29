@@ -493,7 +493,8 @@ class WebSocketManager private constructor() {
                     text = tag.text,
                     color = tag.color
                 )
-            } ?: emptyList()
+            } ?: emptyList(),
+            updateTimestamp = maxOf(msg.timestamp, msg.edit_time, msg.delete_time)
         )
     }
 
@@ -550,6 +551,7 @@ private fun WsMsg.toEditedMessageItem(): MessageItem {
         isEdited = true,
         quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
         quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },
-        buttons = parseMessageButtons(content?.buttons)
+        buttons = parseMessageButtons(content?.buttons),
+        updateTimestamp = maxOf(timestamp, edit_time, delete_time)
     )
 }
