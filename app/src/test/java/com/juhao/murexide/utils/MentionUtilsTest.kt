@@ -135,4 +135,34 @@ class MentionUtilsTest {
         assertEquals("[.猪头] ".length, result.mentions.single().start)
         assertEquals(TextRange("[.猪头]".length), result.selection)
     }
+
+    @Test
+    fun `actual edit range deletes only the targeted adjacent emoji`() {
+        val markers = listOf("[.猪头]", "[.OK]", "[.笑哭]")
+        val oldText = markers.joinToString("")
+        val middleStart = markers.first().length
+        val newText = markers.first() + markers.last()
+        val protectedRanges = buildList {
+            var start = 0
+            markers.forEach { marker ->
+                add(TextRange(start, start + marker.length))
+                start += marker.length
+            }
+        }
+
+        val edited = MentionUtils.processEdit(
+            old = TextFieldValue(oldText, TextRange(middleStart + markers[1].length)),
+            new = TextFieldValue(newText, TextRange(middleStart)),
+            mentions = emptyList(),
+            protectedRanges = protectedRanges,
+            textEdit = MentionUtils.TextEdit(
+                start = middleStart,
+                beforeCount = markers[1].length,
+                afterCount = 0
+            )
+        )
+
+        assertEquals(newText, edited.value.text)
+        assertEquals(TextRange(middleStart), edited.value.selection)
+    }
 }

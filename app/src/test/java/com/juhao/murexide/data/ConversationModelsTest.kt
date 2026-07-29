@@ -361,6 +361,45 @@ class ConversationModelsTest {
     }
 
     @Test
+    fun `refresh does not clear existing unread indicators`() {
+        val current = conversation(
+            chatId = "target",
+            content = "local preview",
+            unreadCount = 3,
+            at = 1
+        )
+        val refreshed = current.copy(
+            chatContent = "server preview",
+            unreadMessage = 0,
+            at = 0
+        )
+
+        val merged = mergeRefreshedConversations(
+            refreshed = listOf(refreshed),
+            current = listOf(current),
+            protectedKeys = emptySet()
+        )
+
+        assertEquals("server preview", merged.single().chatContent)
+        assertEquals(3, merged.single().unreadMessage)
+        assertEquals(1, merged.single().at)
+    }
+
+    @Test
+    fun `refresh accepts a higher server unread count`() {
+        val current = conversation(chatId = "target", unreadCount = 2)
+        val refreshed = current.copy(unreadMessage = 4)
+
+        val merged = mergeRefreshedConversations(
+            refreshed = listOf(refreshed),
+            current = listOf(current),
+            protectedKeys = emptySet()
+        )
+
+        assertEquals(4, merged.single().unreadMessage)
+    }
+
+    @Test
     fun `refresh preserves a raced websocket preview and its front position`() {
         val serverFirst = conversation(
             chatId = "other",
@@ -399,6 +438,7 @@ class ConversationModelsTest {
         chatId: String,
         content: String = "old message",
         unreadCount: Int = 0,
+        at: Int = 0,
         timestamp: Long = 1L,
         sendTimestamp: Long = timestamp,
         chatType: Int = 2,
@@ -413,6 +453,7 @@ class ConversationModelsTest {
         timestampMs = timestamp,
         sendTimestamp = sendTimestamp,
         unreadMessage = unreadCount,
+        at = at,
         avatarUrl = "",
         latestMessageId = latestMessageId,
         latestMessageSeq = latestMessageSeq,

@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
@@ -556,11 +557,14 @@ fun MessageBubble(
                                                     val displayUrl = if (isImageMessage) imageThumbnailUrl(url) else url
                                                     var retryCount by remember(url) { mutableIntStateOf(0) }
                                                     var loadState by remember(url, retryCount) { mutableIntStateOf(0) }
-                                                    val imageRequest = remember(displayUrl, isVideoMessage, retryCount) {
+                                                    val imageRequest = remember(displayUrl, message.contentType, retryCount) {
                                                         val request = ImageRequest.Builder(context)
                                                             .data(displayUrl)
                                                             .setParameter("retry", retryCount)
                                                             .crossfade(false)
+                                                            .allowHardware(
+                                                                chatMediaAllowsHardwareBitmaps(message.contentType)
+                                                            )
                                                         if (isVideoMessage) request.videoFrameMillis(0)
                                                         request.build()
                                                     }
@@ -571,8 +575,8 @@ fun MessageBubble(
                                                         bottomStart = if (!isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp,
                                                         bottomEnd = if (isMine && !isFirstFromSender) (bubbleCornerRadius / 4).dp else bubbleCornerRadius.dp
                                                     )
-                                                    var sourceBounds by remember(message.msgId, url) {
-                                                        mutableStateOf<ImageViewerSourceBounds?>(null)
+                                                    val sourceCoordinates = remember(message.msgId, url) {
+                                                        ImageSourceCoordinates()
                                                     }
 
                                                     Box(
@@ -591,14 +595,7 @@ fun MessageBubble(
                                                                 }
                                                             )
                                                             .onGloballyPositioned { coordinates ->
-                                                                val bounds = coordinates.boundsInWindow()
-                                                                sourceBounds = ImageViewerSourceBounds(
-                                                                    left = bounds.left.roundToInt(),
-                                                                    top = bounds.top.roundToInt(),
-                                                                    width = bounds.width.roundToInt(),
-                                                                    height = bounds.height.roundToInt(),
-                                                                    isCropped = isImageMessage || isVideoMessage
-                                                                )
+                                                                sourceCoordinates.value = coordinates
                                                             }
                                                             .clip(imageShape)
                                                             .background(
@@ -609,7 +606,14 @@ fun MessageBubble(
                                                                 }
                                                             )
                                                             .combinedClickable(
-                                                                onClick = { onImageClick(message, sourceBounds) },
+                                                                onClick = {
+                                                                    val sourceBounds = sourceCoordinates.value
+                                                                        ?.takeIf { it.isAttached }
+                                                                        ?.toImageViewerSourceBounds(
+                                                                            isCropped = isImageMessage || isVideoMessage
+                                                                        )
+                                                                    onImageClick(message, sourceBounds)
+                                                                },
                                                                 onLongClick = { onLongPress(message) }
                                                             )
                                                     ) {
@@ -1145,6 +1149,27 @@ internal fun formatVideoDuration(totalSeconds: Int?): String? {
     } else {
         String.format(Locale.ROOT, "%d:%02d", minutes, seconds)
     }
+}
+
+internal fun chatMediaAllowsHardwareBitmaps(contentType: Int): Boolean {
+    return contentType != MessageItem.CONTENT_TYPE_IMAGE
+}
+
+private class ImageSourceCoordinates {
+    var value: LayoutCoordinates? = null
+}
+
+private fun LayoutCoordinates.toImageViewerSourceBounds(
+    isCropped: Boolean
+): ImageViewerSourceBounds {
+    val bounds = boundsInWindow()
+    return ImageViewerSourceBounds(
+        left = bounds.left.roundToInt(),
+        top = bounds.top.roundToInt(),
+        width = bounds.width.roundToInt(),
+        height = bounds.height.roundToInt(),
+        isCropped = isCropped
+    )
 }
 
 private fun extractImageUrls(html: String): List<String> {

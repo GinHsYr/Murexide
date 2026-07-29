@@ -199,22 +199,29 @@ internal fun List<ConversationItem>.withLatestMessageIdentity(
 }
 
 /**
- * Combines an HTTP refresh with previews that arrived in real time after that request started.
- * A newer WS preview stays visible and at the front instead of being overwritten by a stale batch.
+ * Combines an HTTP refresh with the currently displayed conversation state.
+ *
+ * Unread indicators are only cleared by opening a conversation, so an eventually consistent
+ * refresh must not lower them. A newer WS preview also stays visible and at the front instead of
+ * being overwritten by a stale batch.
  */
 internal fun mergeRefreshedConversations(
     refreshed: List<ConversationItem>,
     current: List<ConversationItem>,
     protectedKeys: Set<Pair<Int, String>>
 ): List<ConversationItem> {
-    if (current.isEmpty() || refreshed.isEmpty() || protectedKeys.isEmpty()) return refreshed
+    if (current.isEmpty() || refreshed.isEmpty()) return refreshed
 
     val currentByKey = current.associateBy { it.chatType to it.chatId }
     val strictlyNewerKeys = mutableSetOf<Pair<Int, String>>()
     val merged = refreshed.map { fresh ->
         val key = fresh.chatType to fresh.chatId
-        if (key !in protectedKeys) return@map fresh
         val realtime = currentByKey[key] ?: return@map fresh
+        val unreadMessage = maxOf(fresh.unreadMessage, realtime.unreadMessage)
+        val at = maxOf(fresh.at, realtime.at)
+        if (key !in protectedKeys) {
+            return@map fresh.copy(unreadMessage = unreadMessage, at = at)
+        }
         val realtimeIsNewer = realtime.isStrictlyNewerThan(fresh)
         val sameKnownMessage = realtime.latestMessageId != null &&
             realtime.latestMessageId == fresh.latestMessageId
@@ -223,15 +230,15 @@ internal fun mergeRefreshedConversations(
             realtime.latestMessageTimestamp >= fresh.latestMessageTimestamp
 
         if (!realtimeIsNewer && !sameKnownMessage && !refreshedHasNoIdentityForSameSend) {
-            fresh
+            fresh.copy(unreadMessage = unreadMessage, at = at)
         } else {
             if (realtimeIsNewer) strictlyNewerKeys += key
             fresh.copy(
                 chatContent = realtime.chatContent,
                 timestampMs = realtime.timestampMs,
                 sendTimestamp = realtime.sendTimestamp,
-                unreadMessage = maxOf(fresh.unreadMessage, realtime.unreadMessage),
-                at = maxOf(fresh.at, realtime.at),
+                unreadMessage = unreadMessage,
+                at = at,
                 latestMessageId = realtime.latestMessageId,
                 latestMessageSeq = realtime.latestMessageSeq,
                 latestContentType = realtime.latestContentType
