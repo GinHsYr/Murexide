@@ -304,7 +304,7 @@ fun MessageBubble(
                                             }
                                         }
                                         
-                                        if (showTags && message.tags.isNotEmpty()){
+                                        if (showTags && !hideSenderInfo && message.tags.isNotEmpty()){
                                             val tag = message.tags[0]
 
                                             Spacer(modifier = Modifier.width(2.dp))
