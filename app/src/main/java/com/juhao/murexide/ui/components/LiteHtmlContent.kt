@@ -99,7 +99,7 @@ internal fun handleStaticHtmlLink(context: Context, url: String) {
     Toast.makeText(context, "链接已复制", Toast.LENGTH_SHORT).show()
 }
 
-private fun buildMessageCss(
+internal fun buildMessageCss(
     backgroundColor: Color,
     textColor: Color,
     linkColor: Color,
@@ -156,6 +156,17 @@ private fun buildMessageCss(
     th { background: ${codeColor.toCssHex()}; font-weight: 600; }
     ul, ol { padding-left: 24px; margin: 4px 0; }
     li { margin: 2px 0; }
+    details { display: block; margin: 4px 0; }
+    details > summary {
+        display: block;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    details > .murexide-details-content {
+        display: block;
+        height: 0;
+        overflow: hidden;
+    }
     h1, h2, h3, h4, h5, h6 { margin: 12px 0 6px; line-height: 1.3; font-weight: 600; }
     h1 { font-size: 1.7em; } h2 { font-size: 1.45em; } h3 { font-size: 1.25em; }
     h4 { font-size: 1.1em; } h5, h6 { font-size: 1em; }

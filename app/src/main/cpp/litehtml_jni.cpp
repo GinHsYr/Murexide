@@ -12,12 +12,14 @@
 #include <vector>
 
 #include "litehtml.h"
+#include "litehtml/el_text.h"
 #include "litehtml/render_item.h"
 
 namespace {
 
 constexpr const char* kLogTag = "MurexideLiteHtml";
 constexpr float kMaxDocumentHeightCssPx = 250000.0F;
+constexpr const char* kDetailsContentClass = "murexide-details-content";
 
 void log_error(const char* message) {
     __android_log_write(ANDROID_LOG_ERROR, kLogTag, message);
@@ -122,6 +124,108 @@ float px(litehtml::pixel_t value) {
     return value.value();
 }
 
+class DisclosureMarkerText final : public litehtml::el_text {
+public:
+    explicit DisclosureMarkerText(const std::shared_ptr<litehtml::document>& document)
+        : el_text("", document) {}
+
+    void set_open(bool open, bool recompute) {
+        m_text = open ? "\xE2\x96\xBC\xC2\xA0" : "\xE2\x96\xB6\xC2\xA0";
+        if (recompute) compute_styles(false);
+    }
+};
+
+class DetailsElement final : public litehtml::html_tag {
+public:
+    explicit DetailsElement(const std::shared_ptr<litehtml::document>& document)
+        : html_tag(document) {}
+
+    void set_attr(const char* name, const char* value) override {
+        if (name != nullptr && std::string(name) == "open") {
+            open_ = true;
+        }
+        html_tag::set_attr(name, value);
+    }
+
+    const char* get_attr(const char* name, const char* default_value = nullptr) const override {
+        if (name != nullptr && std::string(name) == "open") {
+            return open_ ? "" : default_value;
+        }
+        return html_tag::get_attr(name, default_value);
+    }
+
+    void parse_attributes() override {
+        if (!initialized_) {
+            initialized_ = true;
+            initialize_disclosure();
+        }
+        html_tag::parse_attributes();
+    }
+
+    bool owns_summary(const litehtml::element::ptr& element) const {
+        return summary_ != nullptr && summary_ == element;
+    }
+
+    bool toggle() {
+        if (summary_ == nullptr) return false;
+        open_ = !open_;
+        apply_state(true);
+        return true;
+    }
+
+private:
+    void initialize_disclosure() {
+        for (const auto& child : m_children) {
+            if (child != nullptr && std::string(child->get_tagName()) == "summary") {
+                summary_ = child;
+                break;
+            }
+        }
+        // Invalid details without a direct summary stay expanded so their content is reachable.
+        if (summary_ == nullptr) return;
+
+        content_ = std::make_shared<litehtml::html_tag>(get_document());
+        content_->set_tagName("div");
+        content_->set_attr("class", kDetailsContentClass);
+
+        auto summary_tag = std::dynamic_pointer_cast<litehtml::html_tag>(summary_);
+        if (summary_tag == nullptr) return;
+        marker_ = std::make_shared<DisclosureMarkerText>(get_document());
+        marker_->parent(summary_);
+        summary_tag->children().insert(summary_tag->children().begin(), marker_);
+
+        auto original_children = m_children;
+        m_children.clear();
+        appendChild(summary_);
+        for (const auto& child : original_children) {
+            if (child != summary_) content_->appendChild(child);
+        }
+        appendChild(content_);
+        apply_state(false);
+    }
+
+    void apply_state(bool recompute) {
+        content_->set_attr(
+            "style",
+            open_ ? "display:block;height:auto;overflow:hidden"
+                  : "display:block;height:0;overflow:hidden");
+        marker_->set_open(open_, recompute);
+        if (recompute) {
+            content_->refresh_styles();
+            content_->compute_styles();
+            // litehtml cannot discover selectors that did not match during initial parsing.
+            content_->css_w().set_height(
+                open_ ? litehtml::css_length::predef_value() : litehtml::css_length(0));
+        }
+    }
+
+    bool initialized_ = false;
+    bool open_ = false;
+    litehtml::element::ptr summary_;
+    litehtml::element::ptr content_;
+    std::shared_ptr<DisclosureMarkerText> marker_;
+};
+
 class AndroidDocumentContainer final : public litehtml::document_container {
 public:
     AndroidDocumentContainer(JNIEnv* env, jobject view, float density, int default_font_size)
@@ -198,32 +302,32 @@ public:
 
     int hit_test(float x, float y) {
         std::lock_guard<std::recursive_mutex> guard(mutex_);
-        if (!document_ || !document_->root_render()) return 0;
-        auto element = document_->root_render()->get_element_by_point(x, y, x, y, nullptr);
-        while (element) {
-            const std::string tag = element->get_tagName();
-            if (tag == "img" && element->get_attr("src")) return 1;
-            if (tag == "a" && element->get_attr("href")) return 2;
-            element = element->parent();
-        }
-        return 0;
+        return find_hit_target(x, y).type;
     }
 
     void pointer_down(float x, float y) {
         std::lock_guard<std::recursive_mutex> guard(mutex_);
         if (!document_) return;
+        const auto target = find_hit_target(x, y);
+        active_details_ = target.details;
         document_->on_lbutton_down(x, y, x, y, [](const litehtml::position&) {});
     }
 
-    void pointer_up(float x, float y) {
+    bool pointer_up(float x, float y) {
         std::lock_guard<std::recursive_mutex> guard(mutex_);
-        if (!document_) return;
+        if (!document_) return false;
+        const auto target = find_hit_target(x, y);
         document_->on_lbutton_up(x, y, x, y, [](const litehtml::position&) {});
+        const bool details_state_changed = target.details != nullptr &&
+            target.details == active_details_ && target.details->toggle();
+        active_details_.reset();
+        return details_state_changed;
     }
 
     void pointer_cancel() {
         std::lock_guard<std::recursive_mutex> guard(mutex_);
         if (!document_) return;
+        active_details_.reset();
         document_->on_button_cancel([](const litehtml::position&) {});
     }
 
@@ -417,13 +521,17 @@ public:
     }
 
     bool on_element_click(const litehtml::element::ptr& element) override {
-        if (!element || std::string(element->get_tagName()) != "img") return false;
-        const char* src = element->get_attr("src");
-        if (src == nullptr) return false;
-        const std::string resolved = resolve_resource(src, nullptr);
-        if (resolved.empty()) return true;
-        dispatch_string(dispatch_image_method_, resolved.c_str());
-        return true;
+        if (!element) return false;
+        const std::string tag = element->get_tagName();
+        if (tag == "img") {
+            const char* src = element->get_attr("src");
+            if (src == nullptr) return false;
+            const std::string resolved = resolve_resource(src, nullptr);
+            if (resolved.empty()) return true;
+            dispatch_string(dispatch_image_method_, resolved.c_str());
+            return true;
+        }
+        return false;
     }
 
     void on_mouse_event(const litehtml::element::ptr&, litehtml::mouse_event) override {}
@@ -471,8 +579,13 @@ public:
         viewport = litehtml::position(0, 0, viewport_width_, std::max(document_height_, 1000));
     }
 
-    litehtml::element::ptr create_element(const char*, const litehtml::string_map&,
-                                          const std::shared_ptr<litehtml::document>&) override {
+    litehtml::element::ptr create_element(
+        const char* tag,
+        const litehtml::string_map&,
+        const std::shared_ptr<litehtml::document>& document) override {
+        if (tag != nullptr && std::string(tag) == "details") {
+            return std::make_shared<DetailsElement>(document);
+        }
         return nullptr;
     }
 
@@ -497,6 +610,27 @@ public:
     void end_draw() { active_canvas_ = nullptr; }
 
 private:
+    struct HitTarget {
+        int type = 0;
+        std::shared_ptr<DetailsElement> details;
+    };
+
+    HitTarget find_hit_target(float x, float y) const {
+        if (!document_ || !document_->root_render()) return {};
+        auto element = document_->root_render()->get_element_by_point(x, y, x, y, nullptr);
+        while (element) {
+            const std::string tag = element->get_tagName();
+            if (tag == "img" && element->get_attr("src")) return {1, nullptr};
+            if (tag == "a" && element->get_attr("href")) return {2, nullptr};
+            if (tag == "summary") {
+                auto details = std::dynamic_pointer_cast<DetailsElement>(element->parent());
+                if (details != nullptr && details->owns_summary(element)) return {3, details};
+            }
+            element = element->parent();
+        }
+        return {};
+    }
+
     jmethodID method(JNIEnv* env, const char* name, const char* signature) {
         jmethodID result = env->GetMethodID(view_class_, name, signature);
         if (result == nullptr) clear_exception(env);
@@ -599,6 +733,7 @@ private:
     std::recursive_mutex mutex_;
     std::unordered_map<std::string, std::pair<int, int>> image_sizes_;
     litehtml::document::ptr document_;
+    std::shared_ptr<DetailsElement> active_details_;
 
     jmethodID create_font_method_ = nullptr;
     jmethodID delete_font_method_ = nullptr;
@@ -685,10 +820,10 @@ Java_com_juhao_murexide_ui_components_litehtml_LiteHtmlView_nativePointerDown(
     if (handle != 0) renderer(handle)->pointer_down(x, y);
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_juhao_murexide_ui_components_litehtml_LiteHtmlView_nativePointerUp(
     JNIEnv*, jobject, jlong handle, jfloat x, jfloat y) {
-    if (handle != 0) renderer(handle)->pointer_up(x, y);
+    return handle != 0 && renderer(handle)->pointer_up(x, y) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL
