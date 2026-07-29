@@ -3,6 +3,7 @@ package com.juhao.murexide.ui.chat
 import android.net.Uri
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.TextRange
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
@@ -34,6 +35,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +47,28 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+
+@Immutable
+internal data class ChatComposerState(
+    val text: String = "",
+    val selectionStart: Int = 0,
+    val selectionEnd: Int = 0,
+    val mentions: List<MentionToken> = emptyList()
+)
+
+internal fun ChatUiState.withoutComposerFields(): ChatUiState = copy(
+    inputText = "",
+    inputSelectionStart = 0,
+    inputSelectionEnd = 0,
+    mentions = emptyList()
+)
+
+internal fun ChatUiState.toComposerState(): ChatComposerState = ChatComposerState(
+    text = inputText,
+    selectionStart = inputSelectionStart,
+    selectionEnd = inputSelectionEnd,
+    mentions = mentions
+)
 
 class ChatViewModel(
     val token: String,
@@ -70,6 +97,22 @@ class ChatViewModel(
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    val screenState: StateFlow<ChatUiState> = _uiState
+        .map(ChatUiState::withoutComposerFields)
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = _uiState.value.withoutComposerFields()
+        )
+    internal val composerState: StateFlow<ChatComposerState> = _uiState
+        .map(ChatUiState::toComposerState)
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = _uiState.value.toComposerState()
+        )
 
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()

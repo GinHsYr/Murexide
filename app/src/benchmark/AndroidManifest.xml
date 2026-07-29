@@ -6,5 +6,9 @@
             android:name=".ui.components.litehtml.LiteHtmlBenchmarkActivity"
             android:exported="true"
             android:theme="@style/Theme.Murexide" />
+        <activity
+            android:name=".ui.chat.DefaultEmojiBenchmarkActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Murexide" />
     </application>
 </manifest>

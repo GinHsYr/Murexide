@@ -153,6 +153,56 @@ private suspend fun View.measureShownImeHeight(): Int? {
     }
 }
 
+/** Keeps per-keystroke state reads inside the composer restart scope. */
+@Composable
+private fun ChatComposer(
+    viewModel: ChatViewModel,
+    defaultEmojis: List<DefaultEmoji>,
+    chatType: Int,
+    isSending: Boolean,
+    isEmojiPanelVisible: Boolean,
+    onEmojiClick: () -> Unit,
+    isInstructionPanelVisible: Boolean,
+    onInstructionClick: () -> Unit,
+    onAddImageClick: () -> Unit,
+    onAddVideoClick: () -> Unit,
+    onAddFileClick: () -> Unit,
+    focusRequester: FocusRequester,
+    onInputFocused: () -> Unit
+) {
+    val composerState by viewModel.composerState.collectAsState()
+    MessageInput(
+        inputText = composerState.text,
+        inputSelectionStart = composerState.selectionStart,
+        inputSelectionEnd = composerState.selectionEnd,
+        defaultEmojis = defaultEmojis,
+        isSending = isSending,
+        onTextChange = { text, mentions, selectionStart, selectionEnd ->
+            viewModel.updateInputText(
+                text = text,
+                mentions = mentions,
+                selectionStart = selectionStart,
+                selectionEnd = selectionEnd
+            )
+        },
+        onSendClick = { viewModel.sendMessage() },
+        onSendWithType = { type -> viewModel.sendMessage(type) },
+        onAddImageClick = onAddImageClick,
+        onAddVideoClick = onAddVideoClick,
+        onAddFileClick = onAddFileClick,
+        isEmojiPanelVisible = isEmojiPanelVisible,
+        onEmojiClick = onEmojiClick,
+        isInstructionPanelVisible = isInstructionPanelVisible,
+        onInstructionClick = onInstructionClick,
+        mentions = composerState.mentions,
+        onMentionTriggered = { position ->
+            if (chatType == 2) viewModel.showMentionPicker(position)
+        },
+        focusRequester = focusRequester,
+        onInputFocused = onInputFocused
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
     ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class,
     ExperimentalMaterial3ExpressiveApi::class
@@ -173,7 +223,7 @@ fun ChatScreen(
     val defaultEmojis = remember(context) { DefaultEmojiCatalog.load(context.assets) }
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.screenState.collectAsState()
     val expressions by viewModel.stickerPanel.collectAsState()
     val instructionPanel = uiState.instructionPanel
     val instructionForm by viewModel.instructionForm.collectAsState()
@@ -1118,22 +1168,11 @@ fun ChatScreen(
                                 }
                             }
 
-                            MessageInput(
-                                inputText = uiState.inputText,
-                                inputSelectionStart = uiState.inputSelectionStart,
-                                inputSelectionEnd = uiState.inputSelectionEnd,
+                            ChatComposer(
+                                viewModel = viewModel,
                                 defaultEmojis = defaultEmojis,
+                                chatType = chatType,
                                 isSending = uiState.isSending,
-                                onTextChange = { text, mentions, selectionStart, selectionEnd ->
-                                    viewModel.updateInputText(
-                                        text = text,
-                                        mentions = mentions,
-                                        selectionStart = selectionStart,
-                                        selectionEnd = selectionEnd
-                                    )
-                                },
-                                onSendClick = { viewModel.sendMessage() },
-                                onSendWithType = { type -> viewModel.sendMessage(type) },
                                 onAddImageClick = { openImagePicker() },
                                 onAddVideoClick = { openVideoPicker() },
                                 onAddFileClick = { openFilePicker() },
@@ -1146,12 +1185,6 @@ fun ChatScreen(
                                         pendingInputPanel == ChatInputPanel.Instruction,
                                 onInstructionClick = {
                                     requestInputPanel(ChatInputPanel.Instruction)
-                                },
-                                mentions = uiState.mentions,
-                                onMentionTriggered = { pos ->
-                                    if (chatType == 2) {
-                                        viewModel.showMentionPicker(pos)
-                                    }
                                 },
                                 focusRequester = inputFocusRequester,
                                 onInputFocused = {

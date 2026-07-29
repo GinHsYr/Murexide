@@ -12,8 +12,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.Undo
@@ -32,13 +30,11 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
@@ -47,7 +43,6 @@ import coil.request.videoFrameMillis
 import com.juhao.murexide.data.MessageButton
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.DefaultEmojiCatalog
-import com.juhao.murexide.data.DefaultEmojiParser
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.ImageViewerSourceBounds
@@ -447,108 +442,21 @@ fun MessageBubble(
                                                     }
                                                 )
                                             } else {
-                                                val timeId = remember { "time_${message.msgId}" }
-                                                val textMeasurer = rememberTextMeasurer()
-                                                
                                                 val timeText = remember(timestampDisplay, message.isEdited) {
                                                     buildString {
                                                         append(timestampDisplay)
                                                         if (message.isEdited) append(" 已编辑")
                                                     }
                                                 }
-                                                
-                                                val density = LocalDensity.current
-                                                val textStyle = MaterialTheme.typography.labelSmall
-                                                val timeWidthSp = remember(timeText) {
-                                                    val widthPx = textMeasurer.measure(
-                                                        text = AnnotatedString(timeText),
-                                                        style = textStyle
-                                                    ).size.width
-                                                    with(density) { widthPx.toSp() }
-                                                }
-                                                
-                                                val emojiMatches = remember(message.content, defaultEmojis) {
-                                                    DefaultEmojiParser.findMatches(
-                                                        text = message.content,
-                                                        emojis = defaultEmojis
-                                                    )
-                                                }
-
-                                                val textWithTime = remember(
-                                                    message.content,
-                                                    message.msgId,
-                                                    emojiMatches,
-                                                    timeId
-                                                ) {
-                                                    buildAnnotatedString {
-                                                        var cursor = 0
-                                                        emojiMatches.forEachIndexed { index, match ->
-                                                            append(message.content.substring(cursor, match.start))
-                                                            appendInlineContent(
-                                                                id = "emoji_${message.msgId}_$index",
-                                                                alternateText = match.emoji.marker
-                                                            )
-                                                            cursor = match.endExclusive
-                                                        }
-                                                        append(message.content.substring(cursor))
-                                                        append(" ")
-                                                        appendInlineContent(timeId, " ")
-                                                    }
-                                                }
-                                                
-                                                val inlineContent = buildMap {
-                                                    emojiMatches.forEachIndexed { index, match ->
-                                                        put(
-                                                            "emoji_${message.msgId}_$index",
-                                                            InlineTextContent(
-                                                                placeholder = Placeholder(
-                                                                    width = 1.2.em,
-                                                                    height = 1.2.em,
-                                                                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
-                                                                )
-                                                            ) {
-                                                                AsyncImage(
-                                                                    model = match.emoji.assetUri,
-                                                                    contentDescription = match.emoji.name,
-                                                                    modifier = Modifier.fillMaxSize(),
-                                                                    contentScale = ContentScale.Fit
-                                                                )
-                                                            }
-                                                        )
-                                                    }
-                                                    put(timeId, InlineTextContent(
-                                                        placeholder = Placeholder(
-                                                            width = timeWidthSp,
-                                                            height = 1.em,
-                                                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextBottom
-                                                        )
-                                                    ) {
-                                                        Row (
-                                                            modifier = Modifier.wrapContentWidth(unbounded = true)
-                                                        ) {
-                                                            Text(
-                                                                text = timestampDisplay,
-                                                                style = MaterialTheme.typography.labelSmall,
-                                                                maxLines = 1,
-                                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                                            )
-                                                            if (message.isEdited) {
-                                                                Text(
-                                                                    text = " 已编辑",
-                                                                    style = MaterialTheme.typography.labelSmall,
-                                                                    maxLines = 1,
-                                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                                                )
-                                                            }
-                                                        }
-                                                    })
-                                                }
-                                                
-                                                Text(
-                                                    text = textWithTime,
-                                                    inlineContent = inlineContent,
-                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                BatchedDefaultEmojiText(
+                                                    text = message.content,
+                                                    timestampText = timeText,
+                                                    emojis = defaultEmojis,
+                                                    bodyStyle = MaterialTheme.typography.bodyMedium.copy(
                                                         color = MaterialTheme.colorScheme.onSurface
+                                                    ),
+                                                    timestampStyle = MaterialTheme.typography.labelSmall.copy(
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                                     )
                                                 )
                                             }
