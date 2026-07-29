@@ -5,6 +5,12 @@ import androidx.compose.ui.text.input.TextFieldValue
 import com.juhao.murexide.data.MentionToken
 
 object MentionUtils {
+    data class TextEdit(
+        val start: Int,
+        val beforeCount: Int,
+        val afterCount: Int
+    )
+
     data class EditResult(
         val value: TextFieldValue,
         val mentions: List<MentionToken>,
@@ -90,7 +96,8 @@ object MentionUtils {
         old: TextFieldValue,
         new: TextFieldValue,
         mentions: List<MentionToken>,
-        protectedRanges: List<TextRange> = emptyList()
+        protectedRanges: List<TextRange> = emptyList(),
+        textEdit: TextEdit? = null
     ): EditResult {
         val currentMentions = validMentions(old.text, mentions)
         val currentProtectedRanges = validProtectedRanges(old.text, protectedRanges)
@@ -116,16 +123,31 @@ object MentionUtils {
         val oldText = old.text
         val newText = new.text
 
-        var prefix = 0
-        val minLen = minOf(oldText.length, newText.length)
-        while (prefix < minLen && oldText[prefix] == newText[prefix]) prefix++
-        var suffix = 0
-        while (suffix < minLen - prefix &&
-            oldText[oldText.length - 1 - suffix] == newText[newText.length - 1 - suffix]
-        ) suffix++
-        val delStart = prefix
-        val delEnd = oldText.length - suffix
-        val inserted = newText.substring(prefix, newText.length - suffix)
+        val validatedTextEdit = textEdit?.takeIf { edit ->
+            isValidTextEdit(oldText, newText, edit)
+        }
+        val delStart: Int
+        val delEnd: Int
+        val inserted: String
+        if (validatedTextEdit != null) {
+            delStart = validatedTextEdit.start
+            delEnd = delStart + validatedTextEdit.beforeCount
+            inserted = newText.substring(
+                delStart,
+                delStart + validatedTextEdit.afterCount
+            )
+        } else {
+            var prefix = 0
+            val minLen = minOf(oldText.length, newText.length)
+            while (prefix < minLen && oldText[prefix] == newText[prefix]) prefix++
+            var suffix = 0
+            while (suffix < minLen - prefix &&
+                oldText[oldText.length - 1 - suffix] == newText[newText.length - 1 - suffix]
+            ) suffix++
+            delStart = prefix
+            delEnd = oldText.length - suffix
+            inserted = newText.substring(prefix, newText.length - suffix)
+        }
 
         if (delStart == delEnd) {
             for (range in atomicRanges) {
@@ -289,6 +311,17 @@ object MentionUtils {
                 null
             }
         }.distinct().sortedBy { it.start }
+    }
+
+    private fun isValidTextEdit(oldText: String, newText: String, edit: TextEdit): Boolean {
+        if (edit.start < 0 || edit.beforeCount < 0 || edit.afterCount < 0) return false
+        val oldEnd = edit.start + edit.beforeCount
+        val newEnd = edit.start + edit.afterCount
+        if (oldEnd > oldText.length || newEnd > newText.length) return false
+        if (oldText.length - edit.beforeCount + edit.afterCount != newText.length) return false
+        if (!oldText.regionMatches(0, newText, 0, edit.start)) return false
+        val suffixLength = oldText.length - oldEnd
+        return oldText.regionMatches(oldEnd, newText, newEnd, suffixLength)
     }
 
     private fun clampSelection(

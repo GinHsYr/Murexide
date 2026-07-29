@@ -11,8 +11,11 @@ import android.text.TextWatcher
 import android.text.style.ReplacementSpan
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputConnectionWrapper
 import android.view.inputmethod.InputMethodManager
 import android.text.InputType
 import androidx.appcompat.widget.AppCompatEditText
@@ -105,10 +108,11 @@ private class DefaultEmojiSpan(
     }
 }
 
-private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context) {
+internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(context) {
     private var ready = false
     private var internalChange = false
     private var textChangeInProgress = false
+    private var pendingTextEdit: MentionUtils.TextEdit? = null
     private var previousValue = TextFieldValue("")
     private var currentMentions: List<MentionToken> = emptyList()
     private var currentEmojis: List<DefaultEmoji> = emptyList()
@@ -161,6 +165,11 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
             ) {
                 if (internalChange) return
                 textChangeInProgress = true
+                pendingTextEdit = MentionUtils.TextEdit(
+                    start = start,
+                    beforeCount = count,
+                    afterCount = after
+                )
                 previousValue = TextFieldValue(
                     text = text?.toString().orEmpty(),
                     selection = currentSelection(text?.length ?: 0)
@@ -176,6 +185,8 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
 
             override fun afterTextChanged(editable: Editable?) {
                 if (internalChange || editable == null) return
+                val textEdit = pendingTextEdit
+                pendingTextEdit = null
 
                 val oldText = previousValue.text
                 val rawText = editable.toString()
@@ -187,14 +198,32 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
                     old = previousValue,
                     new = rawValue,
                     mentions = currentMentions,
-                    protectedRanges = currentProtectedRanges
+                    protectedRanges = currentProtectedRanges,
+                    textEdit = textEdit
                 )
 
+                val textWasCorrected = rawText != result.value.text
                 internalChange = true
-                if (rawText != result.value.text) {
-                    editable.replace(0, editable.length, result.value.text)
+                if (textWasCorrected) {
+                    replaceTextPreservingSpans(
+                        editable = editable,
+                        oldText = rawText,
+                        newText = result.value.text
+                    )
                 }
-                updateEmojiSpans(editable, oldText, result.value.text)
+                if (textWasCorrected) {
+                    // Repeated adjacent markers make a text-only diff ambiguous: deleting
+                    // the middle marker looks identical to deleting the last one.
+                    currentEmojiMatches = DefaultEmojiParser.findMatches(
+                        result.value.text,
+                        currentEmojis
+                    )
+                    refreshProtectedRanges()
+                    rebuildEmojiSpans(editable, currentEmojiMatches)
+                    spansInitialized = true
+                } else {
+                    updateEmojiSpans(editable, oldText, result.value.text)
+                }
                 setSelectionSafely(result.value.selection, editable.length)
                 internalChange = false
                 textChangeInProgress = false
@@ -243,6 +272,50 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
                 inputMethodManager?.showSoftInput(this, 0)
             }
         }
+    }
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val target = super.onCreateInputConnection(outAttrs) ?: return null
+        return object : InputConnectionWrapper(target, false) {
+            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+                return deleteSingleDefaultEmoji(beforeLength, afterLength) ||
+                    super.deleteSurroundingText(beforeLength, afterLength)
+            }
+
+            override fun deleteSurroundingTextInCodePoints(
+                beforeLength: Int,
+                afterLength: Int
+            ): Boolean {
+                return deleteSingleDefaultEmoji(beforeLength, afterLength) ||
+                    super.deleteSurroundingTextInCodePoints(beforeLength, afterLength)
+            }
+        }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val deletedEmoji = when (keyCode) {
+            KeyEvent.KEYCODE_DEL -> deleteSingleDefaultEmoji(beforeLength = 1, afterLength = 0)
+            KeyEvent.KEYCODE_FORWARD_DEL ->
+                deleteSingleDefaultEmoji(beforeLength = 0, afterLength = 1)
+            else -> false
+        }
+        return deletedEmoji || super.onKeyDown(keyCode, event)
+    }
+
+    private fun deleteSingleDefaultEmoji(beforeLength: Int, afterLength: Int): Boolean {
+        if (beforeLength <= 0 && afterLength <= 0) return false
+        val cursor = selectionStart
+        if (cursor < 0 || cursor != selectionEnd) return false
+
+        // Some IMEs request deletion on both sides of the cursor. At an emoji boundary,
+        // give the backward direction priority so one backspace removes exactly one span.
+        val range = when {
+            beforeLength > 0 -> currentProtectedRanges.lastOrNull { it.end == cursor }
+            afterLength > 0 -> currentProtectedRanges.firstOrNull { it.start == cursor }
+            else -> null
+        } ?: return false
+        editableText.delete(range.start, range.end)
+        return true
     }
 
     fun bind(
@@ -294,7 +367,11 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         val heightChanged = lastEmojiHeight != cachedEmojiHeight
         internalChange = true
         if (textChanged) {
-            setText(value.text)
+            replaceTextPreservingSpans(
+                editable = editableText,
+                oldText = currentText,
+                newText = value.text
+            )
         }
         if (emojisChanged || textChanged || heightChanged || !spansInitialized) {
             if (emojisChanged || heightChanged || !spansInitialized) {
@@ -310,7 +387,41 @@ private class DefaultEmojiEditText(context: Context) : AppCompatEditText(context
         setSelectionSafely(value.selection, value.text.length)
         internalChange = false
         textChangeInProgress = false
+        pendingTextEdit = null
         previousValue = value
+    }
+
+    /**
+     * Keeps spans outside the changed text range attached while synchronizing corrected
+     * edits or external Compose state.
+     * Replacing the whole text would discard every existing emoji span, even though the
+     * incremental updater below only rebuilds spans intersecting the edited range.
+     */
+    private fun replaceTextPreservingSpans(
+        editable: Editable,
+        oldText: String,
+        newText: String
+    ) {
+        val prefixLength = oldText.commonPrefixWith(newText).length
+        var suffixLength = 0
+        val maxSuffixLength = minOf(
+            oldText.length - prefixLength,
+            newText.length - prefixLength
+        )
+        while (
+            suffixLength < maxSuffixLength &&
+            oldText[oldText.lastIndex - suffixLength] == newText[newText.lastIndex - suffixLength]
+        ) {
+            suffixLength++
+        }
+
+        editable.replace(
+            prefixLength,
+            oldText.length - suffixLength,
+            newText,
+            prefixLength,
+            newText.length - suffixLength
+        )
     }
 
     override fun onSelectionChanged(selectionStart: Int, selectionEnd: Int) {
