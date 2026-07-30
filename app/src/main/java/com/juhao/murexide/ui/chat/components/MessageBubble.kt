@@ -62,6 +62,12 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.core.graphics.toColorInt
 
+internal fun resolveSenderDisplayName(senderName: String, isMine: Boolean): String = when {
+    senderName.isNotEmpty() -> senderName
+    isMine -> "我"
+    else -> "原发送者"
+}
+
 @Composable
 fun MessageBubble(
     message: MessageItem,
@@ -269,12 +275,10 @@ fun MessageBubble(
                                 modifier = Modifier.padding(if (hideCard) 0.dp else 8.dp),
                                 horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
                             ) {
-                                val displayName = when {
-                                    hideSenderInfo && anonymousNameProvider != null ->
-                                        anonymousNameProvider(message.senderId)
-                                    message.senderName.isNotBlank() -> message.senderName
-                                    isMine -> "我"
-                                    else -> "原发送者"
+                                val displayName = if (hideSenderInfo && anonymousNameProvider != null) {
+                                    anonymousNameProvider(message.senderId)
+                                } else {
+                                    resolveSenderDisplayName(message.senderName, isMine)
                                 }
                                 
                                 if (!hideCard && (message.isRecalled || (!isMine && isLastFromSender))) {
