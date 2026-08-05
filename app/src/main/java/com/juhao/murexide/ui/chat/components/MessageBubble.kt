@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -78,6 +79,7 @@ fun MessageBubble(
     onRecall: () -> Unit = {},
     onEdit: () -> Unit = {},
     onReply: () -> Unit = {},
+    onForward: () -> Unit = {},
     onQuoteClick: ((MessageItem) -> Unit)? = null,
     isAdmin: Boolean = false,
     isLastFromSender: Boolean = true,
@@ -1021,7 +1023,22 @@ fun MessageBubble(
                                 Icon(Icons.Rounded.FormatQuote, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                         )
-    
+
+                        DropdownMenuItem(
+                            text = { Text("转发") },
+                            onClick = {
+                                showMenuChanged(null)
+                                onForward()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.Redo,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        )
+
                         if (isMine || isAdmin) {
                             DropdownMenuItem(
                                 text = { Text("撤回") },

@@ -74,6 +74,7 @@ import com.juhao.murexide.ui.chat.components.GroupMemberSheet
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.DefaultEmoji
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.ForwardTarget
 import com.juhao.murexide.data.DefaultEmojiCatalog
 import com.juhao.murexide.data.resolveStickerMessageUrl
 import kotlinx.coroutines.FlowPreview
@@ -215,6 +216,7 @@ fun ChatScreen(
     chatAvatar: String,
     chatId: String,
     onBackClick: () -> Unit = {},
+    onOpenConversation: (ForwardTarget) -> Unit = {},
     bigScreenMode: Boolean = false,
     viewModel: ChatViewModel
 ) {
@@ -224,6 +226,24 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
     val uiState by viewModel.screenState.collectAsState()
+    val forwardViewModel: ForwardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        key = "forward_${chatType}_$chatId",
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return ForwardViewModel(token = viewModel.token) as T
+            }
+        }
+    )
+    val forwardState by forwardViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val forwardSendingState = rememberUpdatedState(forwardState.isSending)
+    val forwardSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = false,
+        confirmValueChange = { value ->
+            value != SheetValue.Hidden || !forwardSendingState.value
+        }
+    )
     val expressions by viewModel.stickerPanel.collectAsState()
     val instructionPanel = uiState.instructionPanel
     val instructionForm by viewModel.instructionForm.collectAsState()
@@ -438,6 +458,66 @@ fun ChatScreen(
 
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
+
+    fun openForward(messages: List<MessageItem>) {
+        val validMessages = messages.filter {
+            it.msgId.isNotBlank() &&
+                !it.isRecalled &&
+                it.contentType != MessageItem.CONTENT_TYPE_TIP
+        }
+        if (validMessages.size != messages.size) {
+            Toast.makeText(context, "已撤回或提示消息不可转发", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (validMessages.isEmpty()) return
+        forwardViewModel.open(
+            sourceChatType = chatType,
+            sourceMsgIds = validMessages.map { it.msgId }.distinct()
+        )
+    }
+
+    fun dismissForward() {
+        scope.launch {
+            if (forwardSheetState.isVisible) forwardSheetState.hide()
+            forwardViewModel.close()
+        }
+    }
+
+    LaunchedEffect(forwardState.isOpen) {
+        if (forwardState.isOpen && !forwardSheetState.isVisible) {
+            forwardSheetState.show()
+        } else if (!forwardState.isOpen && forwardSheetState.isVisible) {
+            forwardSheetState.hide()
+        }
+    }
+
+    LaunchedEffect(forwardViewModel) {
+        forwardViewModel.events.collect { event ->
+            when (event) {
+                is ForwardEvent.SourceForwarded -> viewModel.removeForwardedMessage(event.msgId)
+                is ForwardEvent.Completed -> {
+                    viewModel.exitSelectionMode()
+                    if (forwardSheetState.isVisible) forwardSheetState.hide()
+                    forwardViewModel.close()
+                    viewModel.refresh()
+
+                    val target = event.recipients.singleOrNull()
+                    val result = snackbarHostState.showSnackbar(
+                        message = if (target == null) {
+                            "消息已转发到${event.recipients.size}个对话当中"
+                        } else {
+                            "消息已转发到${target.displayName}中"
+                        },
+                        actionLabel = target?.let { "查看" },
+                        duration = if (target == null) SnackbarDuration.Short else SnackbarDuration.Long
+                    )
+                    if (result == SnackbarResult.ActionPerformed && target != null) {
+                        onOpenConversation(target)
+                    }
+                }
+            }
+        }
+    }
     
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
@@ -625,9 +705,22 @@ fun ChatScreen(
             onDismiss = { showScreenshotSheet = false }
         )
     }
+
+    if (forwardState.isOpen) {
+        ForwardBottomSheet(
+            state = forwardState,
+            sheetState = forwardSheetState,
+            onDismiss = ::dismissForward,
+            onQueryChange = forwardViewModel::updateQuery,
+            onRetry = forwardViewModel::retryLoad,
+            onTargetClick = forwardViewModel::toggleTarget,
+            onSend = forwardViewModel::send
+        )
+    }
     
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Box(modifier = Modifier.fillMaxWidth()) {
                 Box(
@@ -1011,7 +1104,9 @@ fun ChatScreen(
                                 Spacer(modifier = Modifier.width(16.dp))
                             }
                             TextButton(
-                                onClick = { /* 转发选中消息 */ },
+                                onClick = {
+                                    openForward(uiState.messages.asReversed().filter { it in selectedMessages })
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Row(
@@ -1398,6 +1493,7 @@ fun ChatScreen(
                             onRecall = { viewModel.showRecallDialog(message.msgId) },
                             onEdit = { viewModel.startEditMessage(message) },
                             onReply = { viewModel.setReplyTo(message) },
+                            onForward = { openForward(listOf(message)) },
                             onQuoteClick = { quotedMessage ->
                                 val quoteMsgId = quotedMessage.quoteMsgId
                                 if (!quoteMsgId.isNullOrBlank()) {

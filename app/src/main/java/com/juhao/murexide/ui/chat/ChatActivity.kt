@@ -59,6 +59,17 @@ class ChatActivity : ComponentActivity() {
                         chatId = chatId,
                         chatAvatar = chatAvatar,
                         onBackClick = { finish() },
+                        onOpenConversation = { target ->
+                            if (target.chatId != chatId || target.chatType != chatType) {
+                                ChatActivity.start(
+                                    context = this@ChatActivity,
+                                    chatId = target.chatId,
+                                    chatType = target.chatType,
+                                    chatName = target.displayName,
+                                    chatAvatar = target.avatarUrl
+                                )
+                            }
+                        },
                         viewModel = viewModel(
                             factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                 @Suppress("UNCHECKED_CAST")

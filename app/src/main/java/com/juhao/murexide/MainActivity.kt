@@ -273,6 +273,9 @@ fun MainScreen(account: UserAccount) {
                                     chatType = currentConversation!!.chatType,
                                     chatId = currentConversation!!.chatId,
                                     onBackClick = { currentConversation = null },
+                                    onOpenConversation = { target ->
+                                        currentConversation = target.toConversationItem()
+                                    },
                                     bigScreenMode = true,
                                     viewModel = viewModel(
                                         key = "chat_" + currentConversation!!.chatId,

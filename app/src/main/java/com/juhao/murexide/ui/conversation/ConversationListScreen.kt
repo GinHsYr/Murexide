@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.R
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.StickyItem
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.components.*
 import java.text.SimpleDateFormat
