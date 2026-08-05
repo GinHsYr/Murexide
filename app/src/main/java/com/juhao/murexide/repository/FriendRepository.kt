@@ -139,11 +139,13 @@ class FriendRepository {
     /**
      * 处理申请/邀请。
      * agree: 1-同意，2-拒绝；服务端还会使用 3/4 表示过期或群聊已解散。
+     * 进群邀请、机器人邀请走 /group/agree-invite；进群申请、加好友走 /friend/agree-apply。
      */
     suspend fun respondToRequest(
         token: String,
         requestId: Int,
-        agree: Int
+        agree: Int,
+        usesGroupAgreeInvite: Boolean
     ): Result<DeleteFriendResponse> {
         return withContext(Dispatchers.IO) {
             try {
@@ -153,8 +155,13 @@ class FriendRepository {
                 }
                 val requestBody = json.encodeToString(params)
                     .toRequestBody("application/json".toMediaType())
+                val url = if (usesGroupAgreeInvite) {
+                    "$baseUrl/v1/group/agree-invite"
+                } else {
+                    "$baseUrl/v1/friend/agree-apply"
+                }
                 val httpRequest = Request.Builder()
-                    .url("$baseUrl/v1/friend/agree-apply")
+                    .url(url)
                     .post(requestBody)
                     .header("token", token)
                     .build()

@@ -87,6 +87,8 @@ class ContactViewModel(
 
     fun respondToRequest(requestId: Int, accept: Boolean) {
         if (requestId in _uiState.value.processingRequestIds) return
+        val request = _uiState.value.requests.firstOrNull { it.requestId == requestId }
+            ?: return
 
         viewModelScope.launch {
             _uiState.update {
@@ -96,7 +98,8 @@ class ContactViewModel(
             repository.respondToRequest(
                 token = token,
                 requestId = requestId,
-                agree = if (accept) 1 else 2
+                agree = if (accept) 1 else 2,
+                usesGroupAgreeInvite = request.usesGroupAgreeInvite
             ).onSuccess {
                 _uiState.update { state ->
                     state.copy(
