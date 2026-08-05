@@ -1672,7 +1672,19 @@ class ChatViewModel(
             }
         }
     }
-    
+
+    fun removeForwardedMessage(msgId: String) {
+        if (msgId.isBlank()) return
+        _uiState.update { state ->
+            if (msgId !in state.selectedMessages.map { it.msgId }) return@update state
+            val remaining = state.selectedMessages.filterNot { it.msgId == msgId }.toSet()
+            state.copy(
+                selectionMode = remaining.isNotEmpty(),
+                selectedMessages = remaining
+            )
+        }
+    }
+
     fun exitSelectionMode() {
         _uiState.update {
             it.copy(

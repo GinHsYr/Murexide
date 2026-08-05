@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.LatestMessageRelation
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.StickyItem
 import com.juhao.murexide.data.findConversationFor
 import com.juhao.murexide.data.mergeRefreshedConversations
 import com.juhao.murexide.data.relationToLatest
@@ -25,17 +26,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.ui.theme.UiCache
 import com.juhao.murexide.utils.AppForegroundState
-import kotlinx.serialization.json.Json
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import okhttp3.MediaType.Companion.toMediaType
 
 sealed class ConversationUiState {
     object Loading : ConversationUiState()
@@ -45,28 +38,6 @@ sealed class ConversationUiState {
     ) : ConversationUiState()
     data class Error(val message: String) : ConversationUiState()
 }
-
-@Serializable
-data class StickyItem(
-    val id: Long,
-    val chatType: Int,
-    val chatId: String,
-    val chatName: String,
-    val avatarUrl: String,
-    val certificationLevel: Int
-)
-
-@Serializable
-data class StickyListResponse(
-    val code: Int,
-    val data: StickyData? = null,
-    val msg: String
-)
-
-@Serializable
-data class StickyData(
-    val sticky: List<StickyItem> = emptyList()
-)
 
 class ConversationViewModel(
     private val token: String,
@@ -86,7 +57,6 @@ class ConversationViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
     
-    private val json = Json { ignoreUnknownKeys = true }
     private var stickyConversations: List<StickyItem> = emptyList()
     private var loadJob: Job? = null
     private var loadGeneration = 0
@@ -313,6 +283,7 @@ class ConversationViewModel(
         val state = _uiState.value
         if (state is ConversationUiState.Success) {
             UiCache.conversation.value = state.conversations
+            UiCache.stickyConversations.value = state.stickyConversations
         }
     }
 
@@ -441,39 +412,21 @@ class ConversationViewModel(
 
     private fun fetchStickyList() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val requestBody = "{}".toRequestBody("application/json".toMediaType())
-                    val request = Request.Builder()
-                        .url("${NetworkClient.BASE_URL}/v1/sticky/list")
-                        .post(requestBody)
-                        .header("token", token)
-                        .build()
-
-                    NetworkClient.okHttpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            val body = response.body.string()
-                            Log.d("ConversationViewModel", "Sticky list response: $body")
-                            val stickyResponse = json.decodeFromString<StickyListResponse>(body)
-                            if (stickyResponse.code == 1) {
-                                val stickyList = stickyResponse.data?.sticky ?: emptyList()
-                                stickyConversations = stickyList
-                                _uiState.update { state ->
-                                    if (state is ConversationUiState.Success) {
-                                        state.copy(stickyConversations = stickyList)
-                                    } else {
-                                        state
-                                    }
-                                }
-                            }
+            repository.getStickyList(token)
+                .onSuccess { stickyList ->
+                    stickyConversations = stickyList
+                    _uiState.update { state ->
+                        if (state is ConversationUiState.Success) {
+                            state.copy(stickyConversations = stickyList)
                         } else {
-                            Log.e("ConversationViewModel", "Sticky list error: ${response.code}")
+                            state
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e("ConversationViewModel", "Failed to fetch sticky list", e)
+                    UiCache.stickyConversations.value = stickyList
                 }
-            }
+                .onFailure { error ->
+                    Log.w("ConversationViewModel", "Failed to fetch sticky list", error)
+                }
         }
     }
 

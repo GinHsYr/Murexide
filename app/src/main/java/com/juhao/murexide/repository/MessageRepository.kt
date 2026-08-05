@@ -18,10 +18,46 @@ import com.juhao.murexide.proto.button_report_send
 import com.juhao.murexide.proto.button_report
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
+
+@Serializable
+data class ForwardReceiveRequest(
+    val chatId: String,
+    val chatType: Int
+)
+
+@Serializable
+internal data class ForwardMessageRequest(
+    val msgId: String,
+    val chatType: Int,
+    val receive: List<ForwardReceiveRequest>
+)
+
+@Serializable
+private data class ForwardStatusResponse(
+    val code: Int = 0,
+    val msg: String = ""
+)
+
+private val forwardJson = Json { ignoreUnknownKeys = true }
+
+internal fun createForwardMessageJson(
+    msgId: String,
+    chatType: Int,
+    recipients: List<ForwardReceiveRequest>
+): String = forwardJson.encodeToString(
+    ForwardMessageRequest(
+        msgId = msgId,
+        chatType = chatType,
+        receive = recipients
+    )
+)
 
 internal fun createRecallMessageRequest(
     msgId: String,
@@ -98,9 +134,10 @@ internal fun createSendMessageRequest(
     )
 }
 
-class MessageRepository {
-    private val client = NetworkClient.okHttpClient
-    private val baseUrl = NetworkClient.BASE_URL
+class MessageRepository(
+    private val client: OkHttpClient = NetworkClient.okHttpClient,
+    private val baseUrl: String = NetworkClient.BASE_URL
+) {
 
     suspend fun getMessageList(
         token: String,
@@ -288,6 +325,51 @@ class MessageRepository {
                         }
                     } else {
                         Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun forwardMessage(
+        token: String,
+        msgId: String,
+        sourceChatType: Int,
+        recipients: List<ForwardReceiveRequest>
+    ): Result<Boolean> {
+        if (msgId.isBlank()) return Result.failure(IllegalArgumentException("消息 ID 不能为空"))
+        if (recipients.isEmpty()) return Result.failure(IllegalArgumentException("至少选择一个会话"))
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val requestBody = createForwardMessageJson(
+                    msgId = msgId,
+                    chatType = sourceChatType,
+                    recipients = recipients
+                ).toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/msg/msg-forward")
+                    .post(requestBody)
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure<Boolean>(
+                            Exception("HTTP error: ${response.code}")
+                        )
+                    }
+                    val body = response.body.string()
+                    if (body.isBlank()) {
+                        return@use Result.failure<Boolean>(Exception("转发响应为空"))
+                    }
+                    val result = forwardJson.decodeFromString<ForwardStatusResponse>(body)
+                    if (result.code == 1) {
+                        Result.success(true)
+                    } else {
+                        Result.failure(Exception(result.msg.ifBlank { "转发失败" }))
                     }
                 }
             } catch (e: Exception) {
