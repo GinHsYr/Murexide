@@ -43,6 +43,16 @@ data class ContactRequestItem(
     val isPending: Boolean
         get() = result == 0
 
+    /**
+     * 是否为进群邀请/机器人邀请(而非申请)，
+     * 同意/拒绝走 /group/agree-invite 接口。
+     */
+    val usesGroupAgreeInvite: Boolean
+        get() = inviterId.isNotBlank() && (
+            sourceType == 2 || targetType == 2 || groupName.isNotBlank() ||
+                sourceType == 3 || targetType == 3 || botName.isNotBlank()
+            )
+
     val displayName: String
         get() = requesterName.ifBlank {
             botName.ifBlank {
