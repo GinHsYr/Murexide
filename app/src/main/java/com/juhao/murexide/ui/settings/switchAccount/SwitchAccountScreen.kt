@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.settings.switchAccount
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -17,9 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -69,7 +69,7 @@ fun Greeting(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -93,7 +93,7 @@ fun Greeting(
                     ) {
                         Icon(
                             modifier = Modifier.size(48.dp).padding(8.dp),
-                            imageVector = Icons.Rounded.Add,
+                            imageVector = AppIcons.Add,
                             contentDescription = null
                         )
                         Spacer(Modifier.width(12.dp))
@@ -201,7 +201,7 @@ fun AccountRow(
                 }
             }
             Icon(
-                Icons.Rounded.ChevronRight,
+                AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -219,7 +219,7 @@ fun AccountRow(
                 },
                 leadingIcon = {
                     Icon(
-                        Icons.Rounded.SwitchAccount,
+                        AppIcons.SwitchAccount,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -233,7 +233,7 @@ fun AccountRow(
                 },
                 leadingIcon = {
                     Icon(
-                        Icons.Rounded.Delete,
+                        AppIcons.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.error
@@ -248,7 +248,7 @@ fun AccountRow(
             onDismissRequest = { showDeleteDialog = false },
             icon = {
                 Icon(
-                    Icons.Rounded.Warning,
+                    AppIcons.Warning,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )

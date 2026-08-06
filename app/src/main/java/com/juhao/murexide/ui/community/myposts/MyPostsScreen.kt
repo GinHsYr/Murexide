@@ -1,11 +1,12 @@
 package com.juhao.murexide.ui.community.myposts
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -44,7 +45,7 @@ fun MyPostsScreen(
                 title = { Text("我的文章") },
                 navigationIcon = {
                     StyledIconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )

@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.chat.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,8 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -60,7 +60,7 @@ fun UploadProgressBar(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Rounded.Close,
+                        AppIcons.Close,
                         contentDescription = "取消上传",
                         modifier = Modifier.size(20.dp)
                     )

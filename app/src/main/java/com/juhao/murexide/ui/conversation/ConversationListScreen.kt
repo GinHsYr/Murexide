@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.conversation
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -10,10 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.NotificationsOff
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -99,10 +97,10 @@ fun ConversationListScreen(
                 scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(onClick = {}) {
-                        Icon(Icons.Rounded.Search, contentDescription = "搜索")
+                        Icon(AppIcons.Search, contentDescription = "搜索")
                     }
                     StyledIconButton(onClick = {}) {
-                        Icon(Icons.Rounded.Add, contentDescription = "添加")
+                        Icon(AppIcons.Add, contentDescription = "添加")
                     }
                 }
             )
@@ -311,7 +309,7 @@ fun ConversationItem(
 
                 if (conversation.doNotDisturb == 1) {
                     Icon(
-                        imageVector = Icons.Rounded.NotificationsOff,
+                        imageVector = AppIcons.NotificationsOff,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp)
                     )

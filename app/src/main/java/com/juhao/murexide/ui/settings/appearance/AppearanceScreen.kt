@@ -1,11 +1,11 @@
 package com.juhao.murexide.ui.settings.appearance
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.*
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -105,7 +105,7 @@ fun AppearanceScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -120,7 +120,7 @@ fun AppearanceScreen(
             // 主题设置
             SettingsGroup(title = "主题") {
                 SettingsDropdownItem(
-                    icon = Icons.Rounded.WbSunny,
+                    icon = AppIcons.WbSunny,
                     title = "主题模式",
                     subtitle = when (themeMode) {
                         "dark" -> "深色模式"
@@ -143,7 +143,7 @@ fun AppearanceScreen(
                     }
                 )
                 SettingsDropdownItem(
-                    icon = Icons.Rounded.Draw,
+                    icon = AppIcons.Draw,
                     title = "主题颜色",
                     subtitle = when (themeColor) {
                         "PURPLE" -> "紫色"
@@ -222,7 +222,7 @@ fun AppearanceScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Rounded.RoundedCorner,
+                                    AppIcons.RoundedCorner,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -291,7 +291,7 @@ fun AppearanceScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Rounded.Opacity,
+                                    AppIcons.Opacity,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -359,7 +359,7 @@ fun AppearanceScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Rounded.Image,
+                                    AppIcons.Image,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -417,7 +417,7 @@ fun AppearanceScreen(
                 }
                 
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Face,
+                    icon = AppIcons.Face,
                     title = "显示我的头像",
                     subtitle = "在我发送的消息气泡旁显示我的头像",
                     checked = showMyBubbleAvatar,
@@ -429,7 +429,7 @@ fun AppearanceScreen(
                 )
                 
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Tag,
+                    icon = AppIcons.Tag,
                     title = "显示用户标签",
                     subtitle = "在发送者名称旁显示Ta的标签",
                     checked = showMsgTags,
@@ -443,7 +443,7 @@ fun AppearanceScreen(
 
             SettingsGroup(title = "会话") {
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.ChatBubbleOutline,
+                    icon = AppIcons.ChatBubbleOutline,
                     title = "显示置顶会话",
                     subtitle = "在主页显示置顶会话",
                     checked = showSticky,
@@ -455,7 +455,7 @@ fun AppearanceScreen(
                     }
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.People,
+                    icon = AppIcons.People,
                     title = "圆角正方形头像",
                     subtitle = "将好友和群组头像显示为圆角正方形",
                     checked = squareAvatar,

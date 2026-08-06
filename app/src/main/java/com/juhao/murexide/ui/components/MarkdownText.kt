@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import android.os.Build
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -120,9 +120,9 @@ fun MarkdownText(
                                             ) {
                                                 Icon(
                                                     imageVector = if (run.checked) {
-                                                        Icons.Rounded.CheckBox
+                                                        AppIcons.CheckBox
                                                     } else {
-                                                        Icons.Rounded.CheckBoxOutlineBlank
+                                                        AppIcons.CheckBoxOutlineBlank
                                                     },
                                                     contentDescription = if (run.checked) "checked task" else "unchecked task",
                                                     tint = MaterialTheme.colorScheme.primary,
@@ -516,7 +516,7 @@ private fun MarkdownInlineImage(
     onClick: (String) -> Unit
 ) {
     val context = LocalContext.current
-    
+
     val imageRequest = remember(url, imageReferer) {
         ImageRequest.Builder(context)
             .data(url)
@@ -569,7 +569,7 @@ private fun CodeBlockComponent(
                         fontFamily = FontFamily.Monospace
                     )
                 }
-                
+
                 Spacer(Modifier.weight(1f))
 
                 IconButton(
@@ -582,7 +582,7 @@ private fun CodeBlockComponent(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.ContentCopy,
+                        imageVector = AppIcons.ContentCopy,
                         contentDescription = "复制代码",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
@@ -939,7 +939,7 @@ private fun MarkdownDetailsBlock(
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                imageVector = if (expanded) AppIcons.KeyboardArrowUp else AppIcons.KeyboardArrowDown,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

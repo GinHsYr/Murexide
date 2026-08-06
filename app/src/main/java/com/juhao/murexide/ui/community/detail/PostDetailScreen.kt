@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.community.detail
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,9 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -113,7 +113,7 @@ fun PostDetailScreen(
                     ),
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                            AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                         }
                     }
                 )
@@ -233,19 +233,19 @@ private fun PostHeader(post: PostDetail, viewModel: PostDetailViewModel) {
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             InteractionButton(
-                icon = if (post.isLiked == 1) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                icon = if (post.isLiked == 1) AppIcons.Favorite else AppIcons.FavoriteBorder,
                 count = post.likeNum,
                 tint = if (post.isLiked == 1) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { viewModel.toggleLike() }
             )
             InteractionButton(
-                icon = Icons.Rounded.ChatBubbleOutline,
+                icon = AppIcons.ChatBubbleOutline,
                 count = post.commentNum,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { }
             )
             InteractionButton(
-                icon = if (post.isCollected == 1) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                icon = if (post.isCollected == 1) AppIcons.Bookmark else AppIcons.BookmarkBorder,
                 count = post.collectNum,
                 tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { viewModel.toggleCollect() }
@@ -287,7 +287,7 @@ private fun GroupCard(group: GroupInfo) {
                 )
             }
             Icon(
-                Icons.Rounded.ChevronRight,
+                AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -322,7 +322,7 @@ private fun CommentRow(comment: CommentItem) {
         if (comment.likeNum > 0) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    if (comment.isLiked == "1") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    if (comment.isLiked == "1") AppIcons.Favorite else AppIcons.FavoriteBorder,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = if (comment.isLiked == "1") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant

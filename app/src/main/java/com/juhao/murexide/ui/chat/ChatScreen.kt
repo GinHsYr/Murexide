@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.chat
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
@@ -85,10 +88,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.*
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.draw.clip
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
@@ -786,7 +785,7 @@ fun ChatScreen(
                             },
                             navigationIcon = {
                                 IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                    Icon(Icons.Rounded.Close, contentDescription = "退出多选")
+                                    Icon(AppIcons.Close, contentDescription = "退出多选")
                                 }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(
@@ -794,7 +793,7 @@ fun ChatScreen(
                             ),
                             actions = {
                                 IconButton(onClick = { viewModel.recallSelectedMessages() }) {
-                                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = "撤回")
+                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = "撤回")
                                 }
                                 if (selectedMessages.size == 1) {
                                     val message = selectedMessages.firstOrNull()
@@ -807,13 +806,13 @@ fun ChatScreen(
                                                 Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
                                                 viewModel.exitSelectionMode()
                                             }) {
-                                                Icon(Icons.Rounded.ContentCopy, contentDescription = "复制")
+                                                Icon(AppIcons.ContentCopy, contentDescription = "复制")
                                             }
                                         }
                                     }
                                 }
                                 IconButton(onClick = { showScreenshotSheet = true }) {
-                                    Icon(Icons.Rounded.Screenshot, contentDescription = "截图")
+                                    Icon(AppIcons.Screenshot, contentDescription = "截图")
                                 }
                             }
                         )
@@ -878,9 +877,9 @@ fun ChatScreen(
                                         IconButton(onClick = { viewModel.toggleBoard() }) {
                                             Icon(
                                                 imageVector = if (uiState.boardPanel.isExpanded) {
-                                                    Icons.Rounded.KeyboardArrowUp
+                                                    AppIcons.KeyboardArrowUp
                                                 } else {
-                                                    Icons.Rounded.KeyboardArrowDown
+                                                    AppIcons.KeyboardArrowDown
                                                 },
                                                 contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板"
                                             )
@@ -899,7 +898,7 @@ fun ChatScreen(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.Rounded.Refresh,
+                                                        AppIcons.Refresh,
                                                         contentDescription = null
                                                     )
                                                 }
@@ -918,7 +917,7 @@ fun ChatScreen(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            Icons.Rounded.Settings,
+                                                            AppIcons.Settings,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(24.dp)
                                                         )
@@ -938,7 +937,7 @@ fun ChatScreen(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            Icons.Rounded.Group,
+                                                            AppIcons.Group,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(24.dp)
                                                         )
@@ -952,7 +951,7 @@ fun ChatScreen(
                                                     },
                                                     leadingIcon = {
                                                         Icon(
-                                                            Icons.Rounded.Edit,
+                                                            AppIcons.Edit,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(24.dp)
                                                         )
@@ -973,7 +972,7 @@ fun ChatScreen(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.Outlined.Info,
+                                                        AppIcons.Info,
                                                         contentDescription = null,
                                                         modifier = Modifier.size(24.dp)
                                                     )
@@ -998,8 +997,8 @@ fun ChatScreen(
                                                     showDeleteConfirm = true
                                                 },
                                                 leadingIcon = {
-                                                    Icon(
-                                                        Icons.AutoMirrored.Rounded.Logout,
+                                                    AutoMirroredIcon(
+                                                        AppIcons.Logout,
                                                         contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.error
                                                     )
@@ -1011,7 +1010,7 @@ fun ChatScreen(
                                             showMoreMenu = true
                                         }) {
                                             Icon(
-                                                Icons.Rounded.MoreVert,
+                                                AppIcons.MoreVert,
                                                 contentDescription = "更多"
                                             )
                                         }
@@ -1020,8 +1019,8 @@ fun ChatScreen(
                                 navigationIcon = {
                                     if (!bigScreenMode) {
                                         IconButton(onClick = onBackClick) {
-                                            Icon(
-                                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                            AutoMirroredIcon(
+                                                AppIcons.ArrowBack,
                                                 contentDescription = "返回"
                                             )
                                         }
@@ -1097,7 +1096,7 @@ fun ChatScreen(
                                     modifier = Modifier.weight(1f),
                                     enabled = selectedMessages.size == 1 && !it.isRecalled
                                 ) {
-                                    Icon(Icons.Rounded.FormatQuote, contentDescription = null)
+                                    Icon(AppIcons.FormatQuote, contentDescription = null)
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("引用")
                                 }
@@ -1113,7 +1112,7 @@ fun ChatScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Icon(Icons.AutoMirrored.Rounded.Redo, contentDescription = null)
+                                    AutoMirroredIcon(AppIcons.Redo, contentDescription = null)
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("转发")
                                 }
@@ -1173,7 +1172,7 @@ fun ChatScreen(
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
-                                            Icons.Rounded.Close,
+                                            AppIcons.Close,
                                             contentDescription = "取消引用",
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -1194,7 +1193,7 @@ fun ChatScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Rounded.Edit,
+                                        AppIcons.Edit,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary
@@ -1220,7 +1219,7 @@ fun ChatScreen(
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
-                                            Icons.Rounded.Close,
+                                            AppIcons.Close,
                                             contentDescription = "取消编辑",
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -1241,7 +1240,7 @@ fun ChatScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        Icons.Rounded.Code,
+                                        AppIcons.Code,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary
@@ -1260,7 +1259,7 @@ fun ChatScreen(
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
-                                            Icons.Rounded.Close,
+                                            AppIcons.Close,
                                             contentDescription = "取消指令",
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -1427,7 +1426,7 @@ fun ChatScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        Icons.Rounded.Warning,
+                        AppIcons.Warning,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.error
@@ -1450,7 +1449,7 @@ fun ChatScreen(
                         onClick = { viewModel.refresh() },
                         modifier = Modifier
                     ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null)
+                        Icon(AppIcons.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("重试")
                     }
@@ -1760,7 +1759,7 @@ fun ChatScreen(
     if (showEditNickNameDialog) {
         AlertDialog(
             onDismissRequest = { showEditNickNameDialog = false },
-            icon = { Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = null) },
+            icon = { Icon(AppIcons.DriveFileRenameOutline, contentDescription = null) },
             title = { Text("我的群名称") },
             text = {
                 OutlinedTextField(
@@ -1805,7 +1804,7 @@ fun ChatScreen(
         }
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            icon = { Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(AppIcons.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
             title = { Text(actionText) },
             text = {
                 Text("确定要${actionText}吗？")
@@ -1883,7 +1882,7 @@ fun AnimatedScrollToBottomButton(
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    imageVector = AppIcons.KeyboardArrowDown,
                     contentDescription = "滚动到底部",
                     modifier = Modifier.size(18.dp)
                 )

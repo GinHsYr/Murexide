@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.contact
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -32,15 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Inbox
-import androidx.compose.material.icons.rounded.People
-import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -102,9 +96,9 @@ private data class ContactTab(
 )
 
 private val ContactTabs = listOf(
-    ContactTab("好友", 1, Icons.Rounded.People, "还没有好友", "添加好友后会显示在这里"),
-    ContactTab("我加入的群聊", 2, Icons.Rounded.Groups, "还没有加入群聊", "加入的群聊会显示在这里"),
-    ContactTab("机器人", 3, Icons.Rounded.SmartToy, "还没有机器人", "添加的机器人会显示在这里")
+    ContactTab("好友", 1, AppIcons.People, "还没有好友", "添加好友后会显示在这里"),
+    ContactTab("我加入的群聊", 2, AppIcons.Groups, "还没有加入群聊", "加入的群聊会显示在这里"),
+    ContactTab("机器人", 3, AppIcons.SmartToy, "还没有机器人", "添加的机器人会显示在这里")
 )
 
 private val ContactIndexCellSize = 14.dp
@@ -241,7 +235,7 @@ private fun ContactDirectoryScreen(
                             }
                         } else {
                             IconButton(onClick = onRefresh) {
-                                Icon(Icons.Rounded.Refresh, contentDescription = "刷新通讯录")
+                                Icon(AppIcons.Refresh, contentDescription = "刷新通讯录")
                             }
                         }
                     },
@@ -438,7 +432,7 @@ private fun NewMessageShortcut(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.PersonAdd,
+                            imageVector = AppIcons.PersonAdd,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -465,7 +459,7 @@ private fun NewMessageShortcut(
                 )
             }
             Icon(
-                imageVector = Icons.Rounded.ChevronRight,
+                imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -690,12 +684,12 @@ private fun NewMessagesScreen(
                 title = { Text("新消息", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回通讯录")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回通讯录")
                     }
                 },
                 actions = {
                     IconButton(onClick = onRefresh, enabled = !uiState.isRequestsLoading) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "刷新新消息")
+                        Icon(AppIcons.Refresh, contentDescription = "刷新新消息")
                     }
                 }
             )
@@ -715,7 +709,7 @@ private fun NewMessagesScreen(
                 )
                 requests.isEmpty() -> EmptyState(
                     modifier = Modifier.fillMaxSize(),
-                    icon = Icons.Rounded.Inbox,
+                    icon = AppIcons.Inbox,
                     title = "暂无新消息",
                     description = "好友和群聊申请、邀请会显示在这里"
                 )
@@ -879,9 +873,9 @@ private fun RequestAvatar(url: String, type: Int) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = when (type) {
-                    2 -> Icons.Rounded.Groups
-                    3 -> Icons.Rounded.SmartToy
-                    else -> Icons.Rounded.People
+                    2 -> AppIcons.Groups
+                    3 -> AppIcons.SmartToy
+                    else -> AppIcons.People
                 },
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondaryContainer

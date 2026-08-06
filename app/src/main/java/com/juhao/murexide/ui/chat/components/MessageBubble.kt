@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.chat.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
@@ -12,11 +15,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
-import androidx.compose.material.icons.automirrored.rounded.Undo
-import androidx.compose.material.icons.automirrored.rounded.Redo
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -229,7 +227,7 @@ fun MessageBubble(
                             color = MaterialTheme.colorScheme.surfaceContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.Person, contentDescription = null, modifier = Modifier.size(24.dp))
+                                Icon(AppIcons.Person, contentDescription = null, modifier = Modifier.size(24.dp))
                             }
                         }
                     } else {
@@ -510,7 +508,7 @@ fun MessageBubble(
                                                         verticalArrangement = Arrangement.Center
                                                     ) {
                                                         Icon(
-                                                            Icons.Rounded.ImageNotSupported,
+                                                            AppIcons.ImageNotSupported,
                                                             contentDescription = null,
                                                             modifier = Modifier.size(48.dp),
                                                             tint = MaterialTheme.colorScheme.onSurface
@@ -640,9 +638,9 @@ fun MessageBubble(
                                                         if (loadState == 0) {
                                                             Icon(
                                                                 imageVector = when {
-                                                                    isVideoMessage -> Icons.Rounded.VideoFile
-                                                                    isImageMessage -> Icons.Rounded.Image
-                                                                    else -> Icons.Rounded.Mood
+                                                                    isVideoMessage -> AppIcons.VideoFile
+                                                                    isImageMessage -> AppIcons.Image
+                                                                    else -> AppIcons.Mood
                                                                 },
                                                                 contentDescription = null,
                                                                 modifier = Modifier
@@ -656,7 +654,7 @@ fun MessageBubble(
                                                                 modifier = Modifier.align(Alignment.Center)
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Rounded.Refresh,
+                                                                    imageVector = AppIcons.Refresh,
                                                                     contentDescription = if (isVideoMessage) {
                                                                         "重试加载视频缩略图"
                                                                     } else {
@@ -675,7 +673,7 @@ fun MessageBubble(
                                                                 color = Color.Black.copy(alpha = 0.5f)
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Rounded.PlayArrow,
+                                                                    imageVector = AppIcons.PlayArrow,
                                                                     contentDescription = "播放视频",
                                                                     modifier = Modifier.padding(8.dp),
                                                                     tint = Color.White
@@ -697,7 +695,7 @@ fun MessageBubble(
                                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Rounded.PlayCircle,
+                                                                    imageVector = AppIcons.PlayCircle,
                                                                     contentDescription = null,
                                                                     modifier = Modifier.size(12.dp),
                                                                     tint = Color.White
@@ -726,7 +724,7 @@ fun MessageBubble(
                                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Rounded.Person,
+                                                                    imageVector = AppIcons.Person,
                                                                     contentDescription = "sender",
                                                                     modifier = Modifier.size(12.dp),
                                                                     tint = Color.White
@@ -755,7 +753,7 @@ fun MessageBubble(
                                                         ) {
                                                             if (message.contentType == MessageItem.CONTENT_TYPE_STICKER) {
                                                                 Icon(
-                                                                    imageVector = Icons.Rounded.Mood,
+                                                                    imageVector = AppIcons.Mood,
                                                                     contentDescription = null,
                                                                     modifier = Modifier.size(12.dp),
                                                                     tint = Color.White
@@ -834,7 +832,7 @@ fun MessageBubble(
                                                                 }
                                                             } else {
                                                                 Icon(
-                                                                    imageVector = if (isComplete) Icons.Rounded.Check else getFileIcon(fileName),
+                                                                    imageVector = if (isComplete) AppIcons.Check else getFileIcon(fileName),
                                                                     contentDescription = null,
                                                                     modifier = Modifier.size(24.dp),
                                                                     tint = MaterialTheme.colorScheme.onPrimary
@@ -896,14 +894,14 @@ fun MessageBubble(
     
                                                     if (isComplete) {
                                                         Icon(
-                                                            imageVector = Icons.Rounded.CheckCircle,
+                                                            imageVector = AppIcons.CheckCircle,
                                                             contentDescription = "已下载",
                                                             modifier = Modifier.size(20.dp),
                                                             tint = MaterialTheme.colorScheme.primary
                                                         )
                                                     } else if (isDownloading) {
                                                         Icon(
-                                                            imageVector = Icons.Rounded.Close,
+                                                            imageVector = AppIcons.Close,
                                                             contentDescription = "取消下载",
                                                             modifier = Modifier
                                                                 .size(20.dp)
@@ -912,7 +910,7 @@ fun MessageBubble(
                                                         )
                                                     } else {
                                                         Icon(
-                                                            imageVector = Icons.Rounded.Download,
+                                                            imageVector = AppIcons.Download,
                                                             contentDescription = "下载",
                                                             modifier = Modifier
                                                                 .size(20.dp)
@@ -1005,7 +1003,7 @@ fun MessageBubble(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Rounded.ContentCopy,
+                                        AppIcons.ContentCopy,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1020,7 +1018,7 @@ fun MessageBubble(
                                 onReply()
                             },
                             leadingIcon = {
-                                Icon(Icons.Rounded.FormatQuote, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(AppIcons.FormatQuote, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                         )
 
@@ -1031,8 +1029,8 @@ fun MessageBubble(
                                 onForward()
                             },
                             leadingIcon = {
-                                Icon(
-                                    Icons.AutoMirrored.Rounded.Redo,
+                                AutoMirroredIcon(
+                                    AppIcons.Redo,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -1047,7 +1045,7 @@ fun MessageBubble(
                                     onRecall()
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
                                 }
                             )
                         }
@@ -1061,7 +1059,7 @@ fun MessageBubble(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        Icons.Rounded.Edit,
+                                        AppIcons.Edit,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1106,8 +1104,8 @@ private fun MessageButtons(
             ) {
                 row.forEach { button ->
                     val leadingIcon = when (button.actionType) {
-                        MessageButton.ACTION_JUMP -> Icons.Rounded.Link
-                        MessageButton.ACTION_COPY -> Icons.Rounded.ContentCopy
+                        MessageButton.ACTION_JUMP -> AppIcons.Link
+                        MessageButton.ACTION_COPY -> AppIcons.ContentCopy
                         else -> null
                     }
                     OutlinedButton(
@@ -1140,17 +1138,17 @@ private fun MessageButtons(
 private fun getFileIcon(fileName: String): androidx.compose.ui.graphics.vector.ImageVector {
     val extension = fileName.substringAfterLast('.', "").lowercase()
     return when (extension) {
-        "apk" -> Icons.Rounded.Android
-        "pdf" -> Icons.Rounded.PictureAsPdf
-        "doc", "docx" -> Icons.Rounded.Description
-        "xls", "xlsx" -> Icons.Rounded.TableChart
-        "ppt", "pptx" -> Icons.Rounded.Slideshow
-        "zip", "rar", "7z", "tar", "gz" -> Icons.Rounded.FolderZip
-        "mp3", "wav", "aac", "flac", "ogg", "m4a" -> Icons.Rounded.AudioFile
-        "mp4", "avi", "mkv", "mov", "flv" -> Icons.Rounded.VideoFile
-        "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg" -> Icons.Rounded.Image
-        "txt", "md", "json", "xml", "html", "css", "js", "kt", "java" -> Icons.Rounded.Code
-        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
+        "apk" -> AppIcons.Android
+        "pdf" -> AppIcons.PictureAsPdf
+        "doc", "docx" -> AppIcons.Description
+        "xls", "xlsx" -> AppIcons.TableChart
+        "ppt", "pptx" -> AppIcons.Slideshow
+        "zip", "rar", "7z", "tar", "gz" -> AppIcons.FolderZip
+        "mp3", "wav", "aac", "flac", "ogg", "m4a" -> AppIcons.AudioFile
+        "mp4", "avi", "mkv", "mov", "flv" -> AppIcons.VideoFile
+        "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg" -> AppIcons.Image
+        "txt", "md", "json", "xml", "html", "css", "js", "kt", "java" -> AppIcons.Code
+        else -> AppIcons.InsertDriveFile
     }
 }
 

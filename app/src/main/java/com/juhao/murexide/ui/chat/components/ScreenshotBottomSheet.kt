@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.chat.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
@@ -25,8 +27,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -198,19 +198,19 @@ fun ScreenshotBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ScreenshotActionCard(
-                    icon = Icons.Rounded.SaveAlt,
+                    icon = AppIcons.SaveAlt,
                     label = "保存图片",
                     onClick = { requestOrPerformScreenshotAction(ScreenshotAction.SAVE) }
                 )
                 Spacer(modifier = Modifier.width(25.dp))
                 ScreenshotActionCard(
-                    icon = Icons.Rounded.Share,
+                    icon = AppIcons.Share,
                     label = "分享",
                     onClick = { requestOrPerformScreenshotAction(ScreenshotAction.SHARE) }
                 )
                 Spacer(modifier = Modifier.width(25.dp))
                 ScreenshotActionCard(
-                    icon = Icons.Rounded.Settings,
+                    icon = AppIcons.Settings,
                     label = "截图设置",
                     onClick = {
                         val intent = Intent(context, ScreenshotSettingsActivity::class.java)
@@ -267,7 +267,7 @@ private fun ScreenshotContent(
                         color = MaterialTheme.colorScheme.surface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.VisibilityOff, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Icon(AppIcons.VisibilityOff, contentDescription = null, modifier = Modifier.size(24.dp))
                         }
                     }
                 } else {

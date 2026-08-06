@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.chat.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -17,9 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -141,9 +141,9 @@ fun MessageInput(
         ) {
             Icon(
                 imageVector = if (isEmojiPanelVisible) {
-                    Icons.Rounded.Keyboard
+                    AppIcons.Keyboard
                 } else {
-                    Icons.Rounded.Mood
+                    AppIcons.Mood
                 },
                 contentDescription = if (isEmojiPanelVisible) "切换到键盘" else "表情",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -197,9 +197,9 @@ fun MessageInput(
                 ) {
                     Icon(
                         imageVector = if (isInstructionPanelVisible) {
-                            Icons.Rounded.Keyboard
+                            AppIcons.Keyboard
                         } else {
-                            Icons.Rounded.Code
+                            AppIcons.Code
                         },
                         contentDescription = if (isInstructionPanelVisible) "切换到键盘" else "指令",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -336,8 +336,8 @@ private fun FormatSendButton(
                     modifier = Modifier.size(20.dp)
                 )
             } else {
-                Icon(
-                    Icons.AutoMirrored.Rounded.Send,
+                AutoMirroredIcon(
+                    AppIcons.Send,
                     contentDescription = null,
                     tint = if (enabled) {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -392,7 +392,7 @@ private fun FormatSendButton(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     when (option.type) {
                                         "html" -> Icon(
-                                            imageVector = Icons.Rounded.Code,
+                                            imageVector = AppIcons.Code,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -402,7 +402,7 @@ private fun FormatSendButton(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         else -> Icon(
-                                            imageVector = Icons.Rounded.Close,
+                                            imageVector = AppIcons.Close,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -442,7 +442,7 @@ private fun MoreActionsButton(
             modifier = Modifier.size(44.dp)
         ) {
             Icon(
-                Icons.Rounded.Add,
+                AppIcons.Add,
                 contentDescription = "更多"
             )
         }
@@ -458,7 +458,7 @@ private fun MoreActionsButton(
                     onAddImageClick()
                 },
                 leadingIcon = {
-                    Icon(Icons.Rounded.Image, contentDescription = null)
+                    Icon(AppIcons.Image, contentDescription = null)
                 }
             )
             DropdownMenuItem(
@@ -468,7 +468,7 @@ private fun MoreActionsButton(
                     onAddVideoClick()
                 },
                 leadingIcon = {
-                    Icon(Icons.Rounded.Movie, contentDescription = null)
+                    Icon(AppIcons.Movie, contentDescription = null)
                 }
             )
             DropdownMenuItem(
@@ -478,7 +478,7 @@ private fun MoreActionsButton(
                     onAddFileClick()
                 },
                 leadingIcon = {
-                    Icon(Icons.Rounded.AttachFile, contentDescription = null)
+                    Icon(AppIcons.AttachFile, contentDescription = null)
                 }
             )
         }

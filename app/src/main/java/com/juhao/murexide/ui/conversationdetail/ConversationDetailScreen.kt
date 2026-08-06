@@ -1,11 +1,11 @@
 package com.juhao.murexide.ui.conversationdetail
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,7 +53,7 @@ fun ConversationDetailScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -152,13 +152,13 @@ private fun DetailHeader(detail: ConversationDetail) {
 private fun UserSection(detail: ConversationDetail) {
     SettingsGroup(title = "用户信息") {
         if (detail.isVip) {
-            InfoItem(Icons.Rounded.WorkspacePremium, "会员", "VIP 用户")
+            InfoItem(AppIcons.WorkspacePremium, "会员", "VIP 用户")
         }
         InfoItem(
             when (detail.gender) {
-                1 -> Icons.Rounded.Boy
-                2 -> Icons.Rounded.Girl
-                else -> Icons.Rounded.Person
+                1 -> AppIcons.Boy
+                2 -> AppIcons.Girl
+                else -> AppIcons.Person
             },
             "性别",
             when (detail.gender) {
@@ -168,19 +168,19 @@ private fun UserSection(detail: ConversationDetail) {
             }
         )
         detail.registerTime?.let {
-            InfoItem(Icons.Rounded.Event, "注册时间", it)
+            InfoItem(AppIcons.Event, "注册时间", it)
         }
         detail.onlineDay?.let {
-            InfoItem(Icons.Rounded.AccessTime, "在线天数", "$it 天")
+            InfoItem(AppIcons.AccessTime, "在线天数", "$it 天")
         }
         detail.continuousOnlineDay?.let {
-            InfoItem(Icons.Rounded.LocalFireDepartment, "连续在线", "$it 天")
+            InfoItem(AppIcons.LocalFireDepartment, "连续在线", "$it 天")
         }
         detail.lastActiveTime?.let {
-            InfoItem(Icons.Rounded.AccessTime, "上次活跃", it)
+            InfoItem(AppIcons.AccessTime, "上次活跃", it)
         }
         detail.ipGeo?.let {
-            InfoItem(Icons.Rounded.LocationOn, "IP 属地", it)
+            InfoItem(AppIcons.LocationOn, "IP 属地", it)
         }
     }
 }
@@ -189,27 +189,27 @@ private fun UserSection(detail: ConversationDetail) {
 private fun GroupSection(detail: ConversationDetail) {
     SettingsGroup(title = "群聊信息") {
         detail.memberCount?.let {
-            InfoItem(Icons.Rounded.Group, "成员数量", "$it 人")
+            InfoItem(AppIcons.Group, "成员数量", "$it 人")
         }
         detail.groupCode?.let {
-            InfoItem(Icons.Rounded.Tag, "群口令", it)
+            InfoItem(AppIcons.Tag, "群口令", it)
         }
         detail.categoryName?.let {
-            InfoItem(Icons.Rounded.Category, "分类", it)
+            InfoItem(AppIcons.Category, "分类", it)
         }
         detail.ownerId?.let {
-            InfoItem(Icons.Rounded.Person, "群主", it)
+            InfoItem(AppIcons.Person, "群主", it)
         }
         detail.myGroupNickname?.let {
-            InfoItem(Icons.Rounded.Edit, "我的群昵称", it)
+            InfoItem(AppIcons.Edit, "我的群昵称", it)
         }
         InfoItem(
-            Icons.Rounded.Lock,
+            AppIcons.Lock,
             "加群方式",
             if (detail.isPrivate) "需要验证" else "允许任何人加入"
         )
         InfoItem(
-            Icons.Rounded.Notifications,
+            AppIcons.Notifications,
             "消息免打扰",
             if (detail.doNotDisturb) "已开启" else "已关闭"
         )
@@ -220,26 +220,26 @@ private fun GroupSection(detail: ConversationDetail) {
 private fun BotSection(detail: ConversationDetail) {
     SettingsGroup(title = "机器人信息") {
         detail.usageCount?.let {
-            InfoItem(Icons.Rounded.Group, "使用人数", "$it 人")
+            InfoItem(AppIcons.Group, "使用人数", "$it 人")
         }
         detail.createBy?.let {
-            InfoItem(Icons.Rounded.Person, "创建者", it)
+            InfoItem(AppIcons.Person, "创建者", it)
         }
         detail.createTime?.let {
-            InfoItem(Icons.Rounded.Event, "创建时间", formatEpoch(it))
+            InfoItem(AppIcons.Event, "创建时间", formatEpoch(it))
         }
         InfoItem(
-            Icons.Rounded.Visibility,
+            AppIcons.Visibility,
             "可见性",
             if (detail.isPrivate) "私有" else "公开"
         )
         InfoItem(
-            Icons.Rounded.PowerSettingsNew,
+            AppIcons.PowerSettingsNew,
             "运行状态",
             if (detail.isStop) "已停用" else "运行中"
         )
         InfoItem(
-            Icons.Rounded.Notifications,
+            AppIcons.Notifications,
             "消息免打扰",
             if (detail.doNotDisturb) "已开启" else "已关闭"
         )
@@ -260,7 +260,7 @@ private fun ActionSection(
                 onClick = onEnterChat,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Rounded.ChatBubble, contentDescription = null)
+                Icon(AppIcons.ChatBubble, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("进入聊天")
             }
@@ -276,7 +276,7 @@ private fun ActionSection(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Icon(Icons.Rounded.PersonAdd, contentDescription = null)
+                    Icon(AppIcons.PersonAdd, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("添加")
                 }
