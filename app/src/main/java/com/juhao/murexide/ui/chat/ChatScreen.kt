@@ -1031,7 +1031,6 @@ fun ChatScreen(
                                                 count = backUnreadCount,
                                                 modifier = Modifier
                                                     .align(Alignment.CenterEnd)
-                                                    .offset(x = (-5).dp)
                                             )
                                         }
                                     }

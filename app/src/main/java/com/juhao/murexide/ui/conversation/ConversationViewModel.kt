@@ -69,7 +69,6 @@ class ConversationViewModel(
 
     init {
         observeCachedConversations()
-        loadConversations()
         observeWebSocket()
         observeWsConnection()
         observeAppForeground()
@@ -104,7 +103,9 @@ class ConversationViewModel(
     }
 
     fun setForegroundSyncEnabled(enabled: Boolean) {
+        if (foregroundSyncEnabled == enabled) return
         foregroundSyncEnabled = enabled
+        if (enabled) refresh()
     }
 
     private fun observeWsConnection() {
