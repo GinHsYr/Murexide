@@ -20,6 +20,7 @@ object AppIcons {
     val Android get() = MaterialSymbols.Rounded.Android
     val Animation get() = MaterialSymbols.Rounded.Animation
     val ArrowBack get() = MaterialSymbols.Rounded.Arrow_back
+    val ArrowBackIosNew get() = MaterialSymbols.Rounded.Arrow_back_ios_new
     val Article get() = MaterialSymbols.Rounded.Article
     val AttachFile get() = MaterialSymbols.Rounded.Attach_file
     val AudioFile get() = MaterialSymbols.Rounded.Audio_file

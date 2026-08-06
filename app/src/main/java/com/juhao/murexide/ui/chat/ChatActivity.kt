@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,6 +21,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
+import com.juhao.murexide.data.ConversationKey
+import com.juhao.murexide.data.local.LocalCache
+import com.juhao.murexide.data.unreadTotal
+import com.juhao.murexide.repository.ConversationRepository
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -53,6 +59,8 @@ class ChatActivity : ComponentActivity() {
                         }
                     }
                 } else {
+                    val conversations by LocalCache.observeConversations(account.id)
+                        .collectAsState(initial = emptyList())
                     ChatScreen(
                         chatType = chatType,
                         chatName = chatName,
@@ -70,6 +78,7 @@ class ChatActivity : ComponentActivity() {
                                 )
                             }
                         },
+                        backUnreadCount = conversations.unreadTotal(ConversationKey(chatId, chatType)),
                         viewModel = viewModel(
                             factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                 @Suppress("UNCHECKED_CAST")
@@ -97,6 +106,8 @@ class ChatActivity : ComponentActivity() {
                 return@launch
             }
             accountState.value = account
+            LocalCache.clearUnread(account.id, chatId, chatType)
+            ConversationRepository().dismissNotification(account.token, chatId)
         }
     }
 

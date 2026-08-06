@@ -13,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -196,4 +198,28 @@ class ConversationRepository {
             }
         }
     }
+
+    suspend fun dismissNotification(token: String, chatId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = json.encodeToString(buildJsonObject { put("chatId", chatId) })
+                    .toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/conversation/dismiss-notification")
+                    .post(body)
+                    .header("token", token)
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                    val status = json.decodeFromString<DismissNotificationResponse>(response.body.string())
+                    if (status.code == 1) Result.success(Unit)
+                    else Result.failure(Exception(status.msg.ifBlank { "设为已读失败" }))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 }
+
+@Serializable
+private data class DismissNotificationResponse(val code: Int = 0, val msg: String = "")

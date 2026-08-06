@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.UnreadCountBadge
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
@@ -217,6 +218,7 @@ fun ChatScreen(
     onBackClick: () -> Unit = {},
     onOpenConversation: (ForwardTarget) -> Unit = {},
     bigScreenMode: Boolean = false,
+    backUnreadCount: Int = 0,
     viewModel: ChatViewModel
 ) {
     val density = LocalDensity.current
@@ -1018,10 +1020,18 @@ fun ChatScreen(
                                 },
                                 navigationIcon = {
                                     if (!bigScreenMode) {
-                                        IconButton(onClick = onBackClick) {
-                                            AutoMirroredIcon(
-                                                AppIcons.ArrowBack,
-                                                contentDescription = "返回"
+                                        Box(modifier = Modifier.size(48.dp)) {
+                                            IconButton(onClick = onBackClick) {
+                                                AutoMirroredIcon(
+                                                    AppIcons.ArrowBackIosNew,
+                                                    contentDescription = "返回"
+                                                )
+                                            }
+                                            UnreadCountBadge(
+                                                count = backUnreadCount,
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterEnd)
+                                                    .offset(x = (-5).dp)
                                             )
                                         }
                                     }

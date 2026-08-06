@@ -5,6 +5,13 @@
         <item name="isLightTheme">true</item>
     </style>
 
+    <style name="Theme.Murexide.Search" parent="Theme.Murexide">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
     <style name="Theme.App.Starting" parent="Theme.Murexide">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:statusBarColor">?attr/colorSurface</item>
