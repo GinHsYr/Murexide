@@ -13,8 +13,10 @@ import android.content.Context
 import android.net.Uri
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
+import com.juhao.murexide.data.local.LocalCache
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 sealed class MineUiState {
     object Loading : MineUiState()
@@ -45,6 +47,7 @@ class MineViewModel(
     val eventFlow: SharedFlow<MineEvent> = _eventFlow
 
     private val accountStorage = AccountStorage.getInstance(application)
+    private val cacheJson = Json { ignoreUnknownKeys = true }
 
     sealed class MineEvent {
         data class ShowToast(val message: String) : MineEvent()
@@ -52,12 +55,15 @@ class MineViewModel(
     }
 
     init {
+        loadCachedUserInfo()
         loadUserInfo()
     }
 
     fun loadUserInfo() {
         viewModelScope.launch {
-            _uiState.value = MineUiState.Loading
+            if (_uiState.value !is MineUiState.Success) {
+                _uiState.value = MineUiState.Loading
+            }
 
             repository.getUserInfo(token).onSuccess { userInfo ->
                 _uiState.value = MineUiState.Success(userInfo)
@@ -212,6 +218,24 @@ class MineViewModel(
                 setProfileSaving(false)
                 _eventFlow.emit(MineEvent.ShowToast(error.message ?: "修改个人资料失败"))
             }
+        }
+    }
+
+    private fun loadCachedUserInfo() {
+        viewModelScope.launch {
+            val accountId = LocalCache.currentAccountId() ?: return@launch
+            val info = LocalCache.getPayload(accountId, LocalCache.KIND_PROFILE, "info")
+                ?.let { cached ->
+                    runCatching { cacheJson.decodeFromString(UserInfo.serializer(), cached.payload) }.getOrNull()
+                }
+                ?: return@launch
+            val profile = LocalCache.getPayload(accountId, LocalCache.KIND_PROFILE, "data")
+                ?.let { cached ->
+                    runCatching {
+                        cacheJson.decodeFromString(UserProfileData.serializer(), cached.payload)
+                    }.getOrNull()
+                }
+            _uiState.value = MineUiState.Success(userInfo = info, userProfile = profile)
         }
     }
 

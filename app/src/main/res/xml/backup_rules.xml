@@ -6,6 +6,9 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
+    <!-- Chat metadata and encrypted account credentials are device-local only. -->
+    <exclude domain="database" path="."/>
+    <exclude domain="file" path="datastore/user_data.preferences_pb"/>
     <!--
    <include domain="sharedpref" path="."/>
    <exclude domain="sharedpref" path="device.xml"/>

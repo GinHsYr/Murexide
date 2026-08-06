@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.juhao.murexide.MainActivity
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.StyledIconButton
 import com.juhao.murexide.ui.components.StyledTopBar
@@ -130,6 +131,7 @@ fun Greeting(
                     },
                     onRemoveAccount = {
                         scope.launch {
+                            LocalCache.purgeAccount(it.id)
                             accountStorage.removeAccount(it.id)
                         }
                     }

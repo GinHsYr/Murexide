@@ -1,6 +1,7 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.ConversationDetail
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.bot.bot_info
 import com.juhao.murexide.proto.bot.bot_info_send
@@ -38,11 +39,32 @@ class ConversationDetailRepository(
         chatId: String,
         chatType: Int
     ): Result<ConversationDetail> {
-        return when (chatType) {
+        val result = when (chatType) {
             2 -> getGroupDetail(token, chatId)
             3 -> getBotDetail(token, chatId)
             else -> getUserDetail(token, chatId)
         }
+        result.onSuccess { detail ->
+            LocalCache.currentAccountId()?.let { accountId ->
+                LocalCache.putPayload(
+                    accountId = accountId,
+                    kind = LocalCache.KIND_DETAIL,
+                    scope = "$chatType:$chatId",
+                    payload = json.encodeToString(ConversationDetail.serializer(), detail),
+                    ttlMs = 15 * 60_000L
+                )
+            }
+        }
+        return result
+    }
+
+    suspend fun getCachedDetail(chatId: String, chatType: Int): ConversationDetail? {
+        val accountId = LocalCache.currentAccountId() ?: return null
+        val cached = LocalCache.getPayload(accountId, LocalCache.KIND_DETAIL, "$chatType:$chatId")
+            ?: return null
+        return runCatching {
+            json.decodeFromString(ConversationDetail.serializer(), cached.payload)
+        }.getOrNull()
     }
 
     private val json = Json { ignoreUnknownKeys = true }

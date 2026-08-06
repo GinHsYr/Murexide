@@ -3,6 +3,7 @@ package com.juhao.murexide.repository
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.StickyItem
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.conversation.ConversationListSend
 import com.juhao.murexide.proto.conversation.ConversationList
@@ -33,7 +34,28 @@ class ConversationRepository {
     private val baseUrl = NetworkClient.BASE_URL
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getConversationList(token: String, md5: String = ""): Result<List<ConversationItem>> {
+    private data class ConversationSnapshot(
+        val items: List<ConversationItem>,
+        val md5: String,
+        val unchanged: Boolean
+    )
+
+    suspend fun getConversationList(token: String, md5: String = ""): Result<List<ConversationItem>> =
+        fetchConversationList(token, md5).map { it.items }
+
+    /** Performs an MD5 conditional refresh and only writes a changed server snapshot. */
+    suspend fun syncCachedConversations(token: String, accountId: String): Result<Boolean> {
+        return fetchConversationList(token, LocalCache.conversationMd5(accountId)).map { snapshot ->
+            if (!snapshot.unchanged) {
+                LocalCache.replaceConversations(accountId, snapshot.items, snapshot.md5)
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private suspend fun fetchConversationList(token: String, md5: String): Result<ConversationSnapshot> {
         return withContext(Dispatchers.IO) {
             try {
                 // 构建 ProtoBuf 请求
@@ -71,7 +93,14 @@ class ConversationRepository {
                                 )
                             }
                             
-                            Result.success(items)
+                            Result.success(
+                                ConversationSnapshot(
+                                    items = items,
+                                    md5 = conversationList.md5,
+                                    unchanged = md5.isNotBlank() &&
+                                        conversationList.md5 == md5 && items.isEmpty()
+                                )
+                            )
                         } else {
                             Result.failure(Exception(conversationList.status?.msg ?: "请求失败"))
                         }
@@ -85,7 +114,10 @@ class ConversationRepository {
         }
     }
 
-    suspend fun getStickyList(token: String): Result<List<StickyItem>> {
+    suspend fun getStickyList(
+        token: String,
+        accountId: String? = LocalCache.currentAccountId()
+    ): Result<List<StickyItem>> {
         return withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -102,7 +134,11 @@ class ConversationRepository {
                     }
                     val result = json.decodeFromString<StickyListResponse>(response.body.string())
                     if (result.code == 1) {
-                        Result.success(result.data?.sticky.orEmpty())
+                        val sticky = result.data?.sticky.orEmpty()
+                        accountId?.let { accountId ->
+                            LocalCache.cacheSticky(accountId, sticky)
+                        }
+                        Result.success(sticky)
                     } else {
                         Result.failure(Exception(result.msg.ifBlank { "获取置顶会话失败" }))
                     }

@@ -1,10 +1,12 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.*
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.user.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -252,8 +254,7 @@ class AuthRepository {
                         
                         if (userInfo.status?.code == 1 && userInfo.data_ != null) {
                             val data = userInfo.data_
-                            Result.success(
-                                UserInfo(
+                            val mapped = UserInfo(
                                     id = data.id,
                                     name = data.name,
                                     avatarUrl = data.avatar_url,
@@ -263,7 +264,16 @@ class AuthRepository {
                                     isVip = data.is_vip == 1,
                                     invitationCode = data.invitation_code
                                 )
-                            )
+                            LocalCache.currentAccountId()?.let { accountId ->
+                                LocalCache.putPayload(
+                                    accountId = accountId,
+                                    kind = LocalCache.KIND_PROFILE,
+                                    scope = "info",
+                                    payload = json.encodeToString(UserInfo.serializer(), mapped),
+                                    ttlMs = 15 * 60_000L
+                                )
+                            }
+                            Result.success(mapped)
                         } else {
                             Result.failure(Exception(userInfo.status?.msg ?: "获取用户信息失败"))
                         }
@@ -384,7 +394,17 @@ class AuthRepository {
                     if (response.isSuccessful) {
                         val dataResponse = json.decodeFromString(UserDataResponse.serializer(), response.body.string())
                         if (dataResponse.code == 1 && dataResponse.data != null) {
-                            Result.success(dataResponse.data.data)
+                            val profile = dataResponse.data.data
+                            LocalCache.currentAccountId()?.let { accountId ->
+                                LocalCache.putPayload(
+                                    accountId = accountId,
+                                    kind = LocalCache.KIND_PROFILE,
+                                    scope = "data",
+                                    payload = json.encodeToString(UserProfileData.serializer(), profile),
+                                    ttlMs = 15 * 60_000L
+                                )
+                            }
+                            Result.success(profile)
                         } else {
                             Result.failure(Exception(dataResponse.msg.ifBlank { "获取个人资料失败" }))
                         }
@@ -399,6 +419,7 @@ class AuthRepository {
     }
 }
 
+@Serializable
 data class UserInfo(
     val id: String,
     val name: String,

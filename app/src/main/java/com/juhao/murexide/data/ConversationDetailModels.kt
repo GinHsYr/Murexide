@@ -1,8 +1,11 @@
 package com.juhao.murexide.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * 会话详情统一数据模型（用户 / 群聊 / 机器人）
  */
+@Serializable
 data class ConversationDetail(
     val chatId: String,
     val chatType: Int,

@@ -15,6 +15,7 @@ import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.data.withLatestMessageIdentity
 import com.juhao.murexide.data.withRecalledLatestMessage
 import com.juhao.murexide.data.withStreamedLatestMessage
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.WebSocketManager
 import com.juhao.murexide.repository.ConversationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,7 @@ sealed class ConversationUiState {
 
 class ConversationViewModel(
     private val token: String,
+    private val accountId: String,
     private val repository: ConversationRepository = ConversationRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
@@ -66,10 +68,31 @@ class ConversationViewModel(
     private var foregroundSyncEnabled = false
 
     init {
+        observeCachedConversations()
         loadConversations()
         observeWebSocket()
         observeWsConnection()
         observeAppForeground()
+    }
+
+    private fun observeCachedConversations() {
+        viewModelScope.launch {
+            LocalCache.observeConversations(accountId).collect { cached ->
+                if (cached.isNotEmpty() || _uiState.value is ConversationUiState.Success) {
+                    _uiState.value = ConversationUiState.Success(cached, stickyConversations)
+                    syncConversationCache()
+                }
+            }
+        }
+        viewModelScope.launch {
+            LocalCache.observeSticky(accountId).collect { cached ->
+                stickyConversations = cached
+                _uiState.update { state ->
+                    if (state is ConversationUiState.Success) state.copy(stickyConversations = cached) else state
+                }
+                UiCache.stickyConversations.value = cached
+            }
+        }
     }
 
     private fun observeAppForeground() {
@@ -316,16 +339,12 @@ class ConversationViewModel(
                 _uiState.value = ConversationUiState.Loading
             }
             fetchStickyList()
-            repository.getConversationList(token).onSuccess { conversations ->
-                if (refreshPreviews) {
-                    refreshMessagePreviewsProgressively(
-                        conversations = conversations,
-                        generation = generation,
-                        refreshStartVersion = refreshStartVersion
-                    )
-                } else {
-                    publishConversations(conversations, refreshStartVersion)
-                    if (generation == loadGeneration) _isRefreshing.value = false
+            repository.syncCachedConversations(token, accountId).onSuccess {
+                if (generation == loadGeneration) {
+                    _isRefreshing.value = false
+                    if (_uiState.value is ConversationUiState.Loading) {
+                        _uiState.value = ConversationUiState.Success(emptyList(), stickyConversations)
+                    }
                 }
             }.onFailure { error ->
                 if (generation != loadGeneration) return@onFailure
@@ -412,7 +431,7 @@ class ConversationViewModel(
 
     private fun fetchStickyList() {
         viewModelScope.launch {
-            repository.getStickyList(token)
+            repository.getStickyList(token, accountId)
                 .onSuccess { stickyList ->
                     stickyConversations = stickyList
                     _uiState.update { state ->
@@ -442,6 +461,9 @@ class ConversationViewModel(
             }
             _uiState.update { currentState.copy(conversations = conversations) }
             syncConversationCache()
+            viewModelScope.launch {
+                LocalCache.clearUnread(accountId, chatId)
+            }
         }
     }
 }
