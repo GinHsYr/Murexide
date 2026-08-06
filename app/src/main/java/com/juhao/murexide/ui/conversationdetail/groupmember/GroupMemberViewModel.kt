@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.repository.GroupRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +62,7 @@ class GroupMemberViewModel(
         loadMembers()
     }
 
-    fun loadMembers(reset: Boolean = true) {
+    fun loadMembers(reset: Boolean = true, forceNetwork: Boolean = false) {
         if (reset) {
             _uiState.update {
                 it.copy(
@@ -78,6 +79,26 @@ class GroupMemberViewModel(
 
         viewModelScope.launch {
             val state = _uiState.value
+            val accountId = LocalCache.currentAccountId()
+            val scope = "$groupId:${state.currentPage}"
+            if (!forceNetwork && accountId != null &&
+                LocalCache.isPayloadFresh(accountId, LocalCache.KIND_MEMBERS, scope)
+            ) {
+                repository.getCachedMembers(groupId, state.currentPage)?.let { cached ->
+                    _uiState.update {
+                        val allMembers = if (reset) cached else it.members + cached
+                        it.copy(
+                            members = allMembers,
+                            isLoading = false,
+                            isLoadingMore = false,
+                            hasMore = cached.isNotEmpty(),
+                            currentPage = if (reset) 2 else it.currentPage + 1,
+                            error = null
+                        )
+                    }
+                    return@launch
+                }
+            }
             val result = repository.listMembers(
                 token = getToken(),
                 groupId = groupId,
@@ -117,7 +138,7 @@ class GroupMemberViewModel(
     }
 
     fun refresh() {
-        loadMembers(reset = true)
+        loadMembers(reset = true, forceNetwork = true)
     }
 
     fun kickMember(member: GroupMember) {

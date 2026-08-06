@@ -1,6 +1,9 @@
 package com.juhao.murexide.data
 
+import kotlinx.serialization.Serializable
+
 /** 群成员 */
+@Serializable
 data class GroupMember(
     val userId: String,
     val name: String,

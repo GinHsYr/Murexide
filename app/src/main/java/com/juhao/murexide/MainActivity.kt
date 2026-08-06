@@ -53,6 +53,7 @@ import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
 import com.juhao.murexide.ui.community.CommunityScreen
@@ -102,6 +103,10 @@ class MainActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
+
+            // Main content and its ViewModels may be created before the Application-level
+            // DataStore collector emits. Bind the already validated account synchronously.
+            LocalCache.setActiveAccount(account.id)
 
             setContent {
                 MurexideTheme {
@@ -250,6 +255,7 @@ fun MainScreen(account: UserAccount) {
                             .weight(if (isBigScreen && bigScreenEnabled) 0.4f else 1f)
                             .fillMaxHeight(),
                         token = token,
+                        accountId = account.id,
                         bigScreenMode = isBigScreen && bigScreenEnabled,
                         currentConversation = if (isBigScreen && bigScreenEnabled) currentConversation else null,
                         onConversationClick = { conversation ->

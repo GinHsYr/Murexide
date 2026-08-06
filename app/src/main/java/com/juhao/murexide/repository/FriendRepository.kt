@@ -5,6 +5,7 @@ import com.juhao.murexide.data.ContactItem
 import com.juhao.murexide.data.ContactRequestItem
 import com.juhao.murexide.data.ContactRequestList
 import com.juhao.murexide.data.DeleteFriendResponse
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.friend.address_book_list
 import com.juhao.murexide.proto.friend.address_book_list_send
@@ -15,6 +16,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -28,6 +30,17 @@ class FriendRepository {
     private val client = NetworkClient.okHttpClient
     private val baseUrl = NetworkClient.BASE_URL
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** Uses the API's address-book MD5 to avoid replacing unchanged cached contacts. */
+    suspend fun syncCachedAddressBook(token: String): Result<Boolean> {
+        val accountId = LocalCache.currentAccountId() ?: return Result.success(false)
+        val md5 = LocalCache.contactMd5(accountId)
+        return getAddressBook(token, md5).map { groups ->
+            val changed = md5.isBlank() || groups.isNotEmpty()
+            if (changed) cacheContacts(accountId, groups)
+            changed
+        }
+    }
 
     suspend fun getAddressBook(token: String, md5: String = ""): Result<List<ContactGroup>> {
         return withContext(Dispatchers.IO) {
@@ -65,6 +78,14 @@ class FriendRepository {
                                     }
                                 )
                             }
+                            LocalCache.currentAccountId()?.let { accountId ->
+                                if (md5.isBlank() || groups.isNotEmpty()) {
+                                    cacheContacts(accountId, groups)
+                                }
+                                if (bookList.md5.isNotBlank()) {
+                                    LocalCache.setContactMd5(accountId, bookList.md5)
+                                }
+                            }
                             Result.success(groups)
                         } else {
                             Result.failure(Exception(bookList.status?.msg ?: "请求失败"))
@@ -99,8 +120,7 @@ class FriendRepository {
                         return@use Result.failure(Exception(result.status?.msg ?: "请求失败"))
                     }
 
-                    Result.success(
-                        ContactRequestList(
+                    val requests = ContactRequestList(
                             requests = result.requests.map { item ->
                                 ContactRequestItem(
                                     requestId = item.requestId,
@@ -128,12 +148,28 @@ class FriendRepository {
                             total = result.total,
                             pending = result.pending
                         )
-                    )
+                    LocalCache.currentAccountId()?.let { accountId ->
+                        LocalCache.putPayload(
+                            accountId = accountId,
+                            kind = LocalCache.KIND_REQUESTS,
+                            payload = json.encodeToString(ContactRequestList.serializer(), requests),
+                            ttlMs = 60_000L
+                        )
+                    }
+                    Result.success(requests)
                 }
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
+    }
+
+    private suspend fun cacheContacts(accountId: String, groups: List<ContactGroup>) {
+        LocalCache.putPayload(
+            accountId = accountId,
+            kind = LocalCache.KIND_CONTACTS,
+            payload = json.encodeToString(ListSerializer(ContactGroup.serializer()), groups)
+        )
     }
 
     /**

@@ -3,6 +3,7 @@ package com.juhao.murexide.ui.conversationdetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationDetailUiState
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.repository.FriendRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,16 @@ class ConversationDetailViewModel(
 
     fun loadDetail() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            val cached = repository.getCachedDetail(chatId, chatType)
+            if (cached != null) {
+                _uiState.update { it.copy(isLoading = false, detail = cached, error = null) }
+            } else {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            }
+            val accountId = LocalCache.currentAccountId()
+            if (accountId != null &&
+                LocalCache.isPayloadFresh(accountId, LocalCache.KIND_DETAIL, "$chatType:$chatId")
+            ) return@launch
             repository.getDetail(token, chatId, chatType)
                 .onSuccess { detail ->
                     _uiState.update { it.copy(isLoading = false, detail = detail, error = null) }

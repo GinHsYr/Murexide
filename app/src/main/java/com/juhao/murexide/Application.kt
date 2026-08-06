@@ -25,6 +25,8 @@ import coil.request.SuccessResult
 import com.flyjingfish.openimagelib.OpenImageConfig
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.SettingsStorage
+import com.juhao.murexide.data.local.LocalCache
+import com.juhao.murexide.data.local.CacheSyncCoordinator
 import com.juhao.murexide.data.DefaultEmojiBitmapCache
 import com.juhao.murexide.data.DefaultEmojiCatalog
 import com.juhao.murexide.network.NetworkClient
@@ -52,6 +54,7 @@ class MyApplication : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        LocalCache.initialize(this)
         OpenImageConfig.getInstance().apply {
             bigImageHelper = MurexideBigImageHelper()
             downloadMediaHelper = MurexideDownloadMediaHelper()
@@ -82,6 +85,7 @@ class MyApplication : Application(), ImageLoaderFactory {
         )
         observeAvatarSetting()
         initWebSocket()
+        CacheSyncCoordinator().start(applicationScope)
         observeNetworkStatus()
         observeMessages(this)
     }
@@ -217,6 +221,7 @@ class MyApplication : Application(), ImageLoaderFactory {
 
         applicationScope.launch {
             accountStorage.currentAccountFlow.collect { account ->
+                LocalCache.setActiveAccount(account?.id)
                 if (account != null && account.token.isNotEmpty()) {
                     Log.d("MyApplication", "Account found, connecting WS")
                     WebSocketManager.getInstance().connect(

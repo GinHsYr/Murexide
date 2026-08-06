@@ -1,6 +1,7 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.GroupMember
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.group.list_member
 import com.juhao.murexide.proto.group.list_member_send
@@ -10,6 +11,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * 群成员相关操作
@@ -17,6 +20,7 @@ import org.json.JSONObject
 class GroupMemberRepository {
     private val client = NetworkClient.okHttpClient
     private val baseUrl = NetworkClient.BASE_URL
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun listMembers(
         token: String,
@@ -58,11 +62,37 @@ class GroupMemberRepository {
                         gagTime = u.gag_time
                     )
                 }
+                LocalCache.currentAccountId()?.let { accountId ->
+                    val scope = "$groupId:$page"
+                    if (page == 1) {
+                        LocalCache.deletePayloadsByScopePrefix(
+                            accountId,
+                            LocalCache.KIND_MEMBERS,
+                            "$groupId:%"
+                        )
+                    }
+                    LocalCache.putPayload(
+                        accountId = accountId,
+                        kind = LocalCache.KIND_MEMBERS,
+                        scope = scope,
+                        payload = json.encodeToString(ListSerializer(GroupMember.serializer()), members),
+                        ttlMs = 5 * 60_000L
+                    )
+                }
                 Result.success(members)
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getCachedMembers(groupId: String, page: Int): List<GroupMember>? {
+        val accountId = LocalCache.currentAccountId() ?: return null
+        val cached = LocalCache.getPayload(accountId, LocalCache.KIND_MEMBERS, "$groupId:$page")
+            ?: return null
+        return runCatching {
+            json.decodeFromString(ListSerializer(GroupMember.serializer()), cached.payload)
+        }.getOrNull()
     }
 }
 

@@ -1,6 +1,7 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.*
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.proto.Msg
 import com.juhao.murexide.proto.list_message
@@ -169,6 +170,9 @@ class MessageRepository(
                             val messages = messageList.msg.map { msg ->
                                 msg.toMessageItem(chatId = chatId, chatType = chatType)
                             }
+                            LocalCache.currentAccountId()?.let { accountId ->
+                                LocalCache.cacheMessages(accountId, messages)
+                            }
                             Result.success(messages)
                         } else {
                             Result.failure(Exception(messageList.status?.msg ?: "获取消息失败"))
@@ -271,11 +275,13 @@ class MessageRepository(
                         )
                     }
 
-                    Result.success(
-                        messageList.msg.map { msg ->
-                            msg.toMessageItem(chatId = chatId, chatType = chatType)
-                        }
-                    )
+                    val messages = messageList.msg.map { msg ->
+                        msg.toMessageItem(chatId = chatId, chatType = chatType)
+                    }
+                    LocalCache.currentAccountId()?.let { accountId ->
+                        LocalCache.cacheMessages(accountId, messages)
+                    }
+                    Result.success(messages)
                 }
             } catch (e: Exception) {
                 Result.failure(e)

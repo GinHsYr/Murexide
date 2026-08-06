@@ -22,6 +22,7 @@ import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
+import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.utils.AppForegroundState
 import com.juhao.murexide.utils.MentionUtils
 import com.juhao.murexide.utils.QiniuUploadResponse
@@ -39,12 +40,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -97,6 +100,7 @@ class ChatViewModel(
     }
 
     private var uploadJob: Job? = null
+    private var streamPersistJob: Job? = null
     private var foregroundSyncJob: Job? = null
     private var foregroundSyncEnabled = false
 
@@ -338,6 +342,28 @@ class ChatViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
+            LocalCache.currentAccountId()?.let { accountId ->
+                val cached = LocalCache.observeMessages(
+                    accountId = accountId,
+                    chatId = chatId,
+                    chatType = chatType,
+                    limit = 20
+                ).first()
+                if (cached.isNotEmpty()) {
+                    msgIdCache.clear()
+                    msgIdCache.addAll(cached.map { it.msgId })
+                    currentMsgId = cached.last().msgId
+                    _uiState.update {
+                        it.copy(
+                            messages = cached,
+                            isLoading = false,
+                            hasMore = cached.size >= 20,
+                            error = null
+                        )
+                    }
+                }
+            }
+
             repository.getMessageList(
                 token = token,
                 chatId = chatId,
@@ -432,6 +458,23 @@ class ChatViewModel(
         _uiState.update { it.copy(isLoadingMore = true) }
 
         try {
+            if (targetMessageId == null) {
+                val current = _uiState.value.messages
+                val cached = LocalCache.currentAccountId()?.let { accountId ->
+                    LocalCache.getCachedMessagePage(
+                        accountId = accountId,
+                        chatId = chatId,
+                        chatType = chatType,
+                        offset = current.size
+                    )
+                }.orEmpty().filter { it.msgId !in msgIdCache }
+                if (cached.isNotEmpty()) {
+                    msgIdCache.addAll(cached.map { it.msgId })
+                    currentMsgId = cached.last().msgId
+                    _uiState.update { it.copy(messages = it.messages + cached, hasMore = true) }
+                    return true
+                }
+            }
             while (true) {
                 val anchorMessageId = currentMsgId
                     ?: _uiState.value.messages.lastOrNull()?.msgId
@@ -1607,6 +1650,14 @@ class ChatViewModel(
                 }
             )
         }
+        streamPersistJob?.cancel()
+        streamPersistJob = viewModelScope.launch {
+            delay(500L)
+            val message = _uiState.value.messages.firstOrNull { it.msgId == msgId } ?: return@launch
+            LocalCache.currentAccountId()?.let { accountId ->
+                LocalCache.cacheMessages(accountId, listOf(message))
+            }
+        }
     }
 
     fun updateEditedMessage(message: MessageItem) {
@@ -1630,6 +1681,13 @@ class ChatViewModel(
                 }
             )
         }
+        val updated = _uiState.value.messages.firstOrNull { it.msgId == message.msgId } ?: return
+        viewModelScope.launch {
+            LocalCache.currentAccountId()?.let { accountId ->
+                LocalCache.cacheMessages(accountId, listOf(updated))
+                LocalCache.applyMessageMutationToConversation(accountId, updated, recalled = false)
+            }
+        }
     }
 
     private fun applyRecalledMessage(
@@ -1640,6 +1698,13 @@ class ChatViewModel(
             it.copy(
                 messages = it.messages.withRecalledMessage(recalledMessage, actor)
             )
+        }
+        val updated = _uiState.value.messages.firstOrNull { it.msgId == recalledMessage.msgId } ?: return
+        viewModelScope.launch {
+            LocalCache.currentAccountId()?.let { accountId ->
+                LocalCache.cacheMessages(accountId, listOf(updated))
+                LocalCache.applyMessageMutationToConversation(accountId, updated, recalled = true)
+            }
         }
     }
 

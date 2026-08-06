@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.wire.plugin)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -127,9 +128,15 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.datastore)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
 
     implementation(libs.haze)
     implementation(libs.haze.materials)
@@ -139,4 +146,8 @@ dependencies {
     implementation(libs.multiplatform.markdown.renderer.coil2)
     
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

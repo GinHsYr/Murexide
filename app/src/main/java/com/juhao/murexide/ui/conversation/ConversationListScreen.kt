@@ -42,15 +42,16 @@ import androidx.lifecycle.ViewModelProvider
 fun ConversationListScreen(
     modifier: Modifier = Modifier,
     token: String,
+    accountId: String,
     bigScreenMode: Boolean,
     onConversationClick: (ConversationItem) -> Unit,
     currentConversation: ConversationItem? = null,
     viewModel: ConversationViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
-        key = "conversation_$token",
+        key = "conversation_$accountId",
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ConversationViewModel(token) as T
+                return ConversationViewModel(token, accountId) as T
             }
         }
     )

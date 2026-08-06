@@ -2,6 +2,7 @@ package com.juhao.murexide.data
 
 import kotlinx.serialization.Serializable
 
+@Serializable
 data class ContactItem(
     val chatId: String,
     val chatType: Int,
@@ -12,12 +13,14 @@ data class ContactItem(
     val name: String
 )
 
+@Serializable
 data class ContactGroup(
     val groupName: String,
     val chatType: Int,
     val contacts: List<ContactItem>
 )
 
+@Serializable
 data class ContactRequestItem(
     val requestId: Int,
     val requesterName: String,
@@ -90,6 +93,7 @@ data class ContactRequestItem(
         }
 }
 
+@Serializable
 data class ContactRequestList(
     val requests: List<ContactRequestItem>,
     val total: Int,
