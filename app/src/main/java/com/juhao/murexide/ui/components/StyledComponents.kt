@@ -1,10 +1,10 @@
 package com.juhao.murexide.ui.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.runtime.*
 
 @Composable
@@ -21,7 +21,7 @@ fun StyledSwitch(
         modifier = modifier,
         thumbContent = {
             Icon(                 
-                imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close,
+                imageVector = if (checked) AppIcons.Check else AppIcons.Close,
                 contentDescription = null,
                 modifier = Modifier.size(SwitchDefaults.IconSize),
                 tint = if (checked) {

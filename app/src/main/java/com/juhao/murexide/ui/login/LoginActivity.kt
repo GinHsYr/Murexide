@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.login
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -9,8 +11,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -144,7 +144,7 @@ fun TokenInputDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                Icons.Rounded.Key,
+                AppIcons.Key,
                 contentDescription = null
             )
         },

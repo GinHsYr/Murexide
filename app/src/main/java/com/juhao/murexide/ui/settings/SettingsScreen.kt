@@ -1,13 +1,13 @@
 package com.juhao.murexide.ui.settings
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.Manifest
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.*
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -85,7 +85,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             icon = {
-                Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = null)
+                AutoMirroredIcon(AppIcons.Logout, contentDescription = null)
             },
             title = { Text("退出登录") },
             text = { Text("确定要退出当前账号吗？") },
@@ -128,7 +128,7 @@ fun SettingsScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -142,7 +142,7 @@ fun SettingsScreen(
         ) {
             SettingsGroup(title = "外观") {
                 SettingsItem(
-                    icon = Icons.Rounded.Draw,
+                    icon = AppIcons.Draw,
                     title = "外观设置",
                     subtitle = "主题、头像、会话等",
                     onClick = {
@@ -154,7 +154,7 @@ fun SettingsScreen(
             
             SettingsGroup(title = "行为") {
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Notifications,
+                    icon = AppIcons.Notifications,
                     title = "消息通知",
                     subtitle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (notificationEnabled) "已允许消息通知" else "已关闭消息通知，点击跳转设置"
@@ -165,7 +165,7 @@ fun SettingsScreen(
                     onCheckedChange = { onNotificationToggle(it) }
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.LaptopChromebook,
+                    icon = AppIcons.LaptopChromebook,
                     title = "大屏模式",
                     subtitle = "在大屏幕下使用大屏模式",
                     checked = bigScreen,
@@ -177,7 +177,7 @@ fun SettingsScreen(
                     }
                 )
                 SettingsItem(
-                    icon = Icons.Rounded.Screenshot,
+                    icon = AppIcons.Screenshot,
                     title = "截图设置",
                     subtitle = "隐藏信息等",
                     onClick = {
@@ -186,7 +186,7 @@ fun SettingsScreen(
                     }
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Animation,
+                    icon = AppIcons.Animation,
                     title = "聊天页头像跟随",
                     subtitle = "头像跟随视角移动",
                     checked = avatarFollow,
@@ -201,7 +201,7 @@ fun SettingsScreen(
             
             SettingsGroup(title = "更新") {
                 SettingsItem(
-                    icon = Icons.Rounded.Update,
+                    icon = AppIcons.Update,
                     title = "检查更新",
                     isEnabled = updateEnabled,
                     subtitle = if (updateEnabled)
@@ -230,7 +230,7 @@ fun SettingsScreen(
                     }
                 )
                 SettingsDropdownItem(
-                    icon = Icons.AutoMirrored.Rounded.List,
+                    icon = AppIcons.List,
                     title = "更新频道",
                     subtitle = if (updateChannel == "stable")
                         "仅检查正式版本"
@@ -252,7 +252,7 @@ fun SettingsScreen(
 
             SettingsGroup(title = "关于") {
                 SettingsItem(
-                    icon = Icons.Rounded.Info,
+                    icon = AppIcons.Info,
                     title = "关于",
                     subtitle = "版本号、开发者信息",
                     onClick = {
@@ -264,7 +264,7 @@ fun SettingsScreen(
 
             SettingsGroup(title = "账号") {
                 SettingsItem(
-                    icon = Icons.Rounded.People,
+                    icon = AppIcons.People,
                     title = "切换账号",
                     onClick = {
                         val intent = Intent(context, SwitchAccountActivity::class.java)
@@ -272,7 +272,7 @@ fun SettingsScreen(
                     }
                 )
                 SettingsItem(
-                    icon = Icons.AutoMirrored.Rounded.Logout,
+                    icon = AppIcons.Logout,
                     title = "退出登录",
                     isDestructive = true,
                     onClick = { showLogoutDialog = true }

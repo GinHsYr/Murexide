@@ -1,12 +1,12 @@
 package com.juhao.murexide.ui.mine
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import android.app.Activity
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -75,7 +75,7 @@ fun MineScreen(
                 scrollBehavior = scrollBehavior,
                 actions = {
                     StyledIconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                        Icon(AppIcons.Settings, contentDescription = "设置")
                     }
                 }
             )
@@ -224,13 +224,13 @@ private fun MineContent(
 
         SettingsGroup(title = "账号信息") {
             InfoItem(
-                icon = Icons.Rounded.Phone,
+                icon = AppIcons.Phone,
                 title = "手机号",
                 value = displayPhone,
                 endIcon = if (isPhoneVisible) {
-                    Icons.Rounded.Visibility
+                    AppIcons.Visibility
                 } else {
-                    Icons.Rounded.VisibilityOff
+                    AppIcons.VisibilityOff
                 },
                 onClick = {
                     isPhoneVisible = !isPhoneVisible
@@ -238,13 +238,13 @@ private fun MineContent(
             )
 
             InfoItem(
-                icon = Icons.Rounded.Email,
+                icon = AppIcons.Email,
                 title = "邮箱",
                 value = displayEmail,
                 endIcon = if (isEmailVisible) {
-                    Icons.Rounded.Visibility
+                    AppIcons.Visibility
                 } else {
-                    Icons.Rounded.VisibilityOff
+                    AppIcons.VisibilityOff
                 },
                 onClick = {
                     isEmailVisible = !isEmailVisible
@@ -252,7 +252,7 @@ private fun MineContent(
             )
 
             InfoItem(
-                icon = Icons.Rounded.CardGiftcard,
+                icon = AppIcons.CardGiftcard,
                 title = "邀请码",
                 value = userInfo.invitationCode.ifEmpty { "未设置" }
             )
@@ -286,7 +286,7 @@ private fun ActivityOverviewCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Rounded.LocalFireDepartment,
+                        imageVector = AppIcons.LocalFireDepartment,
                         contentDescription = null,
                         modifier = Modifier.size(26.dp),
                         tint = MaterialTheme.colorScheme.onTertiaryContainer
@@ -395,7 +395,7 @@ private fun ProfileCard(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Rounded.Edit,
+                                imageVector = AppIcons.Edit,
                                 contentDescription = "修改头像",
                                 modifier = Modifier.size(15.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
@@ -436,7 +436,7 @@ private fun ProfileCard(
                     }
                 }
                 Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
+                    imageVector = AppIcons.ChevronRight,
                     contentDescription = "编辑资料",
                     modifier = Modifier.size(22.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -450,14 +450,14 @@ private fun ProfileCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ProfileStat(
-                    icon = Icons.Rounded.Verified,
+                    icon = AppIcons.Verified,
                     label = "用户等级",
                     value = if (userInfo.isVip) "会员" else "普通用户",
                     modifier = Modifier.weight(1f)
                 )
 
                 ProfileStat(
-                    icon = Icons.Rounded.MonetizationOn,
+                    icon = AppIcons.MonetizationOn,
                     label = "金币",
                     value = formattedCoin,
                     modifier = Modifier.weight(1f)

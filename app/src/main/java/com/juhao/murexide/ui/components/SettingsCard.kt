@@ -1,10 +1,10 @@
 package com.juhao.murexide.ui.components
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.automirrored.rounded.NavigateNext
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -98,8 +98,8 @@ fun SettingsItem(
             }
         }
 
-        Icon(
-            Icons.AutoMirrored.Rounded.NavigateNext,
+        AutoMirroredIcon(
+            AppIcons.NavigateNext,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
@@ -274,7 +274,7 @@ fun SettingsDropdownItem(
         }
 
         Icon(
-            imageVector = Icons.Rounded.KeyboardArrowDown,
+            imageVector = AppIcons.KeyboardArrowDown,
             contentDescription = "选择",
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -294,7 +294,7 @@ fun SettingsDropdownItem(
                     trailingIcon = {
                         if (selectedValue == value) {
                             Icon(
-                                Icons.Rounded.Check,
+                                AppIcons.Check,
                                 contentDescription = "已选中"
                             )
                         }

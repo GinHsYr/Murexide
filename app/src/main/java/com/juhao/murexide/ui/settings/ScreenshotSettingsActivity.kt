@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.settings
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,9 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -65,7 +65,7 @@ fun ScreenshotPrivacyScreen(
                 title = { Text("截图设置") },
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -80,7 +80,7 @@ fun ScreenshotPrivacyScreen(
         ) {
             SettingsGroup(title = "隐私选项") {
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Person,
+                    icon = AppIcons.Person,
                     title = "隐藏发送者信息",
                     subtitle = "隐藏消息发送者的名称和头像",
                     checked = hideSenderInfo,
@@ -93,7 +93,7 @@ fun ScreenshotPrivacyScreen(
                 )
 
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.PersonOutline,
+                    icon = AppIcons.PersonOutline,
                     title = "信息发送方匿名化",
                     subtitle = "我的信息也显示为对方",
                     checked = hideMyInfo,
@@ -106,7 +106,7 @@ fun ScreenshotPrivacyScreen(
                 )
 
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.ChatBubble,
+                    icon = AppIcons.ChatBubble,
                     title = "隐藏会话信息",
                     subtitle = "隐藏会话名称和会话头像",
                     checked = hideSessionInfo,
@@ -119,7 +119,7 @@ fun ScreenshotPrivacyScreen(
                 )
 
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Image,
+                    icon = AppIcons.Image,
                     title = "隐藏图片及表情包",
                     subtitle = "截图中的图片和表情包将被遮挡",
                     checked = hideImages,

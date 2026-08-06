@@ -1,10 +1,10 @@
 package com.juhao.murexide.ui.community.ba
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,7 +43,7 @@ fun CreatePostScreen(
                 title = { Text(if (baName.isNotEmpty()) "发布到 $baName" else "发布文章") },
                 navigationIcon = {
                     StyledIconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                        Icon(AppIcons.Close, contentDescription = "关闭")
                     }
                 },
                 actions = {
@@ -57,7 +57,7 @@ fun CreatePostScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Icon(Icons.Rounded.Check, contentDescription = "发布")
+                            Icon(AppIcons.Check, contentDescription = "发布")
                         }
                     }
                 }

@@ -1,5 +1,9 @@
 package com.juhao.murexide
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AppFilledIcons
+import com.juhao.murexide.ui.icons.AnimatedNavigationSymbol
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,9 +28,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.ui.Alignment
@@ -62,15 +63,16 @@ import kotlinx.coroutines.delay
 private data class NavItem(
     val route: String,
     val title: String,
-    val icon: ImageVector,
+    val outlineIcon: ImageVector,
+    val filledIcon: ImageVector,
 )
 
 private val navItems = listOf(
-    NavItem("conversations", "消息", Icons.Rounded.ChatBubble),
-    NavItem("contacts", "通讯录", Icons.Rounded.Contacts),
-    NavItem("community", "社区", Icons.Rounded.People),
-    NavItem("discover", "发现", Icons.Rounded.Explore),
-    NavItem("mine", "我的", Icons.Rounded.Person),
+    NavItem("conversations", "消息", AppIcons.ChatBubble, AppFilledIcons.ChatBubble),
+    NavItem("contacts", "通讯录", AppIcons.Contacts, AppFilledIcons.Contacts),
+    NavItem("community", "社区", AppIcons.Group, AppFilledIcons.Group),
+    NavItem("discover", "发现", AppIcons.Explore, AppFilledIcons.Explore),
+    NavItem("mine", "我的", AppIcons.Person, AppFilledIcons.Person),
 )
 
 private const val TAB_TRANSITION_DURATION_MILLIS = 300
@@ -148,7 +150,7 @@ fun MainScreen(account: UserAccount) {
     if (showDevTip) {
         AlertDialog(
             onDismissRequest = { showDevTip = false },
-            icon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+            icon = { Icon(AppIcons.Info, contentDescription = null) },
             title = { Text("正在使用开发版本") },
             text = { Text("你正在使用内部开发版本，可能出现问题。如果发现问题，可在交流群反馈。此弹窗会在每次应用启动时弹出。此版本仅为测试使用，不能作为日用版本，请及时更新至正式版或快照版。开发版本的检查更新不可用。") },
             confirmButton = {
@@ -169,7 +171,14 @@ fun MainScreen(account: UserAccount) {
             navItems.forEach { item ->
                 val selected = currentRoute == item.route
                 item(
-                    icon = { Icon(item.icon, contentDescription = item.title) },
+                    icon = {
+                        AnimatedNavigationSymbol(
+                            outlineIcon = item.outlineIcon,
+                            filledIcon = item.filledIcon,
+                            selected = selected,
+                            contentDescription = item.title,
+                        )
+                    },
                     label = {
                         AnimatedVisibility(
                             visible = selected,
@@ -302,7 +311,7 @@ fun MainScreen(account: UserAccount) {
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.ChatBubble,
+                                    imageVector = AppIcons.ChatBubble,
                                     contentDescription = null,
                                     modifier = Modifier.size(80.dp).alpha(0.6f)
                                 )
@@ -343,7 +352,7 @@ fun MainScreen(account: UserAccount) {
                             title = { Text("发现") },
                             actions = {
                                 IconButton(onClick = { /* TODO: 搜索 */ }) {
-                                    Icon(Icons.Rounded.Search, contentDescription = "搜索")
+                                    Icon(AppIcons.Search, contentDescription = "搜索")
                                 }
                             }
                         )

@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.chat
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -29,11 +32,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,7 +96,7 @@ fun ForwardBottomSheet(
                     )
                     if (!state.isSending) {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                            Icon(AppIcons.Close, contentDescription = "关闭")
                         }
                     }
                 }
@@ -112,12 +110,12 @@ fun ForwardBottomSheet(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true,
                     leadingIcon = {
-                        Icon(Icons.Rounded.Search, contentDescription = null)
+                        Icon(AppIcons.Search, contentDescription = null)
                     },
                     trailingIcon = {
                         if (state.query.isNotEmpty() && !state.isLocked) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "清除搜索")
+                                Icon(AppIcons.Close, contentDescription = "清除搜索")
                             }
                         }
                     },
@@ -233,7 +231,7 @@ fun ForwardBottomSheet(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "发送")
+                        AutoMirroredIcon(AppIcons.Send, contentDescription = "发送")
                     }
                 }
             }
@@ -292,7 +290,7 @@ private fun ForwardTargetRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Rounded.Check,
+                            AppIcons.Check,
                             contentDescription = "已选择",
                             modifier = Modifier.size(15.dp)
                         )

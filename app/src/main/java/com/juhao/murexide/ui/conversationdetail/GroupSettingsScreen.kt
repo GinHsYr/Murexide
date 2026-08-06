@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.conversationdetail
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -7,9 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +59,7 @@ fun GroupSettingsScreen(
                 title = { Text("群设置") },
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -73,7 +73,7 @@ fun GroupSettingsScreen(
                         )
                     } else {
                         IconButton(onClick = { viewModel.save() }) {
-                            Icon(Icons.Rounded.Check, contentDescription = "保存")
+                            Icon(AppIcons.Check, contentDescription = "保存")
                         }
                     }
                 }
@@ -153,27 +153,27 @@ fun GroupSettingsScreen(
 
             SettingsGroup(title = "群聊设置") {
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.HowToReg,
+                    icon = AppIcons.HowToReg,
                     title = "进群免审核",
                     subtitle = "开启后新成员无需验证直接进群",
                     checked = uiState.directJoin,
                     onCheckedChange = viewModel::toggleDirectJoin
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.History,
+                    icon = AppIcons.History,
                     title = "新成员可见历史消息",
                     checked = uiState.historyMsg,
                     onCheckedChange = viewModel::toggleHistoryMsg
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.Lock,
+                    icon = AppIcons.Lock,
                     title = "群聊私有",
                     subtitle = "开启后需要验证才能加入",
                     checked = uiState.isPrivate,
                     onCheckedChange = viewModel::togglePrivate
                 )
                 SettingsSwitchItem(
-                    icon = Icons.Rounded.VisibilityOff,
+                    icon = AppIcons.VisibilityOff,
                     title = "隐藏群成员",
                     checked = uiState.hideGroupMembers,
                     onCheckedChange = viewModel::toggleHideMembers

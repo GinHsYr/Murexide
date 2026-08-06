@@ -119,7 +119,8 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
 
-    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.material.symbols.rounded)
+    implementation(libs.material.symbols.rounded.filled)
 
     implementation(libs.wire.runtime)
 

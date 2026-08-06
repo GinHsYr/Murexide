@@ -28,6 +28,7 @@ testExtJunit = "1.3.0"
 testRunner = "1.5.2"
 uiautomator = "2.3.0"
 material3 = "1.5.0-alpha23"
+materialSymbols = "2.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -64,8 +65,9 @@ androidx-media3-common = { group = "androidx.media3", name = "media3-common", ve
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 
-# Material Icons Extended
-androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+# Material Symbols
+material-symbols-rounded = { module = "com.composables:icons-material-symbols-rounded-cmp", version.ref = "materialSymbols" }
+material-symbols-rounded-filled = { module = "com.composables:icons-material-symbols-rounded-filled-cmp", version.ref = "materialSymbols" }
 
 # Wire (Protobuf)
 wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }

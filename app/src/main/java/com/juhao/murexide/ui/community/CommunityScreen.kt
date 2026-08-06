@@ -1,5 +1,7 @@
 package com.juhao.murexide.ui.community
 
+import com.juhao.murexide.ui.icons.AppIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,9 +9,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Article
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -65,7 +64,7 @@ fun CommunityScreen(
                     title = { Text("社区") },
                     actions = {
                         IconButton(onClick = { /* TODO: 搜索 */ }) {
-                            Icon(Icons.Rounded.Search, contentDescription = "搜索")
+                            Icon(AppIcons.Search, contentDescription = "搜索")
                         }
                     }
                 )
@@ -185,7 +184,7 @@ fun ManageContent(
         item {
             SettingsGroup {
                 SettingsItem(
-                    icon = Icons.AutoMirrored.Rounded.Article,
+                    icon = AppIcons.Article,
                     title = "我的文章",
                     subtitle = "查看我发布的全部文章",
                     onClick = onMyPostsClick
@@ -281,7 +280,7 @@ fun BaRow(ba: BaItem, onClick: () -> Unit) {
             }
         }
         Icon(
-            Icons.Rounded.ChevronRight,
+            AppIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -442,7 +441,7 @@ fun PostCard(
         ) {
             // 点赞
             InteractionButton(
-                icon = if (post.isLiked == "1") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                icon = if (post.isLiked == "1") AppIcons.Favorite else AppIcons.FavoriteBorder,
                 count = post.likeNum,
                 tint = if (post.isLiked == "1") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { onLikeClick(post.id) }
@@ -450,7 +449,7 @@ fun PostCard(
 
             // 评论
             InteractionButton(
-                icon = Icons.Rounded.ChatBubbleOutline,
+                icon = AppIcons.ChatBubbleOutline,
                 count = post.commentNum,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { /* TODO: 打开评论 */ }
@@ -458,7 +457,7 @@ fun PostCard(
 
             // 收藏
             InteractionButton(
-                icon = if (post.isCollected == 1) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                icon = if (post.isCollected == 1) AppIcons.Bookmark else AppIcons.BookmarkBorder,
                 count = post.collectNum,
                 tint = if (post.isCollected == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { onCollectClick(post.id) }

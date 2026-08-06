@@ -1,11 +1,11 @@
 package com.juhao.murexide.ui.about
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -44,7 +44,7 @@ fun AboutScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -81,7 +81,7 @@ fun AboutScreen(
                 }
 
                 SettingsItemCell(
-                    icon = Icons.Rounded.Info,
+                    icon = AppIcons.Info,
                     title = "版本号",
                     subtitle = context.getAppVersionInfo().versionName,
                     onClick = { /* 不执行任何操作 */ }
@@ -91,7 +91,7 @@ fun AboutScreen(
             // 开发者信息
             SettingsGroup(title = "开发者信息") {
                 SettingsItem(
-                    icon = Icons.Rounded.Person,
+                    icon = AppIcons.Person,
                     title = "开发者",
                     subtitle = "JuHao",
                     onClick = {
@@ -100,7 +100,7 @@ fun AboutScreen(
                 )
                 
                 SettingsItem(
-                    icon = Icons.Rounded.Code,
+                    icon = AppIcons.Code,
                     title = "编程语言",
                     subtitle = "Kotlin, Jetpack Compose",
                     onClick = { /* 不执行任何操作 */ }
@@ -110,7 +110,7 @@ fun AboutScreen(
             // 版权信息
             SettingsGroup(title = "许可证") {
                 SettingsItemCell(
-                    icon = Icons.Rounded.Book,
+                    icon = AppIcons.Book,
                     title = "许可证",
                     subtitle = "GNU General Public License v3.0",
                     onClick = { /* 不执行任何操作 */ }
@@ -120,7 +120,7 @@ fun AboutScreen(
             // 链接信息
             SettingsGroup(title = "相关链接") {
                 SettingsItem(
-                    icon = Icons.Rounded.Code,
+                    icon = AppIcons.Code,
                     title = "GitHub",
                     subtitle = "访问项目源码",
                     onClick = {

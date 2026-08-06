@@ -1,5 +1,8 @@
 package com.juhao.murexide.ui.conversationdetail.groupmember
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,9 +13,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -73,12 +73,12 @@ fun GroupMemberScreen(
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     StyledIconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
+                        Icon(AppIcons.Refresh, contentDescription = "刷新")
                     }
                 }
             )
@@ -103,7 +103,7 @@ fun GroupMemberScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            Icons.Rounded.Warning,
+                            AppIcons.Warning,
                             contentDescription = null,
                             modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -207,7 +207,7 @@ fun GroupMemberScreen(
             onDismissRequest = viewModel::dismissDialogs,
             icon = {
                 Icon(
-                    Icons.Rounded.Warning,
+                    AppIcons.Warning,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -235,7 +235,7 @@ fun GroupMemberScreen(
     if (uiState.showGagDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissDialogs,
-            icon = { Icon(Icons.Rounded.AccessTime, contentDescription = null) },
+            icon = { Icon(AppIcons.AccessTime, contentDescription = null) },
             title = { Text("禁言 ${uiState.gagTarget?.name ?: ""}") },
             text = {
                 Column {
@@ -269,7 +269,7 @@ fun GroupMemberScreen(
     if (uiState.showSetAdminConfirm) {
         AlertDialog(
             onDismissRequest = viewModel::dismissDialogs,
-            icon = { Icon(Icons.Rounded.AdminPanelSettings, contentDescription = null) },
+            icon = { Icon(AppIcons.AdminPanelSettings, contentDescription = null) },
             title = { Text("设置管理员") },
             text = {
                 Text("确定要设置 ${uiState.setAdminTarget?.name ?: "该成员"} 为群管理员吗？")
@@ -293,7 +293,7 @@ fun GroupMemberScreen(
             onDismissRequest = viewModel::dismissDialogs,
             icon = {
                 Icon(
-                    Icons.Rounded.AdminPanelSettings,
+                    AppIcons.AdminPanelSettings,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -440,7 +440,7 @@ fun MemberItem(
                     }
                     if (member.isGag) {
                         Icon(
-                            imageVector = Icons.Rounded.MicOff,
+                            imageVector = AppIcons.MicOff,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(16.dp)
@@ -460,7 +460,7 @@ fun MemberItem(
                         onClick = { expanded = !expanded }
                     ) {
                         Icon(
-                            Icons.Rounded.MoreVert,
+                            AppIcons.MoreVert,
                             contentDescription = "管理"
                         )
                     }
@@ -479,7 +479,7 @@ fun MemberItem(
                                     },
                                     leadingIcon = {
                                         Icon(
-                                            Icons.Rounded.AdminPanelSettings,
+                                            AppIcons.AdminPanelSettings,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.error
                                         )
@@ -493,7 +493,7 @@ fun MemberItem(
                                         onSetAdmin(member)
                                     },
                                     leadingIcon = {
-                                        Icon(Icons.Rounded.AdminPanelSettings, contentDescription = null)
+                                        Icon(AppIcons.AdminPanelSettings, contentDescription = null)
                                     }
                                 )
                             }
@@ -507,7 +507,7 @@ fun MemberItem(
                                 onGag(member)
                             },
                             leadingIcon = {
-                                Icon(Icons.Rounded.MicOff, contentDescription = null)
+                                Icon(AppIcons.MicOff, contentDescription = null)
                             }
                         )
 
@@ -519,7 +519,7 @@ fun MemberItem(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Rounded.PersonRemove,
+                                    AppIcons.PersonRemove,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error
                                 )

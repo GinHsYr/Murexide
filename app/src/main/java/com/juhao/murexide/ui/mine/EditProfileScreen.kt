@@ -1,22 +1,14 @@
 package com.juhao.murexide.ui.mine
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Badge
-import androidx.compose.material.icons.rounded.Cake
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.FormatQuote
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -158,7 +150,7 @@ fun EditProfileScreen(
                 title = { Text("编辑资料") },
                 navigationIcon = {
                     StyledIconButton(onClick = onBackClick, enabled = !isSaving) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -175,7 +167,7 @@ fun EditProfileScreen(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Rounded.Check,
+                                imageVector = AppIcons.Check,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -222,7 +214,7 @@ fun EditProfileScreen(
                         )
                         Spacer(modifier = Modifier.height(20.dp))
                         FilledTonalButton(onClick = viewModel::loadUserInfo) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = null)
+                            Icon(AppIcons.Refresh, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("重新加载")
                         }
@@ -349,7 +341,7 @@ private fun EditProfileContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileSectionCard(
-            icon = Icons.Rounded.Badge,
+            icon = AppIcons.Badge,
             title = "基本资料",
             description = "昵称、签名、生日与性别会展示在个人主页"
         ) {
@@ -358,7 +350,7 @@ private fun EditProfileContent(
                 onValueChange = onNicknameChange,
                 label = { Text("昵称") },
                 leadingIcon = {
-                    Icon(Icons.Rounded.Person, contentDescription = null)
+                    Icon(AppIcons.Person, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -371,7 +363,7 @@ private fun EditProfileContent(
                 onValueChange = onIntroductionChange,
                 label = { Text("个性签名") },
                 leadingIcon = {
-                    Icon(Icons.Rounded.FormatQuote, contentDescription = null)
+                    Icon(AppIcons.FormatQuote, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -381,7 +373,7 @@ private fun EditProfileContent(
             )
 
             ProfilePickerField(
-                icon = Icons.Rounded.Cake,
+                icon = AppIcons.Cake,
                 label = "生日",
                 value = birthday.formatBirthday(),
                 onClick = onBirthdayClick,
@@ -414,7 +406,7 @@ private fun EditProfileContent(
                             leadingIcon = if (selected) {
                                 {
                                     Icon(
-                                        imageVector = Icons.Rounded.Check,
+                                        imageVector = AppIcons.Check,
                                         contentDescription = null,
                                         modifier = Modifier.size(FilterChipDefaults.IconSize)
                                     )
@@ -433,7 +425,7 @@ private fun EditProfileContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         ProfileInlinePickerCard(
-            icon = Icons.Rounded.LocationOn,
+            icon = AppIcons.LocationOn,
             label = "所在地",
             value = if (locationCode.isBlank()) {
                 "请选择所在地"
@@ -541,7 +533,7 @@ private fun ProfileInlinePickerCard(
                 icon = null,
                 label = label,
                 value = value,
-                trailingIcon = Icons.Rounded.ChevronRight,
+                trailingIcon = AppIcons.ChevronRight,
                 trailingContentDescription = "选择$label",
                 onClick = onClick,
                 enabled = enabled,
@@ -558,7 +550,7 @@ private fun ProfilePickerField(
     value: String,
     onClick: () -> Unit,
     enabled: Boolean,
-    trailingIcon: ImageVector = Icons.Rounded.CalendarMonth,
+    trailingIcon: ImageVector = AppIcons.CalendarMonth,
     trailingContentDescription: String = "选择$label",
     modifier: Modifier = Modifier
 ) {

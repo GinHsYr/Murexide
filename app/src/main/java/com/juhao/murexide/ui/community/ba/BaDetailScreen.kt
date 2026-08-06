@@ -1,12 +1,12 @@
 package com.juhao.murexide.ui.community.ba
 
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -50,7 +50,7 @@ fun BaDetailScreen(
                 title = { Text(uiState.ba?.name ?: "分区") },
                 navigationIcon = {
                     StyledIconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -62,7 +62,7 @@ fun BaDetailScreen(
                     onClick = {
                         CreatePostActivity.start(context, baId, uiState.ba?.name ?: "")
                     },
-                    icon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                    icon = { Icon(AppIcons.Edit, contentDescription = null) },
                     text = { Text("发帖") }
                 )
             }
