@@ -105,8 +105,8 @@ object LocalCache {
     suspend fun setContactMd5(accountId: String, md5: String) =
         setState(accountId, CONTACT_MD5_KEY, md5)
 
-    suspend fun clearUnread(accountId: String, chatId: String) = withContext(Dispatchers.IO) {
-        db().conversations().clearUnread(accountId, chatId)
+    suspend fun clearUnread(accountId: String, chatId: String, chatType: Int) = withContext(Dispatchers.IO) {
+        db().conversations().clearUnread(accountId, chatId, chatType)
     }
 
     suspend fun applyNewMessageToConversation(

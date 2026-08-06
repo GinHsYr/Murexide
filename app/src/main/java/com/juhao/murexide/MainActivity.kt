@@ -46,16 +46,21 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.contact.ContactListScreen
 import com.juhao.murexide.ui.conversation.ConversationListScreen
+import com.juhao.murexide.ui.conversation.CreationActivity
+import com.juhao.murexide.ui.conversation.HomeSearchActivity
 import com.juhao.murexide.ui.login.LoginActivity
 import com.juhao.murexide.ui.mine.MineScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.ConversationKey
+import com.juhao.murexide.data.unreadTotal
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.datastore.UserAccount
 import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
+import com.juhao.murexide.ui.components.UnreadCountBadge
 import com.juhao.murexide.ui.community.CommunityScreen
 import com.juhao.murexide.ui.settings.SettingsActivity
 import com.juhao.murexide.utils.getAppVersionInfo
@@ -147,6 +152,11 @@ fun MainScreen(account: UserAccount) {
     val isBigScreen = LocalConfiguration.current.screenWidthDp >= 600
 
     var currentConversation by remember { mutableStateOf<ConversationItem?>(null) }
+    val cachedConversations by LocalCache.observeConversations(account.id).collectAsState(initial = emptyList())
+    val unreadCount = cachedConversations.unreadTotal(
+        currentConversation?.takeIf { isBigScreen && bigScreenEnabled }
+            ?.let { ConversationKey(it.chatId, it.chatType) }
+    )
 
     var isContactNewMessagesVisible by remember { mutableStateOf(false) }
     
@@ -177,12 +187,23 @@ fun MainScreen(account: UserAccount) {
                 val selected = currentRoute == item.route
                 item(
                     icon = {
-                        AnimatedNavigationSymbol(
-                            outlineIcon = item.outlineIcon,
-                            filledIcon = item.filledIcon,
-                            selected = selected,
-                            contentDescription = item.title,
-                        )
+                        if (item.route == "conversations") {
+                            BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
+                                AnimatedNavigationSymbol(
+                                    outlineIcon = item.outlineIcon,
+                                    filledIcon = item.filledIcon,
+                                    selected = selected,
+                                    contentDescription = item.title,
+                                )
+                            }
+                        } else {
+                            AnimatedNavigationSymbol(
+                                outlineIcon = item.outlineIcon,
+                                filledIcon = item.filledIcon,
+                                selected = selected,
+                                contentDescription = item.title,
+                            )
+                        }
                     },
                     label = {
                         AnimatedVisibility(
@@ -270,7 +291,9 @@ fun MainScreen(account: UserAccount) {
                                     chatAvatar = conversation.avatarUrl,
                                 )
                             }
-                        }
+                        },
+                        onSearchClick = { origin -> HomeSearchActivity.start(context, origin) },
+                        onCreateClick = { kind -> CreationActivity.start(context, kind) }
                     )
 
                     if (isBigScreen && bigScreenEnabled) {
@@ -292,6 +315,7 @@ fun MainScreen(account: UserAccount) {
                                         currentConversation = target.toConversationItem()
                                     },
                                     bigScreenMode = true,
+                                    backUnreadCount = unreadCount,
                                     viewModel = viewModel(
                                         key = "chat_" + currentConversation!!.chatId,
                                         factory = object : ViewModelProvider.Factory {

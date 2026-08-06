@@ -69,7 +69,6 @@ class ConversationViewModel(
 
     init {
         observeCachedConversations()
-        loadConversations()
         observeWebSocket()
         observeWsConnection()
         observeAppForeground()
@@ -104,7 +103,9 @@ class ConversationViewModel(
     }
 
     fun setForegroundSyncEnabled(enabled: Boolean) {
+        if (foregroundSyncEnabled == enabled) return
         foregroundSyncEnabled = enabled
+        if (enabled) refresh()
     }
 
     private fun observeWsConnection() {
@@ -453,16 +454,17 @@ class ConversationViewModel(
         loadConversations(refreshPreviews = true)
     }
 
-    fun clearUnread(chatId: String) {
+    fun clearUnread(chatId: String, chatType: Int) {
         val currentState = _uiState.value
         if (currentState is ConversationUiState.Success) {
             val conversations = currentState.conversations.map {
-                if (it.chatId == chatId) it.copy(unreadMessage = 0, at = 0) else it
+                if (it.chatId == chatId && it.chatType == chatType) it.copy(unreadMessage = 0, at = 0) else it
             }
             _uiState.update { currentState.copy(conversations = conversations) }
             syncConversationCache()
             viewModelScope.launch {
-                LocalCache.clearUnread(accountId, chatId)
+                LocalCache.clearUnread(accountId, chatId, chatType)
+                repository.dismissNotification(token, chatId)
             }
         }
     }

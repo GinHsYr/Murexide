@@ -19,10 +19,13 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.R
 import com.juhao.murexide.data.ConversationItem
@@ -31,6 +34,7 @@ import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.roundToInt
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +49,8 @@ fun ConversationListScreen(
     accountId: String,
     bigScreenMode: Boolean,
     onConversationClick: (ConversationItem) -> Unit,
+    onSearchClick: (IntOffset) -> Unit = {},
+    onCreateClick: (CreationKind) -> Unit = {},
     currentConversation: ConversationItem? = null,
     viewModel: ConversationViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         key = "conversation_$accountId",
@@ -69,6 +75,8 @@ fun ConversationListScreen(
 
     val settingsStorage = remember { SettingsStorage(context) }
     var showSticky by remember { mutableStateOf(false) }
+    var showCreateMenu by remember { mutableStateOf(false) }
+    var searchButtonCenter by remember { mutableStateOf<IntOffset?>(null) }
 
     LaunchedEffect(Unit) {
         showSticky = settingsStorage.getShowSticky()
@@ -97,11 +105,34 @@ fun ConversationListScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(
+                        onClick = { onSearchClick(searchButtonCenter ?: IntOffset.Zero) },
+                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                            val position = coordinates.positionInWindow()
+                            searchButtonCenter = IntOffset(
+                                x = (position.x + coordinates.size.width / 2f).roundToInt(),
+                                y = (position.y + coordinates.size.height / 2f).roundToInt()
+                            )
+                        }
+                    ) {
                         Icon(AppIcons.Search, contentDescription = "搜索")
                     }
-                    StyledIconButton(onClick = {}) {
-                        Icon(AppIcons.Add, contentDescription = "添加")
+                    Box {
+                        StyledIconButton(onClick = { showCreateMenu = true }) {
+                            Icon(AppIcons.Add, contentDescription = "创建")
+                        }
+                        DropdownMenu(expanded = showCreateMenu, onDismissRequest = { showCreateMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("创建群聊") },
+                                onClick = { showCreateMenu = false; onCreateClick(CreationKind.GROUP) },
+                                leadingIcon = { Icon(AppIcons.Group, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("创建机器人") },
+                                onClick = { showCreateMenu = false; onCreateClick(CreationKind.BOT) },
+                                leadingIcon = { Icon(AppIcons.SmartToy, contentDescription = null) }
+                            )
+                        }
                     }
                 }
             )
@@ -160,7 +191,7 @@ fun ConversationListScreen(
                                     currentConversation?.chatType == conversation.chatType &&
                                     bigScreenMode,
                                 onClick = {
-                                    viewModel.clearUnread(conversation.chatId)
+                                    viewModel.clearUnread(conversation.chatId, conversation.chatType)
                                     onConversationClick(conversation)
                                 }
                             )

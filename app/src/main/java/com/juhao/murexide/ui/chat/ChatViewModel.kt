@@ -149,7 +149,6 @@ class ChatViewModel(
     private val historyLoadMutex = Mutex()
 
     init {
-        loadMessages()
         setupWebSocket()
         observeAppForeground()
         loadBackground()
@@ -421,7 +420,9 @@ class ChatViewModel(
     }
 
     fun setForegroundSyncEnabled(enabled: Boolean) {
+        if (foregroundSyncEnabled == enabled) return
         foregroundSyncEnabled = enabled
+        if (enabled) syncLatestMessages()
     }
 
     /**
