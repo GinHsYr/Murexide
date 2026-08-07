@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.ActiveConversationRegistry
 import com.juhao.murexide.data.LatestMessageRelation
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.StickyItem
@@ -13,6 +14,7 @@ import com.juhao.murexide.data.relationToLatest
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.data.withLatestMessageIdentity
+import com.juhao.murexide.data.withLatestMessages
 import com.juhao.murexide.data.withRecalledLatestMessage
 import com.juhao.murexide.data.withStreamedLatestMessage
 import com.juhao.murexide.data.local.LocalCache
@@ -142,7 +144,10 @@ class ConversationViewModel(
         var conversationMissing = false
         _uiState.update { state ->
             if (state is ConversationUiState.Success) {
-                val conversations = state.conversations.withLatestMessage(message)
+                val conversations = state.conversations.withLatestMessage(
+                    message = message,
+                    incrementUnread = ActiveConversationRegistry.shouldIncrementUnread(message)
+                )
                 if (conversations != null) {
                     state.copy(conversations = conversations)
                 } else {
@@ -340,8 +345,19 @@ class ConversationViewModel(
                 _uiState.value = ConversationUiState.Loading
             }
             fetchStickyList()
-            repository.syncCachedConversations(token, accountId).onSuccess {
-                if (generation == loadGeneration) {
+            repository.syncCachedConversations(
+                token = token,
+                accountId = accountId,
+                forceRefresh = refreshPreviews
+            ).onSuccess {
+                if (generation != loadGeneration) return@onSuccess
+                if (refreshPreviews) {
+                    refreshMessagePreviewsProgressively(
+                        conversations = LocalCache.getCachedConversations(accountId),
+                        generation = generation,
+                        refreshStartVersion = refreshStartVersion
+                    )
+                } else {
                     _isRefreshing.value = false
                     if (_uiState.value is ConversationUiState.Loading) {
                         _uiState.value = ConversationUiState.Success(emptyList(), stickyConversations)
@@ -386,14 +402,12 @@ class ConversationViewModel(
             }
 
             val latestByConversation = batchUpdates.toMap()
-            refreshedConversations = refreshedConversations.map { conversation ->
-                val latest = latestByConversation[conversation.chatType to conversation.chatId]
-                    ?: return@map conversation
-                listOf(conversation).withLatestMessage(
-                    message = latest,
-                    incrementUnread = false
-                )?.singleOrNull() ?: conversation
-            }
+            val latestMessages = batchUpdates.mapNotNull { it.second }
+            LocalCache.cacheMessages(accountId, latestMessages)
+            refreshedConversations = refreshedConversations.withLatestMessages(
+                messagesByConversation = latestByConversation,
+                incrementUnread = false
+            )
             publishConversations(refreshedConversations, refreshStartVersion)
 
             // The pull gesture completes as soon as the first visible batch is on screen. The
@@ -406,10 +420,11 @@ class ConversationViewModel(
         if (generation == loadGeneration) _isRefreshing.value = false
     }
 
-    private fun publishConversations(
+    private suspend fun publishConversations(
         conversations: List<ConversationItem>,
         refreshStartVersion: Long
     ) {
+        var displayedConversations = conversations
         _uiState.update { state ->
             val displayed = if (state is ConversationUiState.Success) {
                 mergeRefreshedConversations(
@@ -422,12 +437,18 @@ class ConversationViewModel(
             } else {
                 conversations
             }
+            displayedConversations = displayed
             ConversationUiState.Success(
                 conversations = displayed,
                 stickyConversations = stickyConversations
             )
         }
         syncConversationCache()
+        runCatching {
+            LocalCache.persistRefreshedConversations(accountId, displayedConversations)
+        }.onFailure { error ->
+            Log.w("ConversationViewModel", "Failed to persist refreshed previews", error)
+        }
     }
 
     private fun fetchStickyList() {
@@ -457,6 +478,10 @@ class ConversationViewModel(
     fun clearUnread(chatId: String, chatType: Int) {
         val currentState = _uiState.value
         if (currentState is ConversationUiState.Success) {
+            loadJob?.cancel()
+            loadJob = null
+            loadGeneration += 1
+            _isRefreshing.value = false
             val conversations = currentState.conversations.map {
                 if (it.chatId == chatId && it.chatType == chatType) it.copy(unreadMessage = 0, at = 0) else it
             }

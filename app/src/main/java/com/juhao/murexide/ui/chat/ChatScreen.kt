@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.UnreadCountBadge
 import coil.compose.AsyncImage
@@ -253,9 +254,9 @@ fun ChatScreen(
     val inputFocusRequester = remember { FocusRequester() }
     val composeView = LocalView.current
 
-    DisposableEffect(viewModel) {
+    LifecycleResumeEffect(viewModel, chatType, chatId) {
         viewModel.setForegroundSyncEnabled(true)
-        onDispose { viewModel.setForegroundSyncEnabled(false) }
+        onPauseOrDispose { viewModel.setForegroundSyncEnabled(false) }
     }
 
     val imeBottomPx = WindowInsets.ime.getBottom(density)

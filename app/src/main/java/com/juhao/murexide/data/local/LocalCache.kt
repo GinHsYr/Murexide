@@ -1,10 +1,13 @@
 package com.juhao.murexide.data.local
 
 import android.content.Context
+import androidx.room.withTransaction
 import com.juhao.murexide.data.ConversationItem
+import com.juhao.murexide.data.ConversationKey
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.data.StickyItem
+import com.juhao.murexide.data.mergeCachedConversationSnapshot
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.data.withRecalledLatestMessage
@@ -28,6 +31,8 @@ object LocalCache {
 
     private const val CONVERSATION_MD5_KEY = "conversation_md5"
     private const val CONTACT_MD5_KEY = "contact_md5"
+    private const val CONVERSATION_READ_GUARD_PREFIX = "conversation_read_guard:"
+    private const val CONVERSATION_READ_GUARD_TTL_MS = 60_000L
     private const val MAX_MESSAGES_PER_ACCOUNT = 20_000
     private const val MAX_MESSAGES_PER_CONVERSATION = 2_000
 
@@ -57,6 +62,11 @@ object LocalCache {
         .observeSticky(accountId)
         .map { rows -> rows.map { it.toModel() } }
 
+    suspend fun getCachedConversations(accountId: String): List<ConversationItem> =
+        withContext(Dispatchers.IO) {
+            db().conversations().getConversations(accountId).map { it.toModel() }
+        }
+
     fun observeMessages(
         accountId: String,
         chatId: String,
@@ -82,11 +92,53 @@ object LocalCache {
         conversations: List<ConversationItem>,
         md5: String?
     ) = withContext(Dispatchers.IO) {
-        db().conversations().replaceConversations(
-            accountId,
-            conversations.mapIndexed { index, item -> item.toEntity(accountId, index) }
-        )
-        md5?.let { setState(accountId, CONVERSATION_MD5_KEY, it) }
+        val database = db()
+        database.withTransaction {
+            val dao = database.conversations()
+            val merged = mergeCachedConversationSnapshot(
+                refreshed = conversations,
+                cached = dao.getConversations(accountId).map { it.toModel() },
+                locallyRead = recentConversationReadGuards(database, accountId)
+            )
+            dao.replaceConversations(
+                accountId,
+                merged.mapIndexed { index, item -> item.toEntity(accountId, index) }
+            )
+            if (md5 != null) {
+                database.states().put(
+                    CacheSyncStateEntity(
+                        accountId = accountId,
+                        key = CONVERSATION_MD5_KEY,
+                        value = md5,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Persists refreshed previews without allowing a newer WebSocket update to be replaced by an
+     * older HTTP snapshot that completed later.
+     */
+    suspend fun persistRefreshedConversations(
+        accountId: String,
+        refreshed: List<ConversationItem>
+    ) = withContext(Dispatchers.IO) {
+        val database = db()
+        database.withTransaction {
+            val dao = database.conversations()
+            val current = dao.getConversations(accountId).map { it.toModel() }
+            val merged = mergeCachedConversationSnapshot(
+                refreshed = refreshed,
+                cached = current,
+                locallyRead = recentConversationReadGuards(database, accountId)
+            )
+            dao.replaceConversations(
+                accountId,
+                merged.mapIndexed { index, item -> item.toEntity(accountId, index) }
+            )
+        }
     }
 
     suspend fun cacheSticky(accountId: String, items: List<StickyItem>) = withContext(Dispatchers.IO) {
@@ -105,30 +157,57 @@ object LocalCache {
     suspend fun setContactMd5(accountId: String, md5: String) =
         setState(accountId, CONTACT_MD5_KEY, md5)
 
-    suspend fun clearUnread(accountId: String, chatId: String, chatType: Int) = withContext(Dispatchers.IO) {
-        db().conversations().clearUnread(accountId, chatId, chatType)
-    }
+    suspend fun clearUnread(accountId: String, chatId: String, chatType: Int) =
+        withContext(Dispatchers.IO) {
+            val database = db()
+            val now = System.currentTimeMillis()
+            database.withTransaction {
+                database.conversations().clearUnread(accountId, chatId, chatType)
+                database.states().deleteOlderThanByPrefix(
+                    accountId = accountId,
+                    prefix = CONVERSATION_READ_GUARD_PREFIX,
+                    updatedBefore = now - CONVERSATION_READ_GUARD_TTL_MS
+                )
+                database.states().put(
+                    CacheSyncStateEntity(
+                        accountId = accountId,
+                        key = conversationReadGuardKey(ConversationKey(chatId, chatType)),
+                        updatedAt = now
+                    )
+                )
+            }
+        }
 
     suspend fun applyNewMessageToConversation(
         accountId: String,
         message: MessageItem,
         incrementUnread: Boolean
     ) = withContext(Dispatchers.IO) {
-        val dao = db().conversations()
-        val currentEntity = dao.getConversationForMessage(
-            accountId,
-            message.chatId,
-            message.chatType,
-            message.senderId
-        ) ?: return@withContext
-        val current = currentEntity.toModel()
-        val changed = listOf(current).withLatestMessage(message, incrementUnread)?.singleOrNull()
-            ?: return@withContext
-        val entity = changed.toEntity(accountId, currentEntity.listPosition)
-        if (message.isStrictlyNewerThan(current)) {
-            dao.moveConversationToFront(entity)
-        } else {
-            dao.upsertConversations(listOf(entity))
+        val database = db()
+        database.withTransaction {
+            val dao = database.conversations()
+            val currentEntity = dao.getConversationForMessage(
+                accountId,
+                message.chatId,
+                message.chatType,
+                message.senderId
+            ) ?: return@withTransaction
+            val current = currentEntity.toModel()
+            val isStrictlyNewer = message.isStrictlyNewerThan(current)
+            val changed = listOf(current).withLatestMessage(message, incrementUnread)?.singleOrNull()
+                ?: return@withTransaction
+            if (incrementUnread && isStrictlyNewer) {
+                database.states().delete(
+                    accountId,
+                    conversationReadGuardKey(ConversationKey(current.chatId, current.chatType))
+                )
+            }
+            val entity = changed.toEntity(accountId, currentEntity.listPosition)
+            if (isStrictlyNewer) {
+                dao.moveConversationToFront(entity)
+            } else {
+                dao.upsertConversations(listOf(entity))
+            }
         }
     }
 
@@ -214,6 +293,25 @@ object LocalCache {
     private suspend fun setState(accountId: String, key: String, value: String) = withContext(Dispatchers.IO) {
         db().states().put(CacheSyncStateEntity(accountId, key, value, System.currentTimeMillis()))
     }
+
+    private suspend fun recentConversationReadGuards(
+        database: LocalCacheDatabase,
+        accountId: String
+    ): Set<ConversationKey> = database.states().getRecentByPrefix(
+        accountId = accountId,
+        prefix = CONVERSATION_READ_GUARD_PREFIX,
+        updatedAfter = System.currentTimeMillis() - CONVERSATION_READ_GUARD_TTL_MS
+    ).mapNotNull { state ->
+        state.key.removePrefix(CONVERSATION_READ_GUARD_PREFIX).let { suffix ->
+            val separator = suffix.indexOf(':')
+            if (separator <= 0 || separator == suffix.lastIndex) return@let null
+            val chatType = suffix.substring(0, separator).toIntOrNull() ?: return@let null
+            ConversationKey(chatId = suffix.substring(separator + 1), chatType = chatType)
+        }
+    }.toSet()
+
+    private fun conversationReadGuardKey(conversation: ConversationKey): String =
+        "$CONVERSATION_READ_GUARD_PREFIX${conversation.chatType}:${conversation.chatId}"
 
     private suspend fun trimConversationMessages(accountId: String, chatId: String, chatType: Int) {
         val excess = db().messages().oldestMessageIdsAfter(

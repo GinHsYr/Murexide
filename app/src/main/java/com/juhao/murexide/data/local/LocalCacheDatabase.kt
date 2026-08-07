@@ -143,6 +143,9 @@ interface ConversationCacheDao {
     @Query("SELECT * FROM cached_conversations WHERE accountId = :accountId ORDER BY listPosition ASC, chatType ASC, chatId ASC")
     fun observeConversations(accountId: String): Flow<List<CachedConversationEntity>>
 
+    @Query("SELECT * FROM cached_conversations WHERE accountId = :accountId ORDER BY listPosition ASC, chatType ASC, chatId ASC")
+    suspend fun getConversations(accountId: String): List<CachedConversationEntity>
+
     @Query(
         "SELECT * FROM cached_conversations WHERE accountId = :accountId AND chatType = :chatType " +
             "AND (chatId = :chatId OR (:chatType = 1 AND chatId = :senderId)) LIMIT 1"
@@ -275,6 +278,29 @@ interface CacheStateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun put(entity: CacheSyncStateEntity)
+
+    @Query(
+        "SELECT * FROM cache_sync_state WHERE accountId = :accountId " +
+            "AND substr(`key`, 1, length(:prefix)) = :prefix AND updatedAt >= :updatedAfter"
+    )
+    suspend fun getRecentByPrefix(
+        accountId: String,
+        prefix: String,
+        updatedAfter: Long
+    ): List<CacheSyncStateEntity>
+
+    @Query("DELETE FROM cache_sync_state WHERE accountId = :accountId AND `key` = :key")
+    suspend fun delete(accountId: String, key: String)
+
+    @Query(
+        "DELETE FROM cache_sync_state WHERE accountId = :accountId " +
+            "AND substr(`key`, 1, length(:prefix)) = :prefix AND updatedAt < :updatedBefore"
+    )
+    suspend fun deleteOlderThanByPrefix(
+        accountId: String,
+        prefix: String,
+        updatedBefore: Long
+    )
 
     @Query("DELETE FROM cached_conversations WHERE accountId = :accountId")
     suspend fun deleteConversations(accountId: String)
