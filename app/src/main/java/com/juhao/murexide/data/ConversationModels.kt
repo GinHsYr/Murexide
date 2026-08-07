@@ -106,6 +106,16 @@ internal fun List<ConversationItem>.withLatestMessage(
     return conversations
 }
 
+internal fun List<ConversationItem>.withLatestMessages(
+    messagesByConversation: Map<Pair<Int, String>, MessageItem?>,
+    incrementUnread: Boolean = true
+): List<ConversationItem> = map { conversation ->
+    val latest = messagesByConversation[conversation.chatType to conversation.chatId]
+        ?: return@map conversation
+    listOf(conversation).withLatestMessage(latest, incrementUnread)?.singleOrNull()
+        ?: conversation
+}
+
 /**
  * Updates a conversation preview only when [message] is the conversation's latest message.
  *
@@ -254,6 +264,35 @@ internal fun mergeRefreshedConversations(
     }
     return realtimePrefix + merged.filterNot {
         (it.chatType to it.chatId) in strictlyNewerKeys
+    }
+}
+
+/** Merges a server snapshot with the rows currently stored in Room before replacing them. */
+internal fun mergeCachedConversationSnapshot(
+    refreshed: List<ConversationItem>,
+    cached: List<ConversationItem>,
+    locallyRead: Set<ConversationKey> = emptySet()
+): List<ConversationItem> {
+    val refreshedByKey = refreshed.associateBy { it.chatType to it.chatId }
+    val protectedKeys = cached.mapNotNull { current ->
+        val server = refreshedByKey[current.chatType to current.chatId]
+            ?: return@mapNotNull null
+        (current.chatType to current.chatId).takeIf {
+            current.isStrictlyNewerThan(server)
+        }
+    }.toSet()
+    val merged = mergeRefreshedConversations(
+        refreshed = refreshed,
+        current = cached,
+        protectedKeys = protectedKeys
+    )
+    if (locallyRead.isEmpty()) return merged
+    return merged.map { conversation ->
+        if (ConversationKey(conversation.chatId, conversation.chatType) in locallyRead) {
+            conversation.copy(unreadMessage = 0, at = 0)
+        } else {
+            conversation
+        }
     }
 }
 

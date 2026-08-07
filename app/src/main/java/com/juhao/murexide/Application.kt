@@ -31,6 +31,7 @@ import com.juhao.murexide.data.DefaultEmojiBitmapCache
 import com.juhao.murexide.data.DefaultEmojiCatalog
 import com.juhao.murexide.network.NetworkClient
 import com.juhao.murexide.network.WebSocketManager
+import com.juhao.murexide.repository.ConversationRepository
 import com.juhao.murexide.ui.theme.UiCache
 import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.ui.components.MurexideBigImageHelper
@@ -50,6 +51,8 @@ import kotlin.math.roundToInt
 class MyApplication : Application(), ImageLoaderFactory {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private val accountStorage by lazy { AccountStorage.getInstance(this) }
+    private val conversationRepository by lazy { ConversationRepository() }
     private val settingsStorage by lazy { SettingsStorage(this) }
 
     override fun onCreate() {
@@ -85,7 +88,17 @@ class MyApplication : Application(), ImageLoaderFactory {
         )
         observeAvatarSetting()
         initWebSocket()
-        CacheSyncCoordinator().start(applicationScope)
+        CacheSyncCoordinator(
+            dismissConversationNotification = { chatId ->
+                val account = accountStorage.getCurrentUserInfo()
+                if (account != null && account.token.isNotEmpty()) {
+                    conversationRepository.dismissNotification(account.token, chatId)
+                        .onFailure { error ->
+                            Log.w("MyApplication", "Failed to mark $chatId as read", error)
+                        }
+                }
+            }
+        ).start(applicationScope)
         observeNetworkStatus()
         observeMessages(this)
     }
@@ -217,8 +230,6 @@ class MyApplication : Application(), ImageLoaderFactory {
     }
 
     private fun initWebSocket() {
-        val accountStorage = AccountStorage.getInstance(this)
-
         applicationScope.launch {
             accountStorage.currentAccountFlow.collect { account ->
                 LocalCache.setActiveAccount(account?.id)

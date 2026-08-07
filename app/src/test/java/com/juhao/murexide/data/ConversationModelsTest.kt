@@ -361,6 +361,34 @@ class ConversationModelsTest {
     }
 
     @Test
+    fun `refresh batch replaces a cached preview with the latest server message`() {
+        val stale = conversation(
+            chatId = "target",
+            content = "stale",
+            timestamp = 1_000L,
+            latestMessageId = "old-id",
+            latestMessageSeq = 10L
+        )
+        val latest = outgoingMessage(
+            chatId = "target",
+            content = "latest",
+            timestamp = 2_000L,
+            msgId = "new-id",
+            msgSeq = 11L
+        )
+
+        val refreshed = listOf(stale).withLatestMessages(
+            messagesByConversation = mapOf((2 to "target") to latest),
+            incrementUnread = false
+        )
+
+        assertEquals("latest", refreshed.single().chatContent)
+        assertEquals("new-id", refreshed.single().latestMessageId)
+        assertEquals(11L, refreshed.single().latestMessageSeq)
+        assertEquals(0, refreshed.single().unreadMessage)
+    }
+
+    @Test
     fun `refresh does not clear existing unread indicators`() {
         val current = conversation(
             chatId = "target",
@@ -383,6 +411,49 @@ class ConversationModelsTest {
         assertEquals("server preview", merged.single().chatContent)
         assertEquals(3, merged.single().unreadMessage)
         assertEquals(1, merged.single().at)
+    }
+
+    @Test
+    fun `cache snapshot replacement preserves unread indicators before writing Room rows`() {
+        val cached = conversation(
+            chatId = "target",
+            content = "cached preview",
+            unreadCount = 3,
+            at = 1
+        )
+        val server = cached.copy(
+            chatContent = "server preview",
+            unreadMessage = 0,
+            at = 0
+        )
+
+        val merged = mergeCachedConversationSnapshot(
+            refreshed = listOf(server),
+            cached = listOf(cached)
+        )
+
+        assertEquals("server preview", merged.single().chatContent)
+        assertEquals(3, merged.single().unreadMessage)
+        assertEquals(1, merged.single().at)
+    }
+
+    @Test
+    fun `local read guard wins over a stale refresh with unread messages`() {
+        val conversation = conversation(
+            chatId = "target",
+            content = "latest preview",
+            unreadCount = 3,
+            at = 1
+        )
+
+        val merged = mergeCachedConversationSnapshot(
+            refreshed = listOf(conversation),
+            cached = listOf(conversation.copy(unreadMessage = 0, at = 0)),
+            locallyRead = setOf(ConversationKey("target", 2))
+        )
+
+        assertEquals(0, merged.single().unreadMessage)
+        assertEquals(0, merged.single().at)
     }
 
     @Test

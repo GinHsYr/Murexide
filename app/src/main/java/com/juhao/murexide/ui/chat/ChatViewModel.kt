@@ -422,7 +422,17 @@ class ChatViewModel(
     fun setForegroundSyncEnabled(enabled: Boolean) {
         if (foregroundSyncEnabled == enabled) return
         foregroundSyncEnabled = enabled
-        if (enabled) syncLatestMessages()
+        if (enabled) {
+            ActiveConversationRegistry.activate(this, ConversationKey(chatId, chatType))
+            syncLatestMessages()
+        } else {
+            ActiveConversationRegistry.deactivate(this)
+        }
+    }
+
+    override fun onCleared() {
+        ActiveConversationRegistry.deactivate(this)
+        super.onCleared()
     }
 
     /**

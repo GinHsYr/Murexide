@@ -45,9 +45,17 @@ class ConversationRepository {
     suspend fun getConversationList(token: String, md5: String = ""): Result<List<ConversationItem>> =
         fetchConversationList(token, md5).map { it.items }
 
-    /** Performs an MD5 conditional refresh and only writes a changed server snapshot. */
-    suspend fun syncCachedConversations(token: String, accountId: String): Result<Boolean> {
-        return fetchConversationList(token, LocalCache.conversationMd5(accountId)).map { snapshot ->
+    /** Syncs the server snapshot, optionally bypassing the MD5 condition for an explicit refresh. */
+    suspend fun syncCachedConversations(
+        token: String,
+        accountId: String,
+        forceRefresh: Boolean = false
+    ): Result<Boolean> {
+        val md5 = conversationListRequestMd5(
+            cachedMd5 = LocalCache.conversationMd5(accountId),
+            forceRefresh = forceRefresh
+        )
+        return fetchConversationList(token, md5).map { snapshot ->
             if (!snapshot.unchanged) {
                 LocalCache.replaceConversations(accountId, snapshot.items, snapshot.md5)
                 true
@@ -220,6 +228,9 @@ class ConversationRepository {
             }
         }
 }
+
+internal fun conversationListRequestMd5(cachedMd5: String, forceRefresh: Boolean): String =
+    if (forceRefresh) "" else cachedMd5
 
 @Serializable
 private data class DismissNotificationResponse(val code: Int = 0, val msg: String = "")
