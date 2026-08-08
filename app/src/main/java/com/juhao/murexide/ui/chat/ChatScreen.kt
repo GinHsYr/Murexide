@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
@@ -126,24 +127,44 @@ private fun FloatingChatTopBar(
     onMoreClick: () -> Unit,
     moreMenu: @Composable BoxScope.() -> Unit
 ) {
-    val controlSize = 52.dp
+    val controlSize = 48.dp
     val buttonShape = CircleShape
-    // Keep the tint light enough for the chat background to remain visibly blurred.
-    val buttonHazeStyle = HazeMaterials.ultraThin().copy(
+    // Use the theme's container color for both the scrim and frosted controls.
+    val topBarContainerColor = MaterialTheme.colorScheme.primaryContainer
+    val buttonHazeStyle = HazeMaterials.ultraThin(
+        containerColor = topBarContainerColor
+    ).copy(
         blurRadius = 32.dp,
         noiseFactor = 0f
     )
-    val cardShape = RoundedCornerShape(28.dp)
+    val cardShape = RoundedCornerShape(24.dp)
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        if (showBackButton) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // Blend the status-bar area into the floating controls, while leaving the chat
+        // content unobscured immediately below the controls.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            topBarContainerColor.copy(alpha = 0.72f),
+                            topBarContainerColor.copy(alpha = 0.46f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (showBackButton) {
             Box(
                 modifier = Modifier
                     .size(controlSize)
@@ -160,12 +181,12 @@ private fun FloatingChatTopBar(
                 AutoMirroredIcon(
                     imageVector = AppIcons.ArrowBack,
                     contentDescription = "返回",
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
-        }
+            }
 
-        Box(
+            Box(
             modifier = Modifier
                 .weight(1f)
                 .height(controlSize)
@@ -175,12 +196,13 @@ private fun FloatingChatTopBar(
                     state = hazeState,
                     style = buttonHazeStyle,
                     block = null
-                )
-        ) {
+                ),
+            contentAlignment = Alignment.CenterStart
+            ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = if (showBoardButton) 44.dp else 0.dp)
+                    .padding(end = if (showBoardButton) 52.dp else 12.dp)
             ) {
                 title()
             }
@@ -188,7 +210,7 @@ private fun FloatingChatTopBar(
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .size(48.dp)
+                        .size(40.dp)
                         .clickable(onClick = onBoardClick),
                     contentAlignment = Alignment.Center
                 ) {
@@ -202,9 +224,9 @@ private fun FloatingChatTopBar(
                     )
                 }
             }
-        }
+            }
 
-        Box(
+            Box(
             modifier = Modifier
                 .size(controlSize)
                 .shadow(5.dp, buttonShape)
@@ -216,12 +238,13 @@ private fun FloatingChatTopBar(
                 )
                 .clickable(onClick = onMoreClick),
             contentAlignment = Alignment.Center
-        ) {
+            ) {
             moreMenu()
             Icon(
                 imageVector = AppIcons.MoreVert,
                 contentDescription = "更多"
             )
+            }
         }
     }
 }
@@ -933,7 +956,7 @@ fun ChatScreen(
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
-                                            .fillMaxWidth()
+                                            .fillMaxSize()
                                             .padding(1.dp)
                                             .clickable {
                                                 ConversationDetailActivity.start(
@@ -947,10 +970,10 @@ fun ChatScreen(
                                     ) {
                                         Avatar(
                                             url = chatAvatar,
-                                            size = 50.dp
+                                            size = 46.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = chatName,
                                                 style = MaterialTheme.typography.bodyLarge,
