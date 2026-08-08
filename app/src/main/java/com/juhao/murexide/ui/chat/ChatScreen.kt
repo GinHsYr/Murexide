@@ -129,10 +129,9 @@ private fun FloatingChatTopBar(
 ) {
     val controlSize = 48.dp
     val buttonShape = CircleShape
-    // Use the theme's container color for both the scrim and frosted controls.
-    val topBarContainerColor = MaterialTheme.colorScheme.primaryContainer
+    val topBarColor = MaterialTheme.colorScheme.surface
     val buttonHazeStyle = HazeMaterials.ultraThin(
-        containerColor = topBarContainerColor
+        containerColor = topBarColor
     ).copy(
         blurRadius = 32.dp,
         noiseFactor = 0f
@@ -148,8 +147,8 @@ private fun FloatingChatTopBar(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            topBarContainerColor.copy(alpha = 0.72f),
-                            topBarContainerColor.copy(alpha = 0.46f),
+                            topBarColor.copy(alpha = 0.8f),
+                            topBarColor.copy(alpha = 0.5f),
                             Color.Transparent
                         )
                     )
@@ -165,6 +164,67 @@ private fun FloatingChatTopBar(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             if (showBackButton) {
+                Box(
+                    modifier = Modifier
+                        .size(controlSize)
+                        .shadow(5.dp, buttonShape)
+                        .clip(buttonShape)
+                        .hazeEffect(
+                            state = hazeState,
+                            style = buttonHazeStyle,
+                            block = null
+                        )
+                        .clickable(onClick = onBackClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AutoMirroredIcon(
+                        imageVector = AppIcons.ArrowBack,
+                        contentDescription = "返回",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(controlSize)
+                    .shadow(6.dp, cardShape)
+                    .clip(cardShape)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = buttonHazeStyle,
+                        block = null
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = if (showBoardButton) 52.dp else 12.dp)
+                ) {
+                    title()
+                }
+                if (showBoardButton) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(40.dp)
+                            .clickable(onClick = onBoardClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (boardExpanded) {
+                                AppIcons.KeyboardArrowUp
+                            } else {
+                                AppIcons.KeyboardArrowDown
+                            },
+                            contentDescription = if (boardExpanded) "收起看板" else "展开看板"
+                        )
+                    }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .size(controlSize)
@@ -175,75 +235,14 @@ private fun FloatingChatTopBar(
                         style = buttonHazeStyle,
                         block = null
                     )
-                    .clickable(onClick = onBackClick),
+                    .clickable(onClick = onMoreClick),
                 contentAlignment = Alignment.Center
             ) {
-                AutoMirroredIcon(
-                    imageVector = AppIcons.ArrowBack,
-                    contentDescription = "返回",
-                    modifier = Modifier.size(24.dp)
+                moreMenu()
+                Icon(
+                    imageVector = AppIcons.MoreVert,
+                    contentDescription = "更多"
                 )
-            }
-            }
-
-            Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(controlSize)
-                .shadow(6.dp, cardShape)
-                .clip(cardShape)
-                .hazeEffect(
-                    state = hazeState,
-                    style = buttonHazeStyle,
-                    block = null
-                ),
-            contentAlignment = Alignment.CenterStart
-            ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = if (showBoardButton) 52.dp else 12.dp)
-            ) {
-                title()
-            }
-            if (showBoardButton) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .size(40.dp)
-                        .clickable(onClick = onBoardClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (boardExpanded) {
-                            AppIcons.KeyboardArrowUp
-                        } else {
-                            AppIcons.KeyboardArrowDown
-                        },
-                        contentDescription = if (boardExpanded) "收起看板" else "展开看板"
-                    )
-                }
-            }
-            }
-
-            Box(
-            modifier = Modifier
-                .size(controlSize)
-                .shadow(5.dp, buttonShape)
-                .clip(buttonShape)
-                .hazeEffect(
-                    state = hazeState,
-                    style = buttonHazeStyle,
-                    block = null
-                )
-                .clickable(onClick = onMoreClick),
-            contentAlignment = Alignment.Center
-            ) {
-            moreMenu()
-            Icon(
-                imageVector = AppIcons.MoreVert,
-                contentDescription = "更多"
-            )
             }
         }
     }
