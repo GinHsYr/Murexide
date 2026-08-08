@@ -18,6 +18,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -26,9 +27,10 @@ private val protobufMediaType = "application/octet-stream".toMediaType()
 internal fun createFriendRequestListBody() =
     request_list_send().encode().toRequestBody(protobufMediaType)
 
-class FriendRepository {
-    private val client = NetworkClient.okHttpClient
-    private val baseUrl = NetworkClient.BASE_URL
+class FriendRepository(
+    private val client: OkHttpClient = NetworkClient.okHttpClient,
+    private val baseUrl: String = NetworkClient.BASE_URL
+) {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Uses the API's address-book MD5 to avoid replacing unchanged cached contacts. */
@@ -175,7 +177,8 @@ class FriendRepository {
     /**
      * 处理申请/邀请。
      * agree: 1-同意，2-拒绝；服务端还会使用 3/4 表示过期或群聊已解散。
-     * 进群邀请、机器人邀请走 /group/agree-invite；进群申请、加好友走 /friend/agree-apply。
+     * 云湖当前接口对群邀请的处理是非对称的：同意走 /group/agree-invite，拒绝走
+     * /friend/agree-apply；好友申请始终走 /friend/agree-apply。
      */
     suspend fun respondToRequest(
         token: String,
@@ -184,39 +187,48 @@ class FriendRepository {
         usesGroupAgreeInvite: Boolean
     ): Result<DeleteFriendResponse> {
         return withContext(Dispatchers.IO) {
-            try {
-                val params = buildJsonObject {
+            val payload = json.encodeToString(
+                buildJsonObject {
                     put("id", requestId)
                     put("agree", agree)
                 }
-                val requestBody = json.encodeToString(params)
-                    .toRequestBody("application/json".toMediaType())
-                val url = if (usesGroupAgreeInvite) {
-                    "$baseUrl/v1/group/agree-invite"
-                } else {
-                    "$baseUrl/v1/friend/agree-apply"
-                }
-                val httpRequest = Request.Builder()
-                    .url(url)
-                    .post(requestBody)
-                    .header("token", token)
-                    .build()
-
-                client.newCall(httpRequest).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@use Result.failure(Exception("HTTP error: ${response.code}"))
-                    }
-
-                    val result = json.decodeFromString<DeleteFriendResponse>(response.body.string())
-                    if (result.code == 1) {
-                        Result.success(result)
-                    } else {
-                        Result.failure(Exception(result.msg.ifBlank { "处理失败" }))
-                    }
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
+            )
+            val primaryPath = if (usesGroupAgreeInvite && agree == 1) {
+                "/v1/group/agree-invite"
+            } else {
+                "/v1/friend/agree-apply"
             }
+            postRequestResponse(token, payload, primaryPath)
+        }
+    }
+
+    private fun postRequestResponse(
+        token: String,
+        payload: String,
+        path: String
+    ): Result<DeleteFriendResponse> {
+        return try {
+            val requestBody = payload.toRequestBody("application/json".toMediaType())
+            val httpRequest = Request.Builder()
+                .url("$baseUrl$path")
+                .post(requestBody)
+                .header("token", token)
+                .build()
+
+            client.newCall(httpRequest).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                }
+
+                val result = json.decodeFromString<DeleteFriendResponse>(response.body.string())
+                if (result.code == 1) {
+                    Result.success(result)
+                } else {
+                    Result.failure(Exception(result.msg.ifBlank { "处理失败" }))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
     

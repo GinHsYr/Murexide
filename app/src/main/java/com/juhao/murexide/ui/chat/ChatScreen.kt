@@ -41,6 +41,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -59,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.components.Avatar
-import com.juhao.murexide.ui.components.UnreadCountBadge
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
@@ -91,6 +91,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.conversationdetail.GroupSettingsActivity
@@ -111,6 +112,101 @@ private enum class ChatInputPanel {
 }
 
 private val DefaultInputPanelHeight = 280.dp
+
+@Composable
+private fun FloatingChatTopBar(
+    showBackButton: Boolean,
+    onBackClick: () -> Unit,
+    title: @Composable () -> Unit,
+    showBoardButton: Boolean,
+    boardExpanded: Boolean,
+    onBoardClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    moreMenu: @Composable BoxScope.() -> Unit
+) {
+    val controlSize = 52.dp
+    val buttonShape = CircleShape
+    val buttonColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f)
+    val cardShape = RoundedCornerShape(28.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (showBackButton) {
+            Box(
+                modifier = Modifier
+                    .size(controlSize)
+                    .shadow(5.dp, buttonShape)
+                    .clip(buttonShape)
+                    .background(buttonColor)
+                    .clickable(onClick = onBackClick),
+                contentAlignment = Alignment.Center
+            ) {
+                AutoMirroredIcon(
+                    imageVector = AppIcons.ArrowBack,
+                    contentDescription = "返回",
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(controlSize)
+                .shadow(6.dp, cardShape)
+                .clip(cardShape)
+                .background(buttonColor)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = if (showBoardButton) 44.dp else 0.dp)
+            ) {
+                title()
+            }
+            if (showBoardButton) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(48.dp)
+                        .clickable(onClick = onBoardClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (boardExpanded) {
+                            AppIcons.KeyboardArrowUp
+                        } else {
+                            AppIcons.KeyboardArrowDown
+                        },
+                        contentDescription = if (boardExpanded) "收起看板" else "展开看板"
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(controlSize)
+                .shadow(5.dp, buttonShape)
+                .clip(buttonShape)
+                .background(buttonColor)
+                .clickable(onClick = onMoreClick),
+            contentAlignment = Alignment.Center
+        ) {
+            moreMenu()
+            Icon(
+                imageVector = AppIcons.MoreVert,
+                contentDescription = "更多"
+            )
+        }
+    }
+}
 
 private suspend fun View.measureShownImeHeight(): Int? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
@@ -725,25 +821,15 @@ fun ChatScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .hazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.regular().copy(
-                                noiseFactor = 0f
-                            ),
-                            block = null
-                        )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(0.5.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                )
+                if (selectionMode) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                    )
+                }
 
                 AnimatedContent(
                     targetState = selectionMode,
@@ -821,13 +907,15 @@ fun ChatScreen(
                         )
                     } else {
                         Column {
-                            TopAppBar(
+                            FloatingChatTopBar(
+                                showBackButton = !bigScreenMode,
+                                onBackClick = onBackClick,
                                 title = {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(9.dp))
+                                            .padding(1.dp)
                                             .clickable {
                                                 ConversationDetailActivity.start(
                                                     context = context,
@@ -840,7 +928,7 @@ fun ChatScreen(
                                     ) {
                                         Avatar(
                                             url = chatAvatar,
-                                            size = 36.dp
+                                            size = 50.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column {
@@ -872,27 +960,15 @@ fun ChatScreen(
                                         }
                                     }
                                 },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = Color.Transparent
-                                ),
-                                actions = {
-                                    if (uiState.boardPanel.boards.isNotEmpty()) {
-                                        IconButton(onClick = { viewModel.toggleBoard() }) {
-                                            Icon(
-                                                imageVector = if (uiState.boardPanel.isExpanded) {
-                                                    AppIcons.KeyboardArrowUp
-                                                } else {
-                                                    AppIcons.KeyboardArrowDown
-                                                },
-                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板"
-                                            )
-                                        }
-                                    }
-                                    Box {
-                                        DropdownMenu(
-                                            expanded = showMoreMenu,
-                                            onDismissRequest = { showMoreMenu = false }
-                                        ) {
+                                showBoardButton = uiState.boardPanel.boards.isNotEmpty(),
+                                boardExpanded = uiState.boardPanel.isExpanded,
+                                onBoardClick = { viewModel.toggleBoard() },
+                                onMoreClick = { showMoreMenu = true },
+                                moreMenu = {
+                                    DropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false }
+                                    ) {
                                             DropdownMenuItem(
                                                 text = { Text("刷新") },
                                                 onClick = {
@@ -1007,33 +1083,6 @@ fun ChatScreen(
                                                     )
                                                 }
                                             )
-                                        }
-
-                                        IconButton(onClick = {
-                                            showMoreMenu = true
-                                        }) {
-                                            Icon(
-                                                AppIcons.MoreVert,
-                                                contentDescription = "更多"
-                                            )
-                                        }
-                                    }
-                                },
-                                navigationIcon = {
-                                    if (!bigScreenMode) {
-                                        Box(modifier = Modifier.size(48.dp)) {
-                                            IconButton(onClick = onBackClick) {
-                                                AutoMirroredIcon(
-                                                    AppIcons.ArrowBackIosNew,
-                                                    contentDescription = "返回"
-                                                )
-                                            }
-                                            UnreadCountBadge(
-                                                count = backUnreadCount,
-                                                modifier = Modifier
-                                                    .align(Alignment.CenterEnd)
-                                            )
-                                        }
                                     }
                                 }
                             )
@@ -1043,15 +1092,25 @@ fun ChatScreen(
                                 enter = fadeIn() + expandVertically(),
                                 exit = fadeOut() + shrinkVertically()
                             ) {
-                                BoardPanel(
-                                    boards = uiState.boardPanel.boards,
-                                    onImageClick = { url ->
-                                        showImageViewer(
-                                            context = context,
-                                            images = listOf(fullImagePreviewItem(url))
-                                        )
-                                    }
-                                )
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    shape = RoundedCornerShape(28.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
+                                    tonalElevation = 3.dp,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    BoardPanel(
+                                        boards = uiState.boardPanel.boards,
+                                        onImageClick = { url ->
+                                            showImageViewer(
+                                                context = context,
+                                                images = listOf(fullImagePreviewItem(url))
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

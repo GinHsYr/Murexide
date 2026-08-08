@@ -1807,11 +1807,12 @@ class ChatViewModel(
     fun startDownload(message: MessageItem, context: Context) {
         val fileUrl = message.fileUrl ?: return
         val fileName = message.fileName ?: "file_${System.currentTimeMillis()}"
+        if (message.msgId in _downloadingFiles.value) return
+
+        _downloadingFiles.update { it + (message.msgId to 0f) }
+        _uiState.update { it.copy(downloadedFiles = it.downloadedFiles - message.msgId) }
 
         viewModelScope.launch {
-            _downloadingFiles.update { it + (message.msgId to 0f) }
-            _uiState.update { it.copy(downloadedFiles = it.downloadedFiles - message.msgId) }
-
             downloadFileWithProgress(
                 url = fileUrl,
                 fileName = fileName,
