@@ -1134,14 +1134,22 @@ fun ChatScreen(
                                 enter = fadeIn() + expandVertically(),
                                 exit = fadeOut() + shrinkVertically()
                             ) {
-                                Surface(
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    shape = RoundedCornerShape(28.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
-                                    tonalElevation = 3.dp,
-                                    shadowElevation = 4.dp
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .shadow(4.dp, RoundedCornerShape(28.dp))
+                                        .clip(RoundedCornerShape(28.dp))
+                                        .hazeEffect(
+                                            state = hazeState,
+                                            style = HazeMaterials.ultraThin(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                            ).copy(
+                                                blurRadius = 32.dp,
+                                                noiseFactor = 0f
+                                            ),
+                                            block = null
+                                        )
                                 ) {
                                     BoardPanel(
                                         boards = uiState.boardPanel.boards,
