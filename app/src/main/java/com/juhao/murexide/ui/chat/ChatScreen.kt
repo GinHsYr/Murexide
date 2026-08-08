@@ -113,8 +113,10 @@ private enum class ChatInputPanel {
 
 private val DefaultInputPanelHeight = 280.dp
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 private fun FloatingChatTopBar(
+    hazeState: HazeState,
     showBackButton: Boolean,
     onBackClick: () -> Unit,
     title: @Composable () -> Unit,
@@ -126,7 +128,11 @@ private fun FloatingChatTopBar(
 ) {
     val controlSize = 52.dp
     val buttonShape = CircleShape
-    val buttonColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f)
+    // Keep the tint light enough for the chat background to remain visibly blurred.
+    val buttonHazeStyle = HazeMaterials.ultraThin().copy(
+        blurRadius = 32.dp,
+        noiseFactor = 0f
+    )
     val cardShape = RoundedCornerShape(28.dp)
 
     Row(
@@ -143,7 +149,11 @@ private fun FloatingChatTopBar(
                     .size(controlSize)
                     .shadow(5.dp, buttonShape)
                     .clip(buttonShape)
-                    .background(buttonColor)
+                    .hazeEffect(
+                        state = hazeState,
+                        style = buttonHazeStyle,
+                        block = null
+                    )
                     .clickable(onClick = onBackClick),
                 contentAlignment = Alignment.Center
             ) {
@@ -161,7 +171,11 @@ private fun FloatingChatTopBar(
                 .height(controlSize)
                 .shadow(6.dp, cardShape)
                 .clip(cardShape)
-                .background(buttonColor)
+                .hazeEffect(
+                    state = hazeState,
+                    style = buttonHazeStyle,
+                    block = null
+                )
         ) {
             Box(
                 modifier = Modifier
@@ -195,7 +209,11 @@ private fun FloatingChatTopBar(
                 .size(controlSize)
                 .shadow(5.dp, buttonShape)
                 .clip(buttonShape)
-                .background(buttonColor)
+                .hazeEffect(
+                    state = hazeState,
+                    style = buttonHazeStyle,
+                    block = null
+                )
                 .clickable(onClick = onMoreClick),
             contentAlignment = Alignment.Center
         ) {
@@ -908,6 +926,7 @@ fun ChatScreen(
                     } else {
                         Column {
                             FloatingChatTopBar(
+                                hazeState = hazeState,
                                 showBackButton = !bigScreenMode,
                                 onBackClick = onBackClick,
                                 title = {
