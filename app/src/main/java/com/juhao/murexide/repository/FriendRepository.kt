@@ -177,8 +177,8 @@ class FriendRepository(
     /**
      * 处理申请/邀请。
      * agree: 1-同意，2-拒绝；服务端还会使用 3/4 表示过期或群聊已解散。
-     * 云湖当前接口对群邀请的处理是非对称的：同意走 /group/agree-invite，拒绝走
-     * /friend/agree-apply；好友申请始终走 /friend/agree-apply。
+     * 群主处理群聊/机器人申请走 /group/agree-invite；收到的群聊/机器人邀请及好友申请
+     * 走 /friend/agree-apply。两个接口都支持通过和拒绝。
      */
     suspend fun respondToRequest(
         token: String,
@@ -193,7 +193,7 @@ class FriendRepository(
                     put("agree", agree)
                 }
             )
-            val primaryPath = if (usesGroupAgreeInvite && agree == 1) {
+            val primaryPath = if (usesGroupAgreeInvite) {
                 "/v1/group/agree-invite"
             } else {
                 "/v1/friend/agree-apply"
