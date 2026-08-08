@@ -15,6 +15,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,7 +36,7 @@ class FriendRepositoryRequestTest {
     }
 
     @Test
-    fun rejectingGroupRequestUsesFriendEndpoint() = runBlocking {
+    fun rejectingGroupInvitationUsesFriendEndpoint() = runBlocking {
         var captured: Request? = null
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -68,7 +69,7 @@ class FriendRepositoryRequestTest {
         )
 
         assertTrue(result.isSuccess)
-        assertTrue(groupInvitation.usesGroupAgreeInvite)
+        assertFalse(groupInvitation.usesGroupAgreeInvite)
         assertEquals(
             "https://example.test/v1/friend/agree-apply",
             captured?.url?.toString()
@@ -81,7 +82,7 @@ class FriendRepositoryRequestTest {
     }
 
     @Test
-    fun acceptingGroupInvitationUsesGroupEndpoint() = runBlocking {
+    fun acceptingGroupInvitationUsesFriendEndpoint() = runBlocking {
         var captured: Request? = null
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -114,10 +115,71 @@ class FriendRepositoryRequestTest {
         )
 
         assertTrue(result.isSuccess)
+        assertFalse(groupInvitation.usesGroupAgreeInvite)
+        assertEquals(
+            "https://example.test/v1/friend/agree-apply",
+            captured?.url?.toString()
+        )
+    }
+
+    @Test
+    fun acceptingGroupApplicationUsesGroupEndpoint() = runBlocking {
+        var captured: Request? = null
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                captured = chain.request()
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(
+                        "{\"code\":1,\"msg\":\"success\"}"
+                            .toResponseBody("application/json".toMediaType())
+                    )
+                    .build()
+            }
+            .build()
+        val repository = FriendRepository(client = client, baseUrl = "https://example.test")
+        val groupApplication = contactRequest(
+            inviterId = "",
+            sourceType = 1,
+            targetType = 2,
+            groupName = "测试群聊"
+        )
+
+        val result = repository.respondToRequest(
+            token = "token-value",
+            requestId = groupApplication.requestId,
+            agree = 1,
+            usesGroupAgreeInvite = groupApplication.usesGroupAgreeInvite
+        )
+
+        assertTrue(result.isSuccess)
+        assertTrue(groupApplication.usesGroupAgreeInvite)
         assertEquals(
             "https://example.test/v1/group/agree-invite",
             captured?.url?.toString()
         )
+    }
+
+    @Test
+    fun groupApplicationAndInvitationHaveDistinctLabels() {
+        val groupInvitation = contactRequest(
+            inviterId = "8418077",
+            sourceType = 2,
+            targetType = 1,
+            groupName = "测试群聊"
+        )
+        val groupApplication = contactRequest(
+            inviterId = "",
+            sourceType = 1,
+            targetType = 2,
+            groupName = "测试群聊"
+        )
+
+        assertEquals("群聊邀请", groupInvitation.typeLabel)
+        assertEquals("群聊申请", groupApplication.typeLabel)
     }
 
     @Test

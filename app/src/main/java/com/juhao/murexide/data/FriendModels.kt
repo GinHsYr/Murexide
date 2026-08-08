@@ -46,10 +46,21 @@ data class ContactRequestItem(
     val isPending: Boolean
         get() = result == 0
 
-    /** 群组和机器人申请/邀请统一走 /group/agree-invite 接口。 */
+    /**
+     * 群主处理群聊/机器人的申请走 /group/agree-invite；有邀请人的记录是用户收到的
+     * 邀请，应由 /friend/agree-apply 处理。
+     */
+    private val isGroupRelated: Boolean
+        get() = sourceType == 2 || targetType == 2 || groupName.isNotBlank()
+
+    private val isBotRelated: Boolean
+        get() = sourceType == 3 || targetType == 3 || botName.isNotBlank()
+
+    private val isInvitation: Boolean
+        get() = inviterId.isNotBlank()
+
     val usesGroupAgreeInvite: Boolean
-        get() = sourceType == 2 || targetType == 2 || groupName.isNotBlank() ||
-            sourceType == 3 || targetType == 3 || botName.isNotBlank()
+        get() = !isInvitation && (isGroupRelated || isBotRelated)
 
     val displayName: String
         get() = requesterName.ifBlank {
@@ -69,8 +80,8 @@ data class ContactRequestItem(
 
     val typeLabel: String
         get() = when {
-            sourceType == 2 || targetType == 2 || groupName.isNotBlank() -> "群聊申请 / 邀请"
-            sourceType == 3 || targetType == 3 || botName.isNotBlank() -> "机器人申请 / 邀请"
+            isGroupRelated -> if (isInvitation) "群聊邀请" else "群聊申请"
+            isBotRelated -> if (isInvitation) "机器人邀请" else "机器人申请"
             else -> "好友申请"
         }
 
