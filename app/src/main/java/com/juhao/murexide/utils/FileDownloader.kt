@@ -3,26 +3,63 @@ package com.juhao.murexide.utils
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.database.sqlite.SQLiteConstraintException
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import androidx.core.net.toUri
+import java.util.concurrent.TimeUnit
+
+private const val FILE_DOWNLOAD_REFERER = "http://myapp.jwznb.com"
+private const val MAX_FILE_NAME_ATTEMPTS = 100
+
+internal fun sanitizeDownloadFileName(fileName: String): String {
+    val leafName = fileName
+        .replace('\\', '/')
+        .substringAfterLast('/')
+        .trim()
+    val sanitized = buildString(leafName.length) {
+        leafName.forEach { character ->
+            val isInvalid = character.code < 32 || character in "<>:\"/\\|?*"
+            append(if (isInvalid) '_' else character)
+        }
+    }.trim().trimEnd('.', ' ')
+
+    return sanitized.ifBlank { "download" }
+}
+
+internal fun downloadDisplayName(fileName: String, collisionIndex: Int): String {
+    require(collisionIndex >= 0)
+    if (collisionIndex == 0) return fileName
+
+    val (base, extension) = splitFileName(fileName)
+    return "$base($collisionIndex)$extension"
+}
+
+private fun splitFileName(fileName: String): Pair<String, String> {
+    val dotIndex = fileName.lastIndexOf('.')
+    return if (dotIndex > 0) {
+        fileName.substring(0, dotIndex) to fileName.substring(dotIndex)
+    } else {
+        fileName to ""
+    }
+}
 
 object FileDownloader {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     suspend fun downloadFileWithProgress(
@@ -34,36 +71,46 @@ object FileDownloader {
         onError: (String) -> Unit
     ) = withContext(Dispatchers.IO) {
         try {
+            val safeFileName = sanitizeDownloadFileName(fileName)
             val request = Request.Builder()
                 .url(url)
-                .addHeader("Referer", "https://myapp.jwznb.com")
+                .addHeader("Referer", FILE_DOWNLOAD_REFERER)
                 .build()
 
-            val response = client.newCall(request).execute()
-
-            if (!response.isSuccessful) {
-                withContext(Dispatchers.Main) {
-                    onError("下载失败: ${response.code}")
+            val savedPath = client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    withContext(Dispatchers.Main) {
+                        onError("HTTP ${response.code}")
+                    }
+                    return@withContext
                 }
-                return@withContext
+
+                val contentLength = response.body.contentLength()
+                response.body.byteStream().use { inputStream ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        saveToDownloadWithMediaStore(
+                            context,
+                            safeFileName,
+                            inputStream,
+                            contentLength,
+                            onProgress
+                        )
+                    } else {
+                        saveToDownloadLegacy(
+                            context,
+                            safeFileName,
+                            inputStream,
+                            contentLength,
+                            onProgress
+                        )
+                    }
+                }
             }
-
-            val contentLength = response.body.contentLength()
-            val inputStream = response.body.byteStream()
-
-            val savedPath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                saveToDownloadWithMediaStore(context, fileName, inputStream, contentLength, onProgress)
-            } else {
-                saveToDownloadLegacy(context, fileName, inputStream, contentLength, onProgress)
-            }
-
-            inputStream.close()
 
             withContext(Dispatchers.Main) {
                 onComplete(savedPath)
-                openFile(context, savedPath)
+                openFile(context, savedPath, safeFileName)
             }
-
         } catch (e: IOException) {
             withContext(Dispatchers.Main) {
                 onError(e.message ?: "网络错误")
@@ -84,23 +131,55 @@ object FileDownloader {
         onProgress: (Float) -> Unit
     ): String {
         val resolver = context.contentResolver
-        val uniqueName = getUniqueDisplayName(resolver, fileName)
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, uniqueName)
-            mimeTypeForName(fileName)?.let { put(MediaStore.MediaColumns.MIME_TYPE, it) }
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        val uri = insertPendingDownload(resolver, fileName)
+
+        try {
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                copyWithProgress(inputStream, outputStream, contentLength, onProgress)
+            } ?: throw IOException("无法写入文件")
+
+            fixSuffixAfterExtension(resolver, uri, fileName)
+            val publishedValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+            }
+            resolver.update(uri, publishedValues, null, null)
+            return uri.toString()
+        } catch (error: Throwable) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw error
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun insertPendingDownload(
+        resolver: android.content.ContentResolver,
+        fileName: String
+    ): Uri {
+        var lastCollision: RuntimeException? = null
+
+        repeat(MAX_FILE_NAME_ATTEMPTS) { collisionIndex ->
+            val candidate = downloadDisplayName(fileName, collisionIndex)
+            if (displayNameExists(resolver, candidate)) return@repeat
+
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, candidate)
+                mimeTypeForName(fileName)?.let { put(MediaStore.MediaColumns.MIME_TYPE, it) }
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+
+            try {
+                return resolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ) ?: throw IOException("无法创建下载条目")
+            } catch (error: RuntimeException) {
+                if (!error.isMediaStorePathCollision()) throw error
+                lastCollision = error
+            }
         }
 
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            ?: throw IOException("无法创建下载条目")
-
-        resolver.openOutputStream(uri)?.use { outputStream ->
-            copyWithProgress(inputStream, outputStream, contentLength, onProgress)
-        } ?: throw IOException("无法写入文件")
-
-        fixSuffixAfterExtension(resolver, uri, fileName)
-
-        return uri.toString()
+        throw IOException("无法创建不重名的下载文件", lastCollision)
     }
 
     private fun mimeTypeForName(fileName: String): String? {
@@ -115,7 +194,7 @@ object FileDownloader {
         uri: Uri,
         requestedName: String
     ) {
-        val (_, ext) = splitName(requestedName)
+        val (_, ext) = splitFileName(requestedName)
         if (ext.isEmpty()) return
 
         val actual = queryDisplayName(resolver, uri) ?: return
@@ -159,17 +238,21 @@ object FileDownloader {
         val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             ?: context.getExternalFilesDir(null) ?: context.filesDir
 
-        if (!downloadDir.exists()) {
-            downloadDir.mkdirs()
+        if (!downloadDir.exists() && !downloadDir.mkdirs()) {
+            throw IOException("无法创建下载目录")
         }
 
-        val file = getUniqueFile(downloadDir, fileName)
+        val file = createUniqueFile(downloadDir, fileName)
 
-        FileOutputStream(file).use { outputStream ->
-            copyWithProgress(inputStream, outputStream, contentLength, onProgress)
+        try {
+            FileOutputStream(file).use { outputStream ->
+                copyWithProgress(inputStream, outputStream, contentLength, onProgress)
+            }
+            return file.absolutePath
+        } catch (error: Throwable) {
+            runCatching { file.delete() }
+            throw error
         }
-
-        return file.absolutePath
     }
 
     private fun copyWithProgress(
@@ -202,21 +285,12 @@ object FileDownloader {
         onProgress(1f)
     }
 
-    private fun splitName(fileName: String): Pair<String, String> {
-        val dotIndex = fileName.lastIndexOf('.')
-        return if (dotIndex > 0) {
-            fileName.substring(0, dotIndex) to fileName.substring(dotIndex)
-        } else {
-            fileName to ""
-        }
-    }
-
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun getUniqueDisplayName(
         resolver: android.content.ContentResolver,
         fileName: String
     ): String {
-        val (base, ext) = splitName(fileName)
+        val (base, ext) = splitFileName(fileName)
         var candidate = fileName
         var index = 1
         while (displayNameExists(resolver, candidate)) {
@@ -243,19 +317,15 @@ object FileDownloader {
         return false
     }
 
-    private fun getUniqueFile(dir: File, fileName: String): File {
-        var file = File(dir, fileName)
-        if (!file.exists()) return file
-        val (base, ext) = splitName(fileName)
-        var index = 1
-        while (file.exists()) {
-            file = File(dir, "$base($index)$ext")
-            index++
+    private fun createUniqueFile(dir: File, fileName: String): File {
+        repeat(MAX_FILE_NAME_ATTEMPTS) { collisionIndex ->
+            val candidate = File(dir, downloadDisplayName(fileName, collisionIndex))
+            if (candidate.createNewFile()) return candidate
         }
-        return file
+        throw IOException("无法创建不重名的下载文件")
     }
 
-    private fun openFile(context: Context, filePathOrUri: String) {
+    private fun openFile(context: Context, filePathOrUri: String, fileName: String) {
         try {
             val uri = if (filePathOrUri.startsWith("content://")) {
                 filePathOrUri.toUri()
@@ -275,7 +345,7 @@ object FileDownloader {
                 }
             }
 
-            val mimeType = getMimeType(filePathOrUri)
+            val mimeType = mimeTypeForName(fileName) ?: "*/*"
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -288,16 +358,20 @@ object FileDownloader {
         }
     }
 
-    private fun getMimeType(filePath: String): String {
-        val extension = filePath.substringAfterLast('.', "").lowercase()
-        return when (extension) {
-            "jpg", "jpeg", "png", "gif", "webp", "bmp" -> "image/*"
-            "mp4", "avi", "mkv", "mov" -> "video/*"
-            "mp3", "wav", "aac", "flac", "ogg", "m4a" -> "audio/*"
-            "apk" -> "application/vnd.android.package-archive"
-            "zip", "rar", "7z", "tar", "gz" -> "application/zip"
-            "txt", "md", "json", "xml", "html", "css", "js", "kt", "java" -> "text/plain"
-            else -> "*/*"
+    private fun Throwable.isMediaStorePathCollision(): Boolean {
+        var current: Throwable? = this
+        while (current != null) {
+            val message = current.message.orEmpty()
+            if (current is SQLiteConstraintException &&
+                message.contains("files._data", ignoreCase = true)
+            ) {
+                return true
+            }
+            if (message.contains("UNIQUE constraint failed: files._data", ignoreCase = true)) {
+                return true
+            }
+            current = current.cause
         }
+        return false
     }
 }
