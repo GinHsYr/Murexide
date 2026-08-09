@@ -2,6 +2,12 @@ package com.juhao.murexide.ui.conversationdetail
 
 import android.content.ClipData
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -43,11 +51,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +70,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -91,6 +102,14 @@ fun ConversationDetailScreen(
     val snackbars = remember { SnackbarHostState() }
     var showMore by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
+    val groupListState = rememberLazyListState()
+    val groupNameBottomOffset = with(LocalDensity.current) { 130.dp.roundToPx() }
+    val showGroupTitleInAppBar by remember(groupNameBottomOffset) {
+        derivedStateOf {
+            groupListState.firstVisibleItemIndex > 0 ||
+                groupListState.firstVisibleItemScrollOffset >= groupNameBottomOffset
+        }
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let { message ->
@@ -106,7 +125,40 @@ fun ConversationDetailScreen(
         snackbarHost = { SnackbarHost(snackbars) },
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    val group = state.detail?.takeIf { it.chatType == 2 }
+                    if (group != null) {
+                        AnimatedVisibility(
+                            visible = showGroupTitleInAppBar,
+                            enter = fadeIn(animationSpec = tween(180)) +
+                                slideInVertically(
+                                    initialOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(180)
+                                ),
+                            exit = fadeOut(animationSpec = tween(140)) +
+                                slideOutVertically(
+                                    targetOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(140)
+                                )
+                        ) {
+                            Column {
+                                Text(
+                                    text = group.name.ifBlank { "未知群聊" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "${group.memberCount ?: 0} 位成员",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { AutoMirroredIcon(AppIcons.ArrowBack, "返回") }
                 },
@@ -151,6 +203,7 @@ fun ConversationDetailScreen(
             detail.chatType == 2 -> GroupConversationDetail(
                 modifier = Modifier.padding(padding),
                 detail = detail,
+                listState = groupListState,
                 selectedTab = state.selectedTab,
                 members = state.members,
                 media = state.mediaMessages,
@@ -207,6 +260,7 @@ fun ConversationDetailScreen(
 private fun GroupConversationDetail(
     modifier: Modifier,
     detail: ConversationDetail,
+    listState: LazyListState,
     selectedTab: Int,
     members: List<GroupMember>,
     media: List<MessageItem>,
@@ -228,7 +282,34 @@ private fun GroupConversationDetail(
     var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
     val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val mediaRows = media.chunked(3)
+    LaunchedEffect(
+        listState,
+        selectedTab,
+        members.size,
+        hasMoreMembers,
+        isLoadingMembers,
+        isLoadingMoreMembers
+    ) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                selectedTab == 0 &&
+                hasMoreMembers &&
+                !isLoadingMembers &&
+                !isLoadingMoreMembers &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 3
+            ) {
+                onLoadMembers()
+            }
+        }
+    }
+
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
@@ -275,7 +356,19 @@ private fun GroupConversationDetail(
                     }
                     if (hasMoreMembers) item(key = "members-load-more") {
                         DetailCardSegment(cardColor, isBottom = true) {
-                            LoadMoreRow(isLoadingMoreMembers, onLoadMembers)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isLoadingMoreMembers) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -450,7 +543,22 @@ private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
         Avatar(url = member.avatarUrl, size = 46.dp)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(member.name.ifBlank { "未知用户" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    member.name.ifBlank { "未知用户" },
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                when (member.permissionLevel) {
+                    100 -> MemberRoleBadge("群主")
+                    2 -> MemberRoleBadge("管理员")
+                }
+            }
             Text(
                 when {
                     member.permissionLevel == 100 -> "群主"
@@ -462,6 +570,21 @@ private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun MemberRoleBadge(text: String) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 
