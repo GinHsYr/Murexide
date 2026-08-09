@@ -116,72 +116,60 @@ private val DefaultInputPanelHeight = 280.dp
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun FloatingChatTopBar(
+private fun FloatingTopBar(
     hazeState: HazeState,
-    showBackButton: Boolean,
-    onBackClick: () -> Unit,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
     title: @Composable () -> Unit,
-    showBoardButton: Boolean,
-    boardExpanded: Boolean,
-    onBoardClick: () -> Unit,
-    onMoreClick: () -> Unit,
-    moreMenu: @Composable BoxScope.() -> Unit
+    showOverlay: Boolean = true
 ) {
     val controlSize = 48.dp
     val buttonShape = CircleShape
     val topBarColor = MaterialTheme.colorScheme.surface
-    val buttonHazeStyle = HazeMaterials.ultraThin(
-        containerColor = topBarColor
-    ).copy(
+    val buttonHazeStyle = HazeMaterials.thin().copy(
         blurRadius = 32.dp,
         noiseFactor = 0f
     )
-    val cardShape = RoundedCornerShape(24.dp)
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        // Blend the status-bar area into the floating controls, while leaving the chat
-        // content unobscured immediately below the controls.
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            topBarColor.copy(alpha = 0.8f),
-                            topBarColor.copy(alpha = 0.5f),
-                            Color.Transparent
+        if (showOverlay) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                topBarColor.copy(alpha = 0.8f),
+                                topBarColor.copy(alpha = 0.5f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (showBackButton) {
+            if (navigationIcon != null) {
                 Box(
                     modifier = Modifier
                         .size(controlSize)
-                        .shadow(5.dp, buttonShape)
+                        .shadow(2.dp, buttonShape)
                         .clip(buttonShape)
                         .hazeEffect(
                             state = hazeState,
                             style = buttonHazeStyle,
                             block = null
-                        )
-                        .clickable(onClick = onBackClick),
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    AutoMirroredIcon(
-                        imageVector = AppIcons.ArrowBack,
-                        contentDescription = "返回",
-                        modifier = Modifier.size(24.dp)
-                    )
+                    navigationIcon()
                 }
             }
 
@@ -189,8 +177,8 @@ private fun FloatingChatTopBar(
                 modifier = Modifier
                     .weight(1f)
                     .height(controlSize)
-                    .shadow(6.dp, cardShape)
-                    .clip(cardShape)
+                    .shadow(2.dp, RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .hazeEffect(
                         state = hazeState,
                         style = buttonHazeStyle,
@@ -198,51 +186,24 @@ private fun FloatingChatTopBar(
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = if (showBoardButton) 52.dp else 12.dp)
-                ) {
-                    title()
-                }
-                if (showBoardButton) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .size(40.dp)
-                            .clickable(onClick = onBoardClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (boardExpanded) {
-                                AppIcons.KeyboardArrowUp
-                            } else {
-                                AppIcons.KeyboardArrowDown
-                            },
-                            contentDescription = if (boardExpanded) "收起看板" else "展开看板"
-                        )
-                    }
-                }
+                title()
             }
-
-            Box(
-                modifier = Modifier
-                    .size(controlSize)
-                    .shadow(5.dp, buttonShape)
-                    .clip(buttonShape)
-                    .hazeEffect(
-                        state = hazeState,
-                        style = buttonHazeStyle,
-                        block = null
-                    )
-                    .clickable(onClick = onMoreClick),
-                contentAlignment = Alignment.Center
-            ) {
-                moreMenu()
-                Icon(
-                    imageVector = AppIcons.MoreVert,
-                    contentDescription = "更多"
-                )
+            
+            if (actions != null) {
+                Row(
+                    modifier = Modifier
+                        .height(controlSize)
+                        .shadow(2.dp, buttonShape)
+                        .clip(buttonShape)
+                        .hazeEffect(
+                            state = hazeState,
+                            style = buttonHazeStyle,
+                            block = null
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    actions()
+                }
             }
         }
     }
@@ -880,7 +841,8 @@ fun ChatScreen(
                     label = "top_bar_transition"
                 ) { isSelectionMode ->
                     if (isSelectionMode) {
-                        TopAppBar(
+                        FloatingTopBar(
+                            hazeState = hazeState,
                             title = {
                                 AnimatedContent(
                                     targetState = selectedMessages.size,
@@ -913,103 +875,96 @@ fun ChatScreen(
                                 }
                             },
                             navigationIcon = {
-                                IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                    Icon(AppIcons.Close, contentDescription = "退出多选")
+                                IconButton(
+                                    onClick = { viewModel.exitSelectionMode() },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(AppIcons.Close, contentDescription = "退出多选", modifier = Modifier.size(24.dp))
                                 }
                             },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent
-                            ),
                             actions = {
-                                IconButton(onClick = { viewModel.recallSelectedMessages() }) {
-                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = "撤回")
+                                IconButton(
+                                    onClick = { viewModel.recallSelectedMessages() },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = "撤回", modifier = Modifier.size(24.dp))
                                 }
                                 if (selectedMessages.size == 1) {
                                     val message = selectedMessages.firstOrNull()
                                     message?.let { 
                                         if (it.content.isNotBlank()) {
-                                            IconButton(onClick = { 
-                                                scope.launch {
-                                                    clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("msg", it.content)))
-                                                }
-                                                Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
-                                                viewModel.exitSelectionMode()
-                                            }) {
-                                                Icon(AppIcons.ContentCopy, contentDescription = "复制")
+                                            IconButton(
+                                                onClick = { 
+                                                    scope.launch {
+                                                        clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("msg", it.content)))
+                                                    }
+                                                    Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
+                                                    viewModel.exitSelectionMode()
+                                                },
+                                                modifier = Modifier.size(46.dp)
+                                            ) {
+                                                Icon(AppIcons.ContentCopy, contentDescription = "复制", modifier = Modifier.size(24.dp))
                                             }
                                         }
                                     }
                                 }
-                                IconButton(onClick = { showScreenshotSheet = true }) {
-                                    Icon(AppIcons.Screenshot, contentDescription = "截图")
+                                IconButton(
+                                    onClick = { showScreenshotSheet = true },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(AppIcons.Screenshot, contentDescription = "截图", modifier = Modifier.size(24.dp))
                                 }
                             }
                         )
                     } else {
                         Column {
-                            FloatingChatTopBar(
+                            FloatingTopBar(
                                 hazeState = hazeState,
-                                showBackButton = !bigScreenMode,
-                                onBackClick = onBackClick,
-                                title = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(1.dp)
-                                            .clickable {
-                                                ConversationDetailActivity.start(
-                                                    context = context,
-                                                    chatId = viewModel.chatId,
-                                                    chatType = chatType,
-                                                    chatName = chatName,
-                                                    chatAvatar = chatAvatar
-                                                )
-                                            }
-                                    ) {
-                                        Avatar(
-                                            url = chatAvatar,
-                                            size = 46.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = chatName,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                navigationIcon = if (!bigScreenMode) {
+                                    {
+                                        IconButton(
+                                            modifier = Modifier.size(46.dp),
+                                            onClick = onBackClick
+                                        ) {
+                                            AutoMirroredIcon(
+                                                imageVector = AppIcons.ArrowBack,
+                                                contentDescription = "返回",
+                                                modifier = Modifier.size(24.dp)
                                             )
-                                            if (chatType == 2 && uiState.memberCount != null) {
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = "${uiState.memberCount} 位成员",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1
-                                                )
-                                            }
-                                            if (chatType == 3 && uiState.usageCount != null) {
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = "${uiState.usageCount} 人使用",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1
-                                                )
-                                            }
                                         }
                                     }
-                                },
-                                showBoardButton = uiState.boardPanel.boards.isNotEmpty(),
-                                boardExpanded = uiState.boardPanel.isExpanded,
-                                onBoardClick = { viewModel.toggleBoard() },
-                                onMoreClick = { showMoreMenu = true },
-                                moreMenu = {
-                                    DropdownMenu(
-                                        expanded = showMoreMenu,
-                                        onDismissRequest = { showMoreMenu = false }
+                                } else null,
+                                actions = {
+                                    if (uiState.boardPanel.boards.isNotEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .clickable { viewModel.toggleBoard() },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (uiState.boardPanel.isExpanded) {
+                                                    AppIcons.KeyboardArrowUp
+                                                } else {
+                                                    AppIcons.KeyboardArrowDown
+                                                },
+                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showMoreMenu = true },
+                                        contentAlignment = Alignment.Center
                                     ) {
+                                        DropdownMenu(
+                                            expanded = showMoreMenu,
+                                            onDismissRequest = { showMoreMenu = false }
+                                        ) {
                                             DropdownMenuItem(
                                                 text = { Text("刷新") },
                                                 onClick = {
@@ -1098,9 +1053,9 @@ fun ChatScreen(
                                                     )
                                                 }
                                             )
-
+    
                                             HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-
+    
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
@@ -1124,6 +1079,63 @@ fun ChatScreen(
                                                     )
                                                 }
                                             )
+                                        }
+                                        Icon(
+                                            imageVector = AppIcons.MoreVert,
+                                            contentDescription = "更多",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
+                                title = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(1.dp)
+                                            .clip(RoundedCornerShape(24.dp))
+                                            .clickable {
+                                                ConversationDetailActivity.start(
+                                                    context = context,
+                                                    chatId = viewModel.chatId,
+                                                    chatType = chatType,
+                                                    chatName = chatName,
+                                                    chatAvatar = chatAvatar
+                                                )
+                                            }
+                                    ) {
+                                        Avatar(
+                                            url = chatAvatar,
+                                            size = 46.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = chatName,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            if (chatType == 2 && uiState.memberCount != null) {
+                                                Spacer(modifier = Modifier.height(1.dp))
+                                                Text(
+                                                    text = "${uiState.memberCount} 位成员",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            if (chatType == 3 && uiState.usageCount != null) {
+                                                Spacer(modifier = Modifier.height(1.dp))
+                                                Text(
+                                                    text = "${uiState.usageCount} 人使用",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             )
@@ -1136,13 +1148,13 @@ fun ChatScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
                                         .shadow(4.dp, RoundedCornerShape(28.dp))
                                         .clip(RoundedCornerShape(28.dp))
                                         .hazeEffect(
                                             state = hazeState,
-                                            style = HazeMaterials.ultraThin(
-                                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                            style = HazeMaterials.thin(
+                                                containerColor = MaterialTheme.colorScheme.surface
                                             ).copy(
                                                 blurRadius = 32.dp,
                                                 noiseFactor = 0f
