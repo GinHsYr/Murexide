@@ -213,7 +213,6 @@ class HomeSearchActivity : ComponentActivity() {
     ).toFloat()
 
     private fun finishWithoutWindowAnimation() {
-        // Avoid composing a transparent activity's final frame with the underlying window.
         window.decorView.visibility = View.INVISIBLE
         finish()
         overridePendingTransition(0, 0)

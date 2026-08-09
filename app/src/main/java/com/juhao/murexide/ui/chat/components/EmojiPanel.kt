@@ -12,7 +12,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,8 +66,7 @@ fun EmojiPanel(
     Column(
         modifier = modifier.fillMaxWidth().navigationBarsPadding()
     ) {
-        // Tab 栏
-        SecondaryScrollableTabRow (
+        PrimaryScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             edgePadding = 4.dp,
             containerColor = Color.Transparent,

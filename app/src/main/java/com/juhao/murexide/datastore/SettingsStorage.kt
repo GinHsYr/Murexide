@@ -241,7 +241,7 @@ class SettingsStorage(private val context: Context) {
     
     // ====== 背景不透明度 ======
     val backgroundOpacityFlow: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[BACKGROUND_OPACITY_KEY] ?: 0.5f
+        preferences[BACKGROUND_OPACITY_KEY] ?: 0.4f
     }
 
     suspend fun setBackgroundOpacity(opacity: Float) {
