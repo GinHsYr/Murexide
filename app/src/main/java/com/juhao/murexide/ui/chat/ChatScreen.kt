@@ -260,6 +260,7 @@ private fun ChatComposer(
     isSending: Boolean,
     isEmojiPanelVisible: Boolean,
     onEmojiClick: () -> Unit,
+    hasInstructions: Boolean,
     isInstructionPanelVisible: Boolean,
     onInstructionClick: () -> Unit,
     onAddImageClick: () -> Unit,
@@ -290,6 +291,7 @@ private fun ChatComposer(
         onAddFileClick = onAddFileClick,
         isEmojiPanelVisible = isEmojiPanelVisible,
         onEmojiClick = onEmojiClick,
+        hasInstructions = hasInstructions,
         isInstructionPanelVisible = isInstructionPanelVisible,
         onInstructionClick = onInstructionClick,
         mentions = composerState.mentions,
@@ -1370,6 +1372,7 @@ fun ChatScreen(
                                     expressions.isVisible ||
                                         pendingInputPanel == ChatInputPanel.Emoji,
                                 onEmojiClick = { requestInputPanel(ChatInputPanel.Emoji) },
+                                hasInstructions = instructionPanel.instructions.isNotEmpty(),
                                 isInstructionPanelVisible =
                                     instructionPanel.isVisible ||
                                         pendingInputPanel == ChatInputPanel.Instruction,

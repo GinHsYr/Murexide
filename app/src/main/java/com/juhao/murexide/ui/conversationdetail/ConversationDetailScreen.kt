@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.juhao.murexide.data.BaItem
+import com.juhao.murexide.data.BotItem
 import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.data.MessageItem
@@ -108,6 +109,7 @@ fun ConversationDetailScreen(
     onLeaveGroup: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbars = remember { SnackbarHostState() }
     var showMore by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
@@ -190,7 +192,10 @@ fun ConversationDetailScreen(
                                 onClick = {
                                     showMore = false
                                     viewModel.loadDetail()
-                                    if (group != null) viewModel.loadMembers(refresh = true)
+                                    if (group != null) {
+                                        viewModel.loadMembers(refresh = true)
+                                        viewModel.loadGroupBots(refresh = true)
+                                    }
                                 }
                             )
                             if (group != null && group.permissionLevel >= 2) {
@@ -220,10 +225,13 @@ fun ConversationDetailScreen(
                 listState = groupListState,
                 selectedTab = state.selectedTab,
                 members = state.members,
+                bots = state.groupBots,
                 media = state.mediaMessages,
                 isLoadingMembers = state.isLoadingMembers,
                 isLoadingMoreMembers = state.isLoadingMoreMembers,
                 hasMoreMembers = state.hasMoreMembers,
+                isLoadingBots = state.isLoadingGroupBots,
+                hasLoadedBots = state.hasLoadedGroupBots,
                 isLoadingHistory = state.isLoadingHistory,
                 hasMoreHistory = state.hasMoreHistory,
                 isChangingMute = state.isChangingMute,
@@ -234,7 +242,16 @@ fun ConversationDetailScreen(
                 onTabSelected = viewModel::selectTab,
                 onLoadMembers = { viewModel.loadMembers() },
                 onLoadHistory = viewModel::loadMoreHistory,
-                onOpenMember = onOpenMember
+                onOpenMember = onOpenMember,
+                onOpenBot = { bot ->
+                    ConversationDetailActivity.start(
+                        context = context,
+                        chatId = bot.id,
+                        chatType = 3,
+                        chatName = bot.name,
+                        chatAvatar = bot.avatarUrl
+                    )
+                }
             )
 
             detail.chatType == 1 -> UserConversationDetail(
@@ -319,10 +336,13 @@ private fun GroupConversationDetail(
     listState: LazyListState,
     selectedTab: Int,
     members: List<GroupMember>,
+    bots: List<BotItem>,
     media: List<MessageItem>,
     isLoadingMembers: Boolean,
     isLoadingMoreMembers: Boolean,
     hasMoreMembers: Boolean,
+    isLoadingBots: Boolean,
+    hasLoadedBots: Boolean,
     isLoadingHistory: Boolean,
     hasMoreHistory: Boolean,
     isChangingMute: Boolean,
@@ -333,7 +353,8 @@ private fun GroupConversationDetail(
     onTabSelected: (Int) -> Unit,
     onLoadMembers: () -> Unit,
     onLoadHistory: () -> Unit,
-    onOpenMember: (GroupMember) -> Unit
+    onOpenMember: (GroupMember) -> Unit,
+    onOpenBot: (BotItem) -> Unit
 ) {
     var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
     val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -365,7 +386,7 @@ private fun GroupConversationDetail(
                 onLoadMembers()
             }
             if (
-                selectedTab == 1 &&
+                selectedTab == 2 &&
                 hasMoreHistory &&
                 !isLoadingHistory &&
                 totalItems > 0 &&
@@ -397,7 +418,7 @@ private fun GroupConversationDetail(
         }
         item(key = "tabs") {
             DetailCardSegment(cardColor = cardColor, isTop = true) {
-                val labels = listOf("成员", "媒体", "群云盘")
+                val labels = listOf("成员", "机器人", "媒体", "群云盘")
                 CapsuleTabBar(
                     tabs = labels,
                     selectedTabIndex = selectedTab,
@@ -453,6 +474,34 @@ private fun GroupConversationDetail(
             }
 
             1 -> when {
+                isLoadingBots && bots.isEmpty() -> item(key = "bots-loading") {
+                    DetailCardSegment(
+                        cardColor,
+                        isBottom = true,
+                        minHeight = 180.dp
+                    ) { LoadingContent() }
+                }
+
+                bots.isEmpty() && hasLoadedBots -> item(key = "bots-empty") {
+                    DetailCardSegment(
+                        cardColor,
+                        isBottom = true,
+                        minHeight = 180.dp
+                    ) { EmptyContent("暂无机器人") }
+                }
+
+                else -> {
+                    items(bots, key = BotItem::id) { bot ->
+                        val isLast = bot == bots.last()
+                        DetailCardSegment(cardColor, isBottom = isLast) {
+                            BotRow(bot, onClick = { onOpenBot(bot) })
+                            if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
+                        }
+                    }
+                }
+            }
+
+            2 -> when {
                 isLoadingHistory && media.isEmpty() -> item(key = "media-loading") {
                     DetailCardSegment(
                         cardColor,
@@ -1226,6 +1275,37 @@ private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
 }
 
 @Composable
+private fun BotRow(bot: BotItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Avatar(url = bot.avatarUrl, size = 46.dp, canView = true)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                bot.name.ifBlank { "未知机器人" },
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (bot.introduction.isNotBlank()) {
+                Text(
+                    bot.introduction,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun MemberRoleBadge(text: String) {
     Surface(
         shape = MaterialTheme.shapes.small,
@@ -1248,11 +1328,15 @@ private fun MediaRow(
     hasBottomSpacing: Boolean
 ) {
     val context = LocalContext.current
-    val spacing = with(LocalDensity.current) { 1.toDp() }
+    val spacing = with(LocalDensity.current) { 5.toDp() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = if (hasBottomSpacing) spacing else 0.dp),
+            .padding(
+                start = spacing,
+                end = spacing,
+                bottom = if (hasBottomSpacing) spacing else 0.dp
+            ),
         horizontalArrangement = Arrangement.spacedBy(spacing)
     ) {
         row.forEach { message ->

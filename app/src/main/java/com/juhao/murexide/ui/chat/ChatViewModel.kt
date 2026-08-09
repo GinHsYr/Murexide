@@ -160,6 +160,7 @@ class ChatViewModel(
         }
         if (chatType == 2 || chatType == 3) {
             loadBoard()
+            loadInstructionData()
         }
     }
 
