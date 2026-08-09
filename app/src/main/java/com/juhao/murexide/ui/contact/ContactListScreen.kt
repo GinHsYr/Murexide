@@ -85,6 +85,7 @@ import com.juhao.murexide.data.ContactGroup
 import com.juhao.murexide.data.ContactItem
 import com.juhao.murexide.data.ContactRequestItem
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.theme.UiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -489,6 +490,7 @@ private fun ContactItemRow(
     contact: ContactItem,
     onClick: () -> Unit
 ) {
+    val themeColor by UiState.themeColor
     val displayName = contactDisplayName(contact)
     val supportingText = when {
         !contact.remark.isNullOrBlank() && contact.name.isNotBlank() && contact.remark != contact.name ->
@@ -501,7 +503,7 @@ private fun ContactItemRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFFFFFFF))
+            .background(if (themeColor == "WHITE") Color(0xFFFFFFFF) else Color.Transparent)
     ) {
         Row(
             modifier = Modifier
