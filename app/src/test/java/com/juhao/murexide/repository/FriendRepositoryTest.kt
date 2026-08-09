@@ -43,4 +43,36 @@ class FriendRepositoryTest {
         assertEquals("token-value", token)
         assertEquals("{\"chatId\":\"group-1\",\"noNotify\":1}", body)
     }
+
+    @Test
+    fun `inviting a bot uses group invite contract`() = runBlocking {
+        var path = ""
+        var payload = ""
+        val repository = FriendRepository(
+            client = OkHttpClient.Builder().addInterceptor { chain ->
+                path = chain.request().url.encodedPath
+                payload = chain.request().body!!.let { requestBody ->
+                    val buffer = okio.Buffer()
+                    requestBody.writeTo(buffer)
+                    buffer.readUtf8()
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("{\"code\":1,\"msg\":\"success\"}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }.build(),
+            baseUrl = "https://example.test"
+        )
+
+        val result = repository.inviteBotToGroup("token", "bot-1", "group-1")
+
+        assertTrue(result.isSuccess)
+        assertEquals("/v1/group/invite", path)
+        assertTrue(payload.contains("\"chatId\":\"bot-1\""))
+        assertTrue(payload.contains("\"chatType\":3"))
+        assertTrue(payload.contains("\"groupId\":\"group-1\""))
+    }
 }

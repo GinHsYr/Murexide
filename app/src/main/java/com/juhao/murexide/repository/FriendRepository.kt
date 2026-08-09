@@ -311,6 +311,35 @@ class FriendRepository(
         }
     }
 
+    /** 邀请已添加的机器人加入群聊。 */
+    suspend fun inviteBotToGroup(token: String, botId: String, groupId: String): Result<DeleteFriendResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = buildJsonObject {
+                    put("chatId", botId)
+                    put("chatType", 3)
+                    put("groupId", groupId)
+                }
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/group/invite")
+                    .post(json.encodeToString(params).toRequestBody("application/json".toMediaType()))
+                    .header("token", token)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                    val result = json.decodeFromString<DeleteFriendResponse>(response.body.string())
+                    if (result.code == 1) Result.success(result)
+                    else Result.failure(Exception(result.msg.ifBlank { "邀请机器人失败" }))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     /** Updates one chat's notification state. noNotify=1 means mute, 0 means unmute. */
     suspend fun setNoNotify(token: String, chatId: String, muted: Boolean): Result<Boolean> {
         return withContext(Dispatchers.IO) {

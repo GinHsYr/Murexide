@@ -94,6 +94,13 @@ class ConversationDetailActivity : ComponentActivity() {
                                 putExtra(GroupMemberActivity.EXTRA_MY_PERMISSION, detail.permissionLevel)
                             })
                         },
+                        onInviteBotToGroup = { detail ->
+                            InviteBotToGroupActivity.start(
+                                context = this,
+                                botId = detail.chatId,
+                                botName = detail.name
+                            )
+                        },
                         onLeaveGroup = {
                             startActivity(Intent(this, MainActivity::class.java).apply {
                                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

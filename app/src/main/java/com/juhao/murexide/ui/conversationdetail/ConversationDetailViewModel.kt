@@ -165,7 +165,7 @@ class ConversationDetailViewModel(
     /** Loads history pages until the active media tab receives a new image or video, or history ends. */
     fun loadMoreHistory() {
         val initial = _uiState.value
-        if (chatType !in 1..2 || initial.isLoadingHistory || !initial.hasMoreHistory) return
+        if (chatType !in 1..3 || initial.isLoadingHistory || !initial.hasMoreHistory) return
         val mediaTab = if (chatType == 2) 1 else 0
         if (initial.selectedTab != mediaTab) return
         _uiState.update { it.copy(isLoadingHistory = true) }
@@ -236,7 +236,7 @@ class ConversationDetailViewModel(
 
     fun toggleMute() {
         val detail = _uiState.value.detail ?: return
-        if (chatType !in 1..2 || _uiState.value.isChangingMute) return
+        if (chatType !in 1..3 || _uiState.value.isChangingMute) return
         val targetMuted = !detail.doNotDisturb
         _uiState.update { it.copy(isChangingMute = true, detail = detail.copy(doNotDisturb = targetMuted)) }
         viewModelScope.launch {

@@ -40,6 +40,7 @@ data class ConversationDetail(
     val createBy: String? = null,
     val createTime: Long? = null,
     val usageCount: Long? = null,
+    val groupLimit: Boolean = false,
     val isStop: Boolean = false
 )
 

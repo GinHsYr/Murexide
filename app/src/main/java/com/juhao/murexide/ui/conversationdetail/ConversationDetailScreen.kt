@@ -2,6 +2,9 @@ package com.juhao.murexide.ui.conversationdetail
 
 import android.content.ClipData
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -102,6 +105,7 @@ fun ConversationDetailScreen(
     onOpenMember: (GroupMember) -> Unit = {},
     onOpenBoard: (BaItem) -> Unit = {},
     onManageMembers: (ConversationDetail) -> Unit = {},
+    onInviteBotToGroup: (ConversationDetail) -> Unit = {},
     onLeaveGroup: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -247,6 +251,21 @@ fun ConversationDetailScreen(
                 isLoadingCreatedBoards = state.isLoadingCreatedBoards,
                 hasLoadedCreatedBoards = state.hasLoadedCreatedBoards,
                 onOpenBoard = onOpenBoard
+            )
+            detail.chatType == 3 -> BotConversationDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                isAdded = state.isAdded,
+                isAdding = state.isAdding,
+                onAdd = viewModel::addChat,
+                onMessage = { onEnterChat(detail) },
+                onMute = viewModel::toggleMute,
+                isChangingMute = state.isChangingMute,
+                onInviteToGroup = { onInviteBotToGroup(detail) },
+                media = state.mediaMessages,
+                isLoadingHistory = state.isLoadingHistory,
+                hasMoreHistory = state.hasMoreHistory,
+                onLoadHistory = viewModel::loadMoreHistory
             )
             else -> LegacyDetail(
                 modifier = Modifier.padding(padding),
@@ -544,6 +563,98 @@ private fun UserConversationDetail(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+private fun BotConversationDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    onInviteToGroup: () -> Unit,
+    media: List<MessageItem>,
+    isLoadingHistory: Boolean,
+    hasMoreHistory: Boolean,
+    onLoadHistory: () -> Unit
+) {
+    var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val mediaRows = media.chunked(3)
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, isLoadingHistory, hasMoreHistory, mediaRows.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
+            }
+        }
+    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item(key = "bot-header") {
+            UserHeader(
+                detail = detail,
+                isAdded = isAdded,
+                isAdding = isAdding,
+                onAdd = onAdd,
+                onMessage = onMessage,
+                onMute = onMute,
+                isChangingMute = isChangingMute,
+                introductionExpanded = introductionExpanded,
+                onIntroductionClick = { introductionExpanded = true },
+                isBot = true,
+                onInviteToGroup = onInviteToGroup
+            )
+        }
+        item(key = "bot-info") {
+            DetailCardSegment(cardColor = cardColor, isTop = true) {
+                BotInfoContent(detail)
+                HorizontalDivider()
+                Text(
+                    text = "媒体",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                )
+            }
+        }
+        when {
+            isLoadingHistory && media.isEmpty() -> item(key = "bot-media-loading") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+            }
+            media.isEmpty() && !hasMoreHistory -> item(key = "bot-media-empty") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无媒体") }
+            }
+            else -> {
+                items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
+                    DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
+                        MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
+                    }
+                }
+                if (hasMoreHistory) item(key = "bot-media-load-more") {
+                    DetailCardSegment(cardColor, isBottom = true) {
+                        AutoLoadingRow(isLoadingHistory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 private fun UserHeader(
     detail: ConversationDetail,
     isAdded: Boolean?,
@@ -553,7 +664,9 @@ private fun UserHeader(
     onMute: () -> Unit,
     isChangingMute: Boolean,
     introductionExpanded: Boolean,
-    onIntroductionClick: () -> Unit
+    onIntroductionClick: () -> Unit,
+    isBot: Boolean = false,
+    onInviteToGroup: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -573,23 +686,29 @@ private fun UserHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            val (genderIcon, genderColor, genderDescription) = when (detail.gender) {
-                1 -> Triple(AppIcons.Boy, androidx.compose.ui.graphics.Color(0xFF2196F3), "男")
-                2 -> Triple(AppIcons.Girl, androidx.compose.ui.graphics.Color(0xFFFF6B9A), "女")
-                else -> Triple(AppIcons.Help, MaterialTheme.colorScheme.onSurfaceVariant, "未知性别")
+            if (!isBot) {
+                val (genderIcon, genderColor, genderDescription) = when (detail.gender) {
+                    1 -> Triple(AppIcons.Boy, androidx.compose.ui.graphics.Color(0xFF2196F3), "男")
+                    2 -> Triple(AppIcons.Girl, androidx.compose.ui.graphics.Color(0xFFFF6B9A), "女")
+                    else -> Triple(AppIcons.Help, MaterialTheme.colorScheme.onSurfaceVariant, "未知性别")
+                }
+                Icon(genderIcon, genderDescription, tint = genderColor, modifier = Modifier.size(20.dp))
             }
-            Icon(genderIcon, genderDescription, tint = genderColor, modifier = Modifier.size(20.dp))
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "注册于 ${detail.registerTime ?: "未知"}",
+                text = if (isBot) {
+                    "${detail.usageCount ?: 0} 人使用"
+                } else {
+                    "注册于 ${detail.registerTime ?: "未知"}"
+                },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
-            detail.ipGeo?.let { ip ->
+            detail.ipGeo?.takeIf { !isBot }?.let { ip ->
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = "IP:$ip",
@@ -614,10 +733,10 @@ private fun UserHeader(
                 )
                 TelegramAction(
                     Modifier.weight(1f),
-                    AppIcons.Phone,
-                    "通话",
-                    onClick = {},
-                    enabled = false
+                    if (isBot) AppIcons.Group else AppIcons.Phone,
+                    if (isBot) "添加到群" else "通话",
+                    onClick = onInviteToGroup ?: {},
+                    enabled = isBot && onInviteToGroup != null
                 )
             }
         } else {
@@ -638,7 +757,7 @@ private fun UserHeader(
                         onClick = onIntroductionClick,
                         onLongClick = {
                             scope.launch {
-                                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("用户简介", detail.introduction)))
+                                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(if (isBot) "机器人简介" else "用户简介", detail.introduction)))
                                 Toast.makeText(context, "简介已复制", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -656,6 +775,25 @@ private fun UserHeader(
         Spacer(Modifier.height(6.dp))
     }
 }
+
+@Composable
+private fun BotInfoContent(detail: ConversationDetail) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = "详情信息",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+        UserInfoRow("机器人 ID", detail.chatId)
+        UserInfoRow("创建者 ID", detail.createBy ?: "未知")
+        UserInfoRow("创建时间", detail.createTime?.let(::formatBotCreateTime) ?: "未知")
+        UserInfoRow("限制进群", if (detail.groupLimit) "是" else "否")
+    }
+}
+
+private fun formatBotCreateTime(timestampSeconds: Long): String =
+    SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestampSeconds * 1000L))
 
 @Composable
 private fun UserInfoContent(
