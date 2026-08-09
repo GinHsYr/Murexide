@@ -77,8 +77,10 @@ data class ConversationDetailUiState(
     val isChangingMute: Boolean = false,
     val kickTarget: GroupMember? = null,
     val gagTarget: GroupMember? = null,
+    val adminTarget: GroupMember? = null,
     val showKickConfirm: Boolean = false,
     val showGagDialog: Boolean = false,
+    val showAdminConfirm: Boolean = false,
     val isLeaving: Boolean = false,
     val hasLeft: Boolean = false
 )

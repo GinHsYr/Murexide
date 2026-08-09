@@ -29,12 +29,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.theme.PurpleDarkColorScheme
 import com.juhao.murexide.ui.theme.PurpleLightColorScheme
+import com.juhao.murexide.ui.theme.UiState
 
 /**
  * A Material 3 capsule tab bar with equally-sized tabs and an animated selection pill.
@@ -52,6 +54,11 @@ fun CapsuleTabBar(
     if (tabs.isEmpty()) return
 
     val selectedIndex = selectedTabIndex.coerceIn(tabs.indices)
+    val selectedIndicatorColor = if (UiState.themeColor.value == "WHITE") {
+        Color.White
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
     val horizontalInset = 6.dp
     val selectionMotion = tween<androidx.compose.ui.unit.Dp>(
         durationMillis = 260,
@@ -79,7 +86,7 @@ fun CapsuleTabBar(
                 .width(tabWidth)
                 .fillMaxHeight()
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .background(selectedIndicatorColor)
         )
 
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {

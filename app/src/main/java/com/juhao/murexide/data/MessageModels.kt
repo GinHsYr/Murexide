@@ -210,5 +210,8 @@ data class ChatUiState(
     val mentions: List<MentionToken> = emptyList(),
     
     // -----机器人专属-----
-    val usageCount: Long? = null
+    val usageCount: Long? = null,
+
+    // -----私信专属-----
+    val continuousOnlineDay: Int? = null
 )
