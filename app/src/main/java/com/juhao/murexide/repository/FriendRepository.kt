@@ -310,4 +310,31 @@ class FriendRepository(
             }
         }
     }
+
+    /** Updates one chat's notification state. noNotify=1 means mute, 0 means unmute. */
+    suspend fun setNoNotify(token: String, chatId: String, muted: Boolean): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val params = buildJsonObject {
+                    put("chatId", chatId)
+                    put("noNotify", if (muted) 1 else 0)
+                }
+                val request = Request.Builder()
+                    .url("$baseUrl/v1/friend/no-notify")
+                    .post(json.encodeToString(params).toRequestBody("application/json".toMediaType()))
+                    .header("token", token)
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@use Result.failure(Exception("HTTP error: ${response.code}"))
+                    }
+                    val result = json.decodeFromString<DeleteFriendResponse>(response.body.string())
+                    if (result.code == 1) Result.success(true)
+                    else Result.failure(Exception(result.msg.ifBlank { "修改免打扰失败" }))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
 }
