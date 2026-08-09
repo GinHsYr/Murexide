@@ -117,7 +117,11 @@ class ConversationDetailViewModel(
                             it.copy(
                                 isAdding = false,
                                 isAdded = if (added) true else it.isAdded,
-                                message = if (added) "已加入群聊" else "已发送申请"
+                                message = when {
+                                    detail?.chatType == 3 -> "已添加机器人"
+                                    added -> "已加入群聊"
+                                    else -> "已发送申请"
+                                }
                             )
                         }
                         -9 -> _uiState.update { it.copy(isAdding = false, isAdded = true, message = "你已在群聊中") }
@@ -309,8 +313,20 @@ class ConversationDetailViewModel(
         _uiState.update { it.copy(gagTarget = member, showGagDialog = true) }
     }
 
+    fun requestAdminToggle(member: GroupMember) {
+        if (!canSetAdmin(member)) return
+        _uiState.update { it.copy(adminTarget = member, showAdminConfirm = true) }
+    }
+
     fun dismissMemberActionDialogs() = _uiState.update {
-        it.copy(kickTarget = null, gagTarget = null, showKickConfirm = false, showGagDialog = false)
+        it.copy(
+            kickTarget = null,
+            gagTarget = null,
+            adminTarget = null,
+            showKickConfirm = false,
+            showGagDialog = false,
+            showAdminConfirm = false
+        )
     }
 
     fun confirmKickMember() {
@@ -353,11 +369,56 @@ class ConversationDetailViewModel(
         }
     }
 
+    fun confirmAdminToggle() {
+        val target = _uiState.value.adminTarget ?: return
+        if (!canSetAdmin(target)) {
+            dismissMemberActionDialogs()
+            return
+        }
+        val makeAdmin = target.permissionLevel != 2
+        dismissMemberActionDialogs()
+        viewModelScope.launch {
+            groupRepository.setAdmin(token, chatId, target.userId, makeAdmin)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            members = state.members.map { member ->
+                                if (member.userId == target.userId) {
+                                    member.copy(permissionLevel = if (makeAdmin) 2 else 0)
+                                } else {
+                                    member
+                                }
+                            },
+                            message = "已${if (makeAdmin) "设置" else "取消"}${target.name}的管理员权限"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(message = error.message ?: "管理员设置失败") }
+                }
+        }
+    }
+
     private fun canManageMember(member: GroupMember): Boolean {
         val detail = _uiState.value.detail
         return when {
             chatType != 2 || (detail?.permissionLevel ?: 0) < 2 -> {
                 _uiState.update { it.copy(message = "你没有管理成员的权限") }
+                false
+            }
+            member.permissionLevel == 100 -> {
+                _uiState.update { it.copy(message = "不能操作群主") }
+                false
+            }
+            else -> true
+        }
+    }
+
+    private fun canSetAdmin(member: GroupMember): Boolean {
+        val detail = _uiState.value.detail
+        return when {
+            chatType != 2 || detail?.permissionLevel != 100 -> {
+                _uiState.update { it.copy(message = "仅群主可设置管理员") }
                 false
             }
             member.permissionLevel == 100 -> {

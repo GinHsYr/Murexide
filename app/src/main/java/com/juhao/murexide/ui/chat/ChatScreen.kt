@@ -974,6 +974,15 @@ fun ChatScreen(
                                                     maxLines = 1
                                                 )
                                             }
+                                            if (chatType == 1 && uiState.continuousOnlineDay != null) {
+                                                Spacer(modifier = Modifier.height(1.dp))
+                                                Text(
+                                                    text = "连续在线${uiState.continuousOnlineDay}天",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
                                         }
                                     }
                                     if (uiState.boardPanel.boards.isNotEmpty()) {

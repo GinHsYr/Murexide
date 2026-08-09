@@ -147,7 +147,7 @@ private class InviteBotToGroupViewModel(
                 succeeded++
             }
             _uiState.update { it.copy(isInviting = false) }
-            _events.emit("已邀请机器人加入 $succeeded 个群聊")
+            _events.emit("已加入群聊")
         }
     }
 

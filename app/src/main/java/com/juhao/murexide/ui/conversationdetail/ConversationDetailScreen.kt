@@ -17,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,8 +38,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -244,8 +244,10 @@ fun ConversationDetailScreen(
                 onLoadHistory = viewModel::loadMoreHistory,
                 onOpenMember = onOpenMember,
                 canManageMembers = detail.permissionLevel >= 2,
+                isGroupOwner = detail.permissionLevel == 100,
                 onKickMember = viewModel::requestKickMember,
                 onGagMember = viewModel::requestGagMember,
+                onAdminToggle = viewModel::requestAdminToggle,
                 onOpenBot = { bot ->
                     ConversationDetailActivity.start(
                         context = context,
@@ -334,11 +336,14 @@ fun ConversationDetailScreen(
     MemberManagementDialogs(
         kickTarget = state.kickTarget,
         gagTarget = state.gagTarget,
+        adminTarget = state.adminTarget,
         showKickConfirm = state.showKickConfirm,
         showGagDialog = state.showGagDialog,
+        showAdminConfirm = state.showAdminConfirm,
         onDismiss = viewModel::dismissMemberActionDialogs,
         onConfirmKick = viewModel::confirmKickMember,
-        onConfirmGag = viewModel::confirmGagMember
+        onConfirmGag = viewModel::confirmGagMember,
+        onConfirmAdminToggle = viewModel::confirmAdminToggle
     )
 
 }
@@ -369,8 +374,10 @@ private fun GroupConversationDetail(
     onLoadHistory: () -> Unit,
     onOpenMember: (GroupMember) -> Unit,
     canManageMembers: Boolean,
+    isGroupOwner: Boolean,
     onKickMember: (GroupMember) -> Unit,
     onGagMember: (GroupMember) -> Unit,
+    onAdminToggle: (GroupMember) -> Unit,
     onOpenBot: (BotItem) -> Unit
 ) {
     var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
@@ -469,9 +476,11 @@ private fun GroupConversationDetail(
                             MemberRow(
                                 member = member,
                                 canManage = canManageMembers && member.permissionLevel != 100,
+                                canSetAdmin = isGroupOwner && member.permissionLevel != 100,
                                 onClick = { onOpenMember(member) },
                                 onKick = { onKickMember(member) },
-                                onGag = { onGagMember(member) }
+                                onGag = { onGagMember(member) },
+                                onAdminToggle = { onAdminToggle(member) }
                             )
                             if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
                         }
@@ -1125,6 +1134,8 @@ private fun GroupHeader(
                 isDanger = true
             )
         }
+        Spacer(Modifier.height(8.dp))
+        GroupIdentityInfo(detail)
         if (detail.introduction.isNotBlank()) {
             Surface(
                 modifier = Modifier
@@ -1143,6 +1154,98 @@ private fun GroupHeader(
         }
         Spacer(Modifier.height(6.dp))
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupIdentityInfo(detail: ConversationDetail) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val copyValue: (String, String) -> Unit = { label, value ->
+        scope.launch {
+            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, value)))
+            Toast.makeText(context, "${label}已复制", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            GroupIdentityColumn(
+                label = "群 ID",
+                value = detail.chatId,
+                onLongClick = { copyValue("群 ID", detail.chatId) },
+                modifier = Modifier.weight(1f)
+            )
+            detail.groupCode?.takeIf { it.isNotBlank() }?.let { groupCode ->
+                VerticalDivider(
+                    modifier = Modifier.height(44.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                GroupIdentityColumn(
+                    label = "群口令",
+                    value = groupCode,
+                    onLongClick = { copyValue("群口令", groupCode) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupIdentityColumn(
+    label: String,
+    value: String,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        GroupIdentityText(
+            value = value,
+            onLongClick = onLongClick
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupIdentityText(
+    value: String,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = value,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .combinedClickable(onClick = {}, onLongClick = onLongClick)
+            .padding(vertical = 4.dp)
+    )
 }
 
 @Composable
@@ -1282,9 +1385,11 @@ private fun TelegramAction(
 private fun MemberRow(
     member: GroupMember,
     canManage: Boolean,
+    canSetAdmin: Boolean,
     onClick: () -> Unit,
     onKick: () -> Unit,
-    onGag: () -> Unit
+    onGag: () -> Unit,
+    onAdminToggle: () -> Unit
 ) {
     var expanded by remember(member.userId) { mutableStateOf(false) }
     Row(
@@ -1332,6 +1437,13 @@ private fun MemberRow(
                     contentDescription = "管理成员"
                 )
                 ExpressiveDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    if (canSetAdmin) {
+                        DropdownMenuItem(
+                            text = { Text(if (member.permissionLevel == 2) "取消管理员" else "设置管理员") },
+                            onClick = { expanded = false; onAdminToggle() },
+                            leadingIcon = { Icon(AppIcons.AdminPanelSettings, null) }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(if (member.isGag) "取消禁言" else "禁言") },
                         onClick = { expanded = false; onGag() },
@@ -1383,11 +1495,14 @@ private fun BotRow(bot: BotItem, onClick: () -> Unit) {
 private fun MemberManagementDialogs(
     kickTarget: GroupMember?,
     gagTarget: GroupMember?,
+    adminTarget: GroupMember?,
     showKickConfirm: Boolean,
     showGagDialog: Boolean,
+    showAdminConfirm: Boolean,
     onDismiss: () -> Unit,
     onConfirmKick: () -> Unit,
-    onConfirmGag: (Int) -> Unit
+    onConfirmGag: (Int) -> Unit,
+    onConfirmAdminToggle: () -> Unit
 ) {
     val gagOptions = listOf(
         600 to "10分钟",
@@ -1434,6 +1549,25 @@ private fun MemberManagementDialogs(
                     onClick = { onConfirmGag(if (gagTarget?.isGag == true) 0 else gagOptions[selectedGagIndex].first) }
                 ) { Text("确定") }
             },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        )
+    }
+    if (showAdminConfirm) {
+        val target = adminTarget ?: return
+        val isAdmin = target.permissionLevel == 2
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(if (isAdmin) "取消管理员" else "设置管理员") },
+            text = {
+                Text(
+                    if (isAdmin) {
+                        "确定要取消 ${target.name.ifBlank { "该成员" }} 的管理员权限吗？"
+                    } else {
+                        "确定要设置 ${target.name.ifBlank { "该成员" }} 为管理员吗？"
+                    }
+                )
+            },
+            confirmButton = { TextButton(onClick = onConfirmAdminToggle) { Text("确定") } },
             dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
         )
     }

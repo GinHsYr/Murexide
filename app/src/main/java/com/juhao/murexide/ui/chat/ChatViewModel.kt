@@ -17,6 +17,7 @@ import com.juhao.murexide.repository.ChatBackgroundRepository
 import com.juhao.murexide.repository.StickerRepository
 import com.juhao.murexide.repository.InstructionRepository
 import com.juhao.murexide.repository.BoardRepository
+import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.repository.MessageRepository
 import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
@@ -88,6 +89,7 @@ class ChatViewModel(
     private val friendRepository: FriendRepository = FriendRepository(),
     private val groupMemberRepository: GroupMemberRepository = GroupMemberRepository(),
     private val boardRepository: BoardRepository = BoardRepository(),
+    private val conversationDetailRepository: ConversationDetailRepository = ConversationDetailRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance(),
     private val currentUserId: String = "",
     private val currentUserName: String = "",
@@ -161,6 +163,9 @@ class ChatViewModel(
         }
         if (chatType == 3) { // 机器人
             loadBotInfo()
+        }
+        if (chatType == 1) { // 私信
+            loadUserInfo()
         }
         if (chatType == 2 || chatType == 3) {
             loadBoard()
@@ -299,6 +304,18 @@ class ChatViewModel(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load bot info", e)
+            }
+        }
+    }
+
+    private fun loadUserInfo() {
+        viewModelScope.launch(Dispatchers.IO) {
+            conversationDetailRepository.getDetail(token, chatId, chatType).onSuccess { detail ->
+                _uiState.update {
+                    it.copy(continuousOnlineDay = detail.continuousOnlineDay)
+                }
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to load user info", error)
             }
         }
     }
