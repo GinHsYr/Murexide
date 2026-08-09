@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.MainActivity
 import com.juhao.murexide.ui.chat.ChatActivity
+import com.juhao.murexide.ui.community.ba.BaDetailActivity
 import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
@@ -83,6 +84,9 @@ class ConversationDetailActivity : ComponentActivity() {
                                 chatName = member.name,
                                 chatAvatar = member.avatarUrl
                             )
+                        },
+                        onOpenBoard = { board ->
+                            BaDetailActivity.start(this, board.id)
                         },
                         onManageMembers = { detail ->
                             startActivity(Intent(this, GroupMemberActivity::class.java).apply {

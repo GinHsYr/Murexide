@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
@@ -62,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +77,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.juhao.murexide.data.BaItem
 import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.data.MessageItem
@@ -85,6 +89,7 @@ import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.ui.components.videoMessagePreviewItem
 import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
+import com.juhao.murexide.ui.chat.components.formatVideoDuration
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,6 +100,7 @@ fun ConversationDetailScreen(
     onEnterChat: (ConversationDetail) -> Unit,
     onEditGroup: (ConversationDetail) -> Unit = {},
     onOpenMember: (GroupMember) -> Unit = {},
+    onOpenBoard: (BaItem) -> Unit = {},
     onManageMembers: (ConversationDetail) -> Unit = {},
     onLeaveGroup: () -> Unit = {}
 ) {
@@ -103,6 +109,7 @@ fun ConversationDetailScreen(
     var showMore by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     val groupListState = rememberLazyListState()
+    val userListState = rememberLazyListState()
     val groupNameBottomOffset = with(LocalDensity.current) { 130.dp.roundToPx() }
     val showGroupTitleInAppBar by remember(groupNameBottomOffset) {
         derivedStateOf {
@@ -222,6 +229,25 @@ fun ConversationDetailScreen(
                 onLoadHistory = viewModel::loadMoreHistory,
                 onOpenMember = onOpenMember
             )
+            detail.chatType == 1 -> UserConversationDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                listState = userListState,
+                isAdded = state.isAdded,
+                isAdding = state.isAdding,
+                onAdd = viewModel::addChat,
+                onMessage = { onEnterChat(detail) },
+                onMute = viewModel::toggleMute,
+                isChangingMute = state.isChangingMute,
+                media = state.mediaMessages,
+                isLoadingHistory = state.isLoadingHistory,
+                hasMoreHistory = state.hasMoreHistory,
+                onLoadHistory = viewModel::loadMoreHistory,
+                createdBoards = state.createdBoards,
+                isLoadingCreatedBoards = state.isLoadingCreatedBoards,
+                hasLoadedCreatedBoards = state.hasLoadedCreatedBoards,
+                onOpenBoard = onOpenBoard
+            )
             else -> LegacyDetail(
                 modifier = Modifier.padding(padding),
                 detail = detail,
@@ -288,7 +314,10 @@ private fun GroupConversationDetail(
         members.size,
         hasMoreMembers,
         isLoadingMembers,
-        isLoadingMoreMembers
+        isLoadingMoreMembers,
+        mediaRows.size,
+        hasMoreHistory,
+        isLoadingHistory
     ) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
@@ -304,6 +333,15 @@ private fun GroupConversationDetail(
                 lastVisibleItem >= totalItems - 3
             ) {
                 onLoadMembers()
+            }
+            if (
+                selectedTab == 1 &&
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
             }
         }
     }
@@ -383,12 +421,12 @@ private fun GroupConversationDetail(
                 else -> {
                     items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
                         DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
-                            MediaRow(row, media, detail)
+                            MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
                         }
                     }
                     if (hasMoreHistory) item(key = "media-load-more") {
                         DetailCardSegment(cardColor, isBottom = true) {
-                            LoadMoreRow(isLoadingHistory, onLoadHistory)
+                            AutoLoadingRow(isLoadingHistory)
                         }
                     }
                 }
@@ -397,6 +435,331 @@ private fun GroupConversationDetail(
                 DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("群云盘功能即将推出") }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UserConversationDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    listState: LazyListState,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    media: List<MessageItem>,
+    isLoadingHistory: Boolean,
+    hasMoreHistory: Boolean,
+    onLoadHistory: () -> Unit,
+    createdBoards: List<BaItem>,
+    isLoadingCreatedBoards: Boolean,
+    hasLoadedCreatedBoards: Boolean,
+    onOpenBoard: (BaItem) -> Unit
+) {
+    var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
+    var createdBoardsExpanded by remember(detail.chatId) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val mediaRows = media.chunked(3)
+    LaunchedEffect(listState, isLoadingHistory, hasMoreHistory, mediaRows.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
+            }
+        }
+    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item(key = "user-header") {
+            UserHeader(
+                detail = detail,
+                isAdded = isAdded,
+                isAdding = isAdding,
+                onAdd = onAdd,
+                onMessage = onMessage,
+                onMute = onMute,
+                isChangingMute = isChangingMute,
+                introductionExpanded = introductionExpanded,
+                onIntroductionClick = { introductionExpanded = true }
+            )
+        }
+        item(key = "user-info") {
+            DetailCardSegment(cardColor = cardColor, isTop = true) {
+                UserInfoContent(
+                    detail = detail,
+                    createdBoards = createdBoards,
+                    createdBoardsExpanded = createdBoardsExpanded,
+                    isLoadingCreatedBoards = isLoadingCreatedBoards,
+                    hasLoadedCreatedBoards = hasLoadedCreatedBoards,
+                    onOpenBoard = onOpenBoard,
+                    onCreatedBoardsClick = {
+                        createdBoardsExpanded = !createdBoardsExpanded
+                    }
+                )
+                HorizontalDivider()
+                Text(
+                    text = "媒体",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                )
+            }
+        }
+        when {
+            isLoadingHistory && media.isEmpty() -> item(key = "user-media-loading") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+            }
+            media.isEmpty() && !hasMoreHistory -> item(key = "user-media-empty") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无媒体") }
+            }
+            else -> {
+                    items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
+                        DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
+                            MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
+                    }
+                }
+                if (hasMoreHistory) item(key = "user-media-load-more") {
+                    DetailCardSegment(cardColor, isBottom = true) {
+                        AutoLoadingRow(isLoadingHistory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UserHeader(
+    detail: ConversationDetail,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    introductionExpanded: Boolean,
+    onIntroductionClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Avatar(url = detail.avatarUrl, size = 88.dp, canView = true)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                detail.name.ifBlank { "未知用户" },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val (genderIcon, genderColor, genderDescription) = when (detail.gender) {
+                1 -> Triple(AppIcons.Boy, androidx.compose.ui.graphics.Color(0xFF2196F3), "男")
+                2 -> Triple(AppIcons.Girl, androidx.compose.ui.graphics.Color(0xFFFF6B9A), "女")
+                else -> Triple(AppIcons.Help, MaterialTheme.colorScheme.onSurfaceVariant, "未知性别")
+            }
+            Icon(genderIcon, genderDescription, tint = genderColor, modifier = Modifier.size(20.dp))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "注册于 ${detail.registerTime ?: "未知"}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            detail.ipGeo?.let { ip ->
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "IP:$ip",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        if (isAdded == true) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TelegramAction(Modifier.weight(1f), AppIcons.ChatBubbleOutline, "消息", onMessage)
+                TelegramAction(
+                    Modifier.weight(1f),
+                    if (detail.doNotDisturb) AppIcons.NotificationsOff else AppIcons.Notifications,
+                    if (detail.doNotDisturb) "取消静音" else "静音",
+                    onMute,
+                    isChangingMute
+                )
+                TelegramAction(
+                    Modifier.weight(1f),
+                    AppIcons.Phone,
+                    "通话",
+                    onClick = {},
+                    enabled = false
+                )
+            }
+        } else {
+            TelegramAction(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                icon = AppIcons.PersonAdd,
+                label = "添加好友",
+                onClick = onAdd,
+                loading = isAdding
+            )
+        }
+        if (detail.introduction.isNotBlank()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .combinedClickable(
+                        onClick = onIntroductionClick,
+                        onLongClick = {
+                            scope.launch {
+                                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("用户简介", detail.introduction)))
+                                Toast.makeText(context, "简介已复制", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                IntroductionContent(
+                    introduction = detail.introduction,
+                    expanded = introductionExpanded,
+                    onExpand = onIntroductionClick
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun UserInfoContent(
+    detail: ConversationDetail,
+    createdBoards: List<BaItem>,
+    createdBoardsExpanded: Boolean,
+    isLoadingCreatedBoards: Boolean,
+    hasLoadedCreatedBoards: Boolean,
+    onOpenBoard: (BaItem) -> Unit,
+    onCreatedBoardsClick: () -> Unit
+) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = "详情信息",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+        UserInfoRow("在线天数", detail.onlineDay?.let { "$it 天" } ?: "未知")
+        UserInfoRow("连续在线", detail.continuousOnlineDay?.let { "$it 天" } ?: "未知")
+        UserInfoRow(
+            label = "创建的板块",
+            value = when {
+                isLoadingCreatedBoards -> "加载中"
+                createdBoards.isEmpty() && hasLoadedCreatedBoards -> "无"
+                hasLoadedCreatedBoards -> "${createdBoards.size} 个"
+                else -> "加载失败"
+            },
+            onClick = onCreatedBoardsClick.takeIf { createdBoards.isNotEmpty() },
+            trailingIcon = if (createdBoards.isNotEmpty()) {
+                if (createdBoardsExpanded) AppIcons.KeyboardArrowUp else AppIcons.KeyboardArrowDown
+            } else {
+                null
+            }
+        )
+        AnimatedVisibility(
+            visible = createdBoardsExpanded,
+            enter = expandVertically(animationSpec = tween(180)) + fadeIn(animationSpec = tween(180)),
+            exit = shrinkVertically(animationSpec = tween(140)) + fadeOut(animationSpec = tween(140))
+        ) {
+            when {
+                isLoadingCreatedBoards -> Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                }
+                createdBoards.isEmpty() -> Text(
+                    text = if (hasLoadedCreatedBoards) "暂无创建的板块" else "加载失败，点击重试",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                )
+                else -> Column {
+                    createdBoards.forEach { board ->
+                        CreatedBoardRow(board, onClick = { onOpenBoard(board) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UserInfoRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null,
+    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        trailingIcon?.let {
+            Spacer(Modifier.width(4.dp))
+            Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CreatedBoardRow(board: BaItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Avatar(url = board.avatar, size = 32.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = board.name.ifBlank { "未命名板块" },
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -518,18 +881,34 @@ private fun TelegramAction(
     label: String,
     onClick: () -> Unit,
     loading: Boolean = false,
-    isDanger: Boolean = false
+    isDanger: Boolean = false,
+    enabled: Boolean = true
 ) {
+    val actionColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        isDanger -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
     Card(
-        modifier = modifier.height(56.dp).clickable(enabled = !loading, onClick = onClick),
+        modifier = modifier.height(56.dp).clickable(enabled = enabled && !loading, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) {
+                MaterialTheme.colorScheme.surfaceContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+        )
     ) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Icon(icon, null, tint = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            else Icon(icon, null, tint = actionColor)
             Spacer(Modifier.height(3.dp))
-            Text(label, style = MaterialTheme.typography.labelMedium, color = if (isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (enabled && !isDanger) MaterialTheme.colorScheme.onSurface else actionColor
+            )
         }
     }
 }
@@ -589,19 +968,27 @@ private fun MemberRoleBadge(text: String) {
 }
 
 @Composable
-private fun MediaRow(row: List<MessageItem>, media: List<MessageItem>, detail: ConversationDetail) {
+private fun MediaRow(
+    row: List<MessageItem>,
+    media: List<MessageItem>,
+    detail: ConversationDetail,
+    hasBottomSpacing: Boolean
+) {
     val context = LocalContext.current
+    val spacing = with(LocalDensity.current) { 1.toDp() }
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = if (hasBottomSpacing) spacing else 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing)
     ) {
         row.forEach { message ->
             val url = if (message.contentType == MessageItem.CONTENT_TYPE_VIDEO) message.videoUrl else message.imageUrl
-            AsyncImage(
-                model = url,
-                contentDescription = "媒体",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.weight(1f).aspectRatio(1f).clickable {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clickable {
                     val previews = media.map { item ->
                         if (item.contentType == MessageItem.CONTENT_TYPE_VIDEO) {
                             videoMessagePreviewItem(item.videoUrl.orEmpty(), item.msgId, item.msgSeq)
@@ -612,7 +999,38 @@ private fun MediaRow(row: List<MessageItem>, media: List<MessageItem>, detail: C
                         MediaViewerPagination(detail.chatId, detail.chatType)
                     )
                 }
-            )
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = "媒体",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (message.contentType == MessageItem.CONTENT_TYPE_VIDEO) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .background(Color.Black.copy(alpha = 0.68f), RectangleShape)
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.PlayArrow,
+                            contentDescription = "视频",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        formatVideoDuration(message.videoTime)?.let { duration ->
+                            Spacer(Modifier.width(2.dp))
+                            Text(
+                                text = duration,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
         repeat(3 - row.size) { Spacer(Modifier.weight(1f).aspectRatio(1f)) }
     }
@@ -650,9 +1068,16 @@ private fun DetailCardSegment(
 }
 
 @Composable
-private fun LoadMoreRow(loading: Boolean, onLoadMore: () -> Unit) {
-    Box(Modifier.fillMaxWidth().padding(12.dp).clickable(enabled = !loading, onClick = onLoadMore), Alignment.Center) {
-        if (loading) CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) else Text("加载更多", color = MaterialTheme.colorScheme.primary)
+private fun AutoLoadingRow(loading: Boolean) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (loading) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+        } else {
+            Text("继续下滑加载更多", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

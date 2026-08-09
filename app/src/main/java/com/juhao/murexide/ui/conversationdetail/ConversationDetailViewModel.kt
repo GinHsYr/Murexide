@@ -7,6 +7,7 @@ import com.juhao.murexide.data.ConversationDetailUiState
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.local.LocalCache
+import com.juhao.murexide.repository.CommunityRepository
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
@@ -17,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** State holder for the Telegram-style group profile. User and bot details keep using its base state. */
+/** State holder for the Telegram-style conversation profile. */
 class ConversationDetailViewModel(
     private val token: String,
     private val chatId: String,
@@ -27,7 +28,8 @@ class ConversationDetailViewModel(
     private val repository: ConversationDetailRepository = ConversationDetailRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
     private val memberRepository: GroupMemberRepository = GroupMemberRepository(),
-    private val messageRepository: MessageRepository = MessageRepository()
+    private val messageRepository: MessageRepository = MessageRepository(),
+    private val communityRepository: CommunityRepository = CommunityRepository(token)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -47,6 +49,9 @@ class ConversationDetailViewModel(
         loadDetail()
         checkAdded()
         if (chatType == 2) loadMembers()
+        if (chatType == 1) {
+            loadCreatedBoards()
+        }
     }
 
     fun loadDetail() {
@@ -105,9 +110,11 @@ class ConversationDetailViewModel(
     }
 
     fun selectTab(index: Int) {
-        if (index !in 0..2) return
+        val maxTab = if (chatType == 2) 2 else 0
+        if (index !in 0..maxTab) return
         _uiState.update { it.copy(selectedTab = index) }
-        if (index == 1 && _uiState.value.mediaMessages.isEmpty()) {
+        val mediaTab = if (chatType == 2) 1 else 0
+        if (index == mediaTab && _uiState.value.mediaMessages.isEmpty()) {
             loadMoreHistory()
         }
     }
@@ -155,79 +162,44 @@ class ConversationDetailViewModel(
         }
     }
 
-    /** Loads complete message pages until the active media/file tab receives a new item or history ends. */
+    /** Loads history pages until the active media tab receives a new image or video, or history ends. */
     fun loadMoreHistory() {
         val initial = _uiState.value
-        if (chatType != 2 || initial.isLoadingHistory || !initial.hasMoreHistory) return
-        val selectedTab = initial.selectedTab
-        if (selectedTab != 1) return
+        if (chatType !in 1..2 || initial.isLoadingHistory || !initial.hasMoreHistory) return
+        val mediaTab = if (chatType == 2) 1 else 0
+        if (initial.selectedTab != mediaTab) return
         _uiState.update { it.copy(isLoadingHistory = true) }
         viewModelScope.launch {
             var anchor = initial.historyAnchorMessageId
-            var imageAnchor = initial.mediaImageAnchor
             var hasMore = initial.hasMoreHistory
             var media = initial.mediaMessages
             val existingCount = media.size
 
-            if (imageAnchor == 0L) {
-                while (hasMore && imageAnchor == 0L) {
-                    val result = messageRepository.getMessageList(token, chatId, chatType, anchor)
-                    val page = result.getOrElse { error ->
-                        _uiState.update { it.copy(isLoadingHistory = false, message = error.message ?: "消息加载失败") }
-                        return@launch
-                    }
-                    val image = page.firstOrNull {
-                        !it.isRecalled && it.contentType == MessageItem.CONTENT_TYPE_IMAGE && it.msgSeq > 0L
-                    }
-                    imageAnchor = image?.msgSeq ?: 0L
-                    val nextAnchor = page.lastOrNull()?.msgId?.takeIf { it.isNotBlank() }
-                    hasMore = page.size >= HISTORY_PAGE_SIZE && nextAnchor != null && nextAnchor != anchor
-                    anchor = nextAnchor
-                }
-            }
-
-            if (imageAnchor == 0L) {
-                _uiState.update { it.copy(isLoadingHistory = false, hasMoreHistory = false, historyAnchorMessageId = anchor) }
-                return@launch
-            }
-
-            // The picture endpoint, not the bootstrap message page, determines picture pagination.
-            hasMore = true
             while (hasMore && media.size == existingCount) {
-                val result = messageRepository.getImageMessageList(
+                val result = messageRepository.getMessageList(
                     token = token,
                     chatId = chatId,
                     chatType = chatType,
-                    imageId = imageAnchor,
-                    earlierQuantities = HISTORY_PAGE_SIZE * 2,
-                    latestQuantities = 0
+                    msgId = anchor
                 )
-                val images = result.getOrElse { error ->
+                val page = result.getOrElse { error ->
                     _uiState.update { it.copy(isLoadingHistory = false, message = error.message ?: "消息加载失败") }
                     return@launch
                 }
-                val nextImageAnchor = images.minOfOrNull { it.sequence } ?: 0L
-                media = (media + images.map { image ->
-                    MessageItem(
-                        msgId = image.messageId,
-                        senderId = "",
-                        senderName = "",
-                        senderAvatar = "",
-                        contentType = MessageItem.CONTENT_TYPE_IMAGE,
-                        timestamp = image.timestamp,
-                        msgSeq = image.sequence,
-                        direction = "left",
-                        imageUrl = image.url
+                media = (media + page.filter { message ->
+                    !message.isRecalled && message.contentType in setOf(
+                        MessageItem.CONTENT_TYPE_IMAGE,
+                        MessageItem.CONTENT_TYPE_VIDEO
                     )
                 }).distinctBy(MessageItem::msgId)
                     .sortedWith(compareByDescending<MessageItem> { it.timestamp }.thenByDescending { it.msgSeq })
-                hasMore = images.size >= HISTORY_PAGE_SIZE && nextImageAnchor > 0L && nextImageAnchor < imageAnchor
-                imageAnchor = nextImageAnchor
+                val nextAnchor = page.lastOrNull()?.msgId?.takeIf { it.isNotBlank() }
+                hasMore = page.size >= HISTORY_PAGE_SIZE && nextAnchor != null && nextAnchor != anchor
+                anchor = nextAnchor
                 _uiState.update {
                     it.copy(
                         mediaMessages = media,
                         historyAnchorMessageId = anchor,
-                        mediaImageAnchor = imageAnchor,
                         hasMoreHistory = hasMore
                     )
                 }
@@ -236,9 +208,35 @@ class ConversationDetailViewModel(
         }
     }
 
+    fun loadCreatedBoards() {
+        val current = _uiState.value
+        if (chatType != 1 || current.isLoadingCreatedBoards || current.hasLoadedCreatedBoards) return
+        _uiState.update { it.copy(isLoadingCreatedBoards = true) }
+        viewModelScope.launch {
+            communityRepository.getBaListByCreate(chatId)
+                .onSuccess { boards ->
+                    _uiState.update {
+                        it.copy(
+                            createdBoards = boards,
+                            isLoadingCreatedBoards = false,
+                            hasLoadedCreatedBoards = true
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoadingCreatedBoards = false,
+                            message = error.message ?: "获取创建的板块失败"
+                        )
+                    }
+                }
+        }
+    }
+
     fun toggleMute() {
         val detail = _uiState.value.detail ?: return
-        if (chatType != 2 || _uiState.value.isChangingMute) return
+        if (chatType !in 1..2 || _uiState.value.isChangingMute) return
         val targetMuted = !detail.doNotDisturb
         _uiState.update { it.copy(isChangingMute = true, detail = detail.copy(doNotDisturb = targetMuted)) }
         viewModelScope.launch {
