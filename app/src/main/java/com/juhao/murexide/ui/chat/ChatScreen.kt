@@ -842,6 +842,7 @@ fun ChatScreen(
                 ) { isSelectionMode ->
                     if (isSelectionMode) {
                         FloatingTopBar(
+                            hazeState = hazeState,
                             title = {
                                 AnimatedContent(
                                     targetState = selectedMessages.size,
