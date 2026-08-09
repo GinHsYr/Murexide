@@ -381,9 +381,18 @@ class WebSocketManager private constructor() {
                 "push_message" -> {
                     val pushMessage = push_message.ADAPTER.decode(data)
                     pushMessage.data_?.msg?.let { msg ->
-                        Log.d(TAG, "New message: msgId=${msg.msg_id}, chatId=${msg.chat_id}")
-                        val messageItem = parseWsMessage(msg)
-                        publishEvent(WsEvent.NewMessage(messageItem))
+                        val event = msg.toPushEvent(currentUserId)
+                        when (event) {
+                            is WsEvent.MessageDeleted -> Log.d(
+                                TAG,
+                                "Recalled message: msgId=${msg.msg_id}, chatId=${msg.chat_id}"
+                            )
+                            else -> Log.d(
+                                TAG,
+                                "New message: msgId=${msg.msg_id}, chatId=${msg.chat_id}"
+                            )
+                        }
+                        publishEvent(event)
                     }
                 }
                 "edit_message" -> {
@@ -448,56 +457,6 @@ class WebSocketManager private constructor() {
         }
     }
 
-    private fun parseWsMessage(msg: WsMsg): MessageItem {
-        val isRecalled = msg.delete_time > 0
-        return MessageItem(
-            msgId = msg.msg_id,
-            senderId = msg.sender?.chat_id ?: "",
-            senderName = msg.sender?.name ?: "",
-            senderAvatar = msg.sender?.avatar_url ?: "",
-            senderType = msg.sender?.chat_type ?: 1,
-            chatId = msg.chat_id,
-            chatType = msg.chat_type,
-            content = msg.content?.text ?: "",
-            contentType = msg.content_type,
-            timestamp = msg.timestamp,
-            msgSeq = msg.msg_seq,
-            direction = if (msg.sender?.chat_id == currentUserId) "right" else "left",
-            isRecalled = isRecalled,
-            deleteTime = msg.delete_time,
-            isEdited = msg.edit_time > 0,
-            quoteMsgId = msg.quote_msg_id.takeIf { it.isNotEmpty() },
-            quoteMsgText = msg.content?.quote_msg_text?.takeIf { it.isNotEmpty() },
-            quoteImageUrl = msg.content?.quote_image_url?.takeIf { it.isNotEmpty() },
-            stickerUrl = msg.content?.sticker_url?.takeIf { it.isNotEmpty() },
-            imageUrl = msg.content?.image_url?.takeIf { it.isNotEmpty() },
-            imageWidth = msg.content?.width?.takeIf { it > 0 },
-            imageHeight = msg.content?.height?.takeIf { it > 0 },
-            audioUrl = msg.content?.audio_url?.takeIf { it.isNotEmpty() },
-            audioTime = if ((msg.content?.audio_time ?: 0) > 0) msg.content?.audio_time?.toInt() else null,
-            videoUrl = msg.content?.video_url?.takeIf { it.isNotEmpty() },
-            videoTime = if ((msg.content?.video_time ?: 0) > 0) msg.content?.video_time?.toInt() else null,
-            fileUrl = msg.content?.file_url?.takeIf { it.isNotEmpty() },
-            fileName = msg.content?.file_name?.takeIf { it.isNotEmpty() },
-            fileSize = if ((msg.content?.file_size ?: 0) > 0) msg.content?.file_size else null,
-            cmdName = msg.cmd?.name?.takeIf { it.isNotEmpty() },
-            cmdId = msg.cmd?.id,
-            postId = msg.content?.post_id,
-            postTitle = msg.content?.post_title,
-            postContent = msg.content?.post_content,
-            postContentType = msg.content?.post_content_type?.toIntOrNull(),
-            buttons = parseMessageButtons(msg.content?.buttons),
-            tags = msg.sender?.tag?.map { tag ->
-                MessageTag(
-                    id = tag.id,
-                    text = tag.text,
-                    color = tag.color
-                )
-            } ?: emptyList(),
-            updateTimestamp = maxOf(msg.timestamp, msg.edit_time, msg.delete_time)
-        )
-    }
-
     fun disconnect() {
         currentUserId = null
         currentToken = null
@@ -511,6 +470,73 @@ class WebSocketManager private constructor() {
         isConnected = false
         _connectionState.value = false
     }
+}
+
+internal fun WsMsg.toPushEvent(currentUserId: String?): WebSocketManager.WsEvent {
+    val message = toPushedMessageItem(currentUserId)
+    return if (message.isRecalled) {
+        WebSocketManager.WsEvent.MessageDeleted(message, sender?.toRecallActor())
+    } else {
+        WebSocketManager.WsEvent.NewMessage(message)
+    }
+}
+
+private fun WsMsg.toPushedMessageItem(currentUserId: String?): MessageItem {
+    val isRecalled = delete_time > 0
+    return MessageItem(
+        msgId = msg_id,
+        senderId = sender?.chat_id ?: "",
+        senderName = sender?.name ?: "",
+        senderAvatar = sender?.avatar_url ?: "",
+        senderType = sender?.chat_type ?: 1,
+        chatId = chat_id,
+        chatType = chat_type,
+        content = content?.text ?: "",
+        contentType = content_type,
+        timestamp = timestamp,
+        msgSeq = msg_seq,
+        direction = if (sender?.chat_id == currentUserId) "right" else "left",
+        isRecalled = isRecalled,
+        // A push recall may contain the operator (for example a bot) in sender rather than
+        // the original author. The existing message must remain the source of identity.
+        hasReliableSender = !isRecalled,
+        deleteTime = delete_time,
+        isEdited = edit_time > 0,
+        quoteMsgId = quote_msg_id.takeIf { it.isNotEmpty() },
+        quoteMsgText = content?.quote_msg_text?.takeIf { it.isNotEmpty() },
+        quoteImageUrl = content?.quote_image_url?.takeIf { it.isNotEmpty() },
+        stickerUrl = content?.sticker_url?.takeIf { it.isNotEmpty() },
+        imageUrl = content?.image_url?.takeIf { it.isNotEmpty() },
+        imageWidth = content?.width?.takeIf { it > 0 },
+        imageHeight = content?.height?.takeIf { it > 0 },
+        audioUrl = content?.audio_url?.takeIf { it.isNotEmpty() },
+        audioTime = if ((content?.audio_time ?: 0) > 0) content?.audio_time?.toInt() else null,
+        videoUrl = content?.video_url?.takeIf { it.isNotEmpty() },
+        videoTime = if ((content?.video_time ?: 0) > 0) content?.video_time?.toInt() else null,
+        fileUrl = content?.file_url?.takeIf { it.isNotEmpty() },
+        fileName = content?.file_name?.takeIf { it.isNotEmpty() },
+        fileSize = if ((content?.file_size ?: 0) > 0) content?.file_size else null,
+        cmdName = cmd?.name?.takeIf { it.isNotEmpty() },
+        cmdId = cmd?.id,
+        postId = content?.post_id,
+        postTitle = content?.post_title,
+        postContent = content?.post_content,
+        postContentType = content?.post_content_type?.toIntOrNull(),
+        buttons = parseMessageButtons(content?.buttons),
+        tags = sender?.tag?.map { tag ->
+            MessageTag(
+                id = tag.id,
+                text = tag.text,
+                color = tag.color
+            )
+        } ?: emptyList(),
+        updateTimestamp = maxOf(timestamp, edit_time, delete_time)
+    )
+}
+
+private fun WsMsg.WsSender.toRecallActor(): RecallActor? {
+    if (chat_id.isBlank() && name.isBlank()) return null
+    return RecallActor(id = chat_id, name = name)
 }
 
 internal fun decodeEditMessageEvent(data: ByteArray): WebSocketManager.WsEvent? {

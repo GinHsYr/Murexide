@@ -165,6 +165,40 @@ class OutgoingMessageTest {
     }
 
     @Test
+    fun `recalled incremental update cannot replace current user with bot`() {
+        val original = textMessage("same", "my message").copy(
+            senderId = "my-user-id",
+            senderName = "Me",
+            senderAvatar = "me.png",
+            tags = listOf(MessageTag(id = 1, text = "User", color = "blue")),
+            direction = "right"
+        )
+        val recalledFromServer = original.copy(
+            senderId = "bot-id",
+            senderName = "Moderator bot",
+            senderAvatar = "bot.png",
+            senderType = 3,
+            tags = listOf(MessageTag(id = 2, text = "Bot", color = "red")),
+            direction = "left",
+            isRecalled = true,
+            deleteTime = 1_234,
+            hasReliableSender = true,
+            updateTimestamp = 1_234
+        )
+
+        val message = upsertNewestMessage(listOf(original), recalledFromServer).single()
+
+        assertEquals("my-user-id", message.senderId)
+        assertEquals("Me", message.senderName)
+        assertEquals("me.png", message.senderAvatar)
+        assertEquals(listOf("User"), message.tags.map(MessageTag::text))
+        assertEquals(1, message.senderType)
+        assertEquals("right", message.direction)
+        assertTrue(message.isMine)
+        assertTrue(message.isRecalled)
+    }
+
+    @Test
     fun `cold loaded recall keeps original sender marked as reliable`() {
         val recalled = textMessage("same", "message").copy(
             senderId = "member-id",

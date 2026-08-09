@@ -46,6 +46,32 @@ class WebSocketManagerTest {
         assertEquals("Group owner", actor?.name)
     }
 
+    @Test
+    fun botRecallPush_decodesAsDeletedEventWithUnreliableSender() {
+        val event = WsMsg(
+            msg_id = "message-id",
+            sender = WsMsg.WsSender(
+                chat_id = "bot-id",
+                chat_type = 3,
+                name = "Moderator bot"
+            ),
+            chat_id = "chat-id",
+            chat_type = 2,
+            content_type = 1,
+            timestamp = 1_000,
+            delete_time = 1_234,
+            msg_seq = 42
+        ).toPushEvent(currentUserId = "my-user-id")
+
+        assertTrue(event is WebSocketManager.WsEvent.MessageDeleted)
+        val deletedEvent = event as WebSocketManager.WsEvent.MessageDeleted
+        assertTrue(deletedEvent.message.isRecalled)
+        assertFalse(deletedEvent.message.hasReliableSender)
+        assertEquals("left", deletedEvent.message.direction)
+        assertEquals("bot-id", deletedEvent.actor?.id)
+        assertEquals("Moderator bot", deletedEvent.actor?.name)
+    }
+
     private fun editPayload(deleteTime: Long): ByteArray {
         val payload = edit_message(
             info = INFO(cmd = "edit_message"),

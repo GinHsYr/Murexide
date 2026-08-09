@@ -27,6 +27,9 @@ private val protobufMediaType = "application/octet-stream".toMediaType()
 internal fun createFriendRequestListBody() =
     request_list_send().encode().toRequestBody(protobufMediaType)
 
+internal fun resolveInviterId(inviterId: String, alternateInviterId: String): String =
+    inviterId.ifBlank { alternateInviterId }
+
 class FriendRepository(
     private val client: OkHttpClient = NetworkClient.okHttpClient,
     private val baseUrl: String = NetworkClient.BASE_URL
@@ -134,7 +137,10 @@ class FriendRepository(
                                     groupAvatarUrl = item.groupAvatar,
                                     botName = item.botName,
                                     botAvatarUrl = item.botAvatar,
-                                    inviterId = item.inviterId,
+                                    inviterId = resolveInviterId(
+                                        inviterId = item.inviterId,
+                                        alternateInviterId = item.alternateInviterId
+                                    ),
                                     sourceType = item.sourceType,
                                     targetType = item.targetType,
                                     targetId = item.targetId,
