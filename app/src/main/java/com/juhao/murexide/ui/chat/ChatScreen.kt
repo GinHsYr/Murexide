@@ -116,53 +116,47 @@ private val DefaultInputPanelHeight = 280.dp
 
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun FloatingChatTopBar(
+private fun FloatingTopBar(
     hazeState: HazeState,
-    showBackButton: Boolean,
-    onBackClick: () -> Unit,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
     title: @Composable () -> Unit,
-    showBoardButton: Boolean,
-    boardExpanded: Boolean,
-    onBoardClick: () -> Unit,
-    onMoreClick: () -> Unit,
-    moreMenu: @Composable BoxScope.() -> Unit
+    showOverlay: Boolean = true
 ) {
     val controlSize = 48.dp
     val buttonShape = CircleShape
     val topBarColor = MaterialTheme.colorScheme.surface
-    val buttonHazeStyle = HazeMaterials.thin(
-        containerColor = topBarColor
-    ).copy(
+    val buttonHazeStyle = HazeMaterials.thin().copy(
         blurRadius = 32.dp,
         noiseFactor = 0f
     )
-    val cardShape = RoundedCornerShape(24.dp)
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            topBarColor.copy(alpha = 0.8f),
-                            topBarColor.copy(alpha = 0.7f),
-                            topBarColor.copy(alpha = 0.6f),
-                            Color.Transparent
+        if (showOverlay) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                topBarColor.copy(alpha = 0.8f),
+                                topBarColor.copy(alpha = 0.5f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (showBackButton) {
+            if (navigationIcon != null) {
                 Box(
                     modifier = Modifier
                         .size(controlSize)
@@ -172,15 +166,10 @@ private fun FloatingChatTopBar(
                             state = hazeState,
                             style = buttonHazeStyle,
                             block = null
-                        )
-                        .clickable(onClick = onBackClick),
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    AutoMirroredIcon(
-                        imageVector = AppIcons.ArrowBack,
-                        contentDescription = "返回",
-                        modifier = Modifier.size(24.dp)
-                    )
+                    navigationIcon()
                 }
             }
 
@@ -188,8 +177,8 @@ private fun FloatingChatTopBar(
                 modifier = Modifier
                     .weight(1f)
                     .height(controlSize)
-                    .shadow(2.dp, cardShape)
-                    .clip(cardShape)
+                    .shadow(2.dp, RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .hazeEffect(
                         state = hazeState,
                         style = buttonHazeStyle,
@@ -199,48 +188,21 @@ private fun FloatingChatTopBar(
             ) {
                 title()
             }
-
-            Row(
-                modifier = Modifier
-                    .height(controlSize)
-                    .shadow(2.dp, buttonShape)
-                    .clip(buttonShape)
-                    .hazeEffect(
-                        state = hazeState,
-                        style = buttonHazeStyle,
-                        block = null
-                    )
-            ) {
-                if (showBoardButton) {
-                    Box(
-                        modifier = Modifier
-                            .size(controlSize)
-                            .clip(buttonShape)
-                            .clickable(onClick = onBoardClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (boardExpanded) {
-                                AppIcons.KeyboardArrowUp
-                            } else {
-                                AppIcons.KeyboardArrowDown
-                            },
-                            contentDescription = if (boardExpanded) "收起看板" else "展开看板"
-                        )
-                    }
-                }
-                Box(
+            
+            if (actions != null) {
+                Row(
                     modifier = Modifier
-                        .size(controlSize)
+                        .height(controlSize)
+                        .shadow(2.dp, buttonShape)
                         .clip(buttonShape)
-                        .clickable(onClick = onMoreClick),
-                    contentAlignment = Alignment.Center
+                        .hazeEffect(
+                            state = hazeState,
+                            style = buttonHazeStyle,
+                            block = null
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    moreMenu()
-                    Icon(
-                        imageVector = AppIcons.MoreVert,
-                        contentDescription = "更多"
-                    )
+                    actions()
                 }
             }
         }
@@ -946,16 +908,182 @@ fun ChatScreen(
                         )
                     } else {
                         Column {
-                            FloatingChatTopBar(
+                            FloatingTopBar(
                                 hazeState = hazeState,
-                                showBackButton = !bigScreenMode,
-                                onBackClick = onBackClick,
+                                navigationIcon = if (!bigScreenMode) {
+                                    {
+                                        IconButtons(
+                                            modifier = Modifier.size(46.dp),
+                                            onClick = onBackClick
+                                        ) {
+                                            AutoMirroredIcon(
+                                                imageVector = AppIcons.ArrowBack,
+                                                contentDescription = "返回",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                } else null,
+                                actions = {
+                                    if (uiState.boardPanel.boards.isNotEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .clickable { viewModel.toggleBoard() },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (uiState.boardPanel.isExpanded) {
+                                                    AppIcons.KeyboardArrowUp
+                                                } else {
+                                                    AppIcons.KeyboardArrowDown
+                                                },
+                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(46.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showMoreMenu = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        DropdownMenu(
+                                            expanded = showMoreMenu,
+                                            onDismissRequest = { showMoreMenu = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("刷新") },
+                                                onClick = {
+                                                    showMoreMenu = false
+                                                    viewModel.refresh()
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        AppIcons.Refresh,
+                                                        contentDescription = null
+                                                    )
+                                                }
+                                            )
+                                            if (chatType == 2 && uiState.permissionLevel >= 2) {
+                                                DropdownMenuItem(
+                                                    text = { Text("群聊设置") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        GroupSettingsActivity.start(
+                                                            context = context,
+                                                            groupId = chatId,
+                                                            groupName = chatName,
+                                                            groupAvatar = chatAvatar
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            AppIcons.Settings,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                            if (chatType == 2) {
+                                                DropdownMenuItem(
+                                                    text = { Text("群成员列表") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        val intent = Intent(context, GroupMemberActivity::class.java).apply {
+                                                            putExtra("group_id", chatId)
+                                                            putExtra("my_permission", uiState.permissionLevel)
+                                                        }
+                                                        context.startActivity(intent)
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            AppIcons.Group,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("我的群名称") },
+                                                    onClick = {
+                                                        showMoreMenu = false
+                                                        showEditNickNameDialog = true
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            AppIcons.Edit,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                )
+                                            }
+                                            DropdownMenuItem(
+                                                text = { Text("会话详情") },
+                                                onClick = {
+                                                    showMoreMenu = false
+                                                    ConversationDetailActivity.start(
+                                                        context = context,
+                                                        chatId = viewModel.chatId,
+                                                        chatType = chatType,
+                                                        chatName = chatName,
+                                                        chatAvatar = chatAvatar
+                                                    )
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        AppIcons.Info,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                }
+                                            )
+    
+                                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+    
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        text = when (chatType) {
+                                                            1 -> "删除好友"
+                                                            2 -> "退出群聊"
+                                                            else -> "删除机器人"
+                                                        },
+                                                        color = MaterialTheme.colorScheme.error
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showMoreMenu = false
+                                                    showDeleteConfirm = true
+                                                },
+                                                leadingIcon = {
+                                                    AutoMirroredIcon(
+                                                        AppIcons.Logout,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.error
+                                                    )
+                                                }
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = AppIcons.MoreVert,
+                                            contentDescription = "更多",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
                                 title = {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(1.dp)
+                                            .clip(RoundedCornerShape(24.dp))
                                             .clickable {
                                                 ConversationDetailActivity.start(
                                                     context = context,
@@ -999,131 +1127,6 @@ fun ChatScreen(
                                             }
                                         }
                                     }
-                                },
-                                showBoardButton = uiState.boardPanel.boards.isNotEmpty(),
-                                boardExpanded = uiState.boardPanel.isExpanded,
-                                onBoardClick = { viewModel.toggleBoard() },
-                                onMoreClick = { showMoreMenu = true },
-                                moreMenu = {
-                                    DropdownMenu(
-                                        expanded = showMoreMenu,
-                                        onDismissRequest = { showMoreMenu = false }
-                                    ) {
-                                        DropdownMenuItem(
-                                            text = { Text("刷新") },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                viewModel.refresh()
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    AppIcons.Refresh,
-                                                    contentDescription = null
-                                                )
-                                            }
-                                        )
-                                        if (chatType == 2 && uiState.permissionLevel >= 2) {
-                                            DropdownMenuItem(
-                                                text = { Text("群聊设置") },
-                                                onClick = {
-                                                    showMoreMenu = false
-                                                    GroupSettingsActivity.start(
-                                                        context = context,
-                                                        groupId = chatId,
-                                                        groupName = chatName,
-                                                        groupAvatar = chatAvatar
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        AppIcons.Settings,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                }
-                                            )
-                                        }
-                                        if (chatType == 2) {
-                                            DropdownMenuItem(
-                                                text = { Text("群成员列表") },
-                                                onClick = {
-                                                    showMoreMenu = false
-                                                    val intent = Intent(context, GroupMemberActivity::class.java).apply {
-                                                        putExtra("group_id", chatId)
-                                                        putExtra("my_permission", uiState.permissionLevel)
-                                                    }
-                                                    context.startActivity(intent)
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        AppIcons.Group,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text("我的群名称") },
-                                                onClick = {
-                                                    showMoreMenu = false
-                                                    showEditNickNameDialog = true
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        AppIcons.Edit,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(24.dp)
-                                                    )
-                                                }
-                                            )
-                                        }
-                                        DropdownMenuItem(
-                                            text = { Text("会话详情") },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                ConversationDetailActivity.start(
-                                                    context = context,
-                                                    chatId = viewModel.chatId,
-                                                    chatType = chatType,
-                                                    chatName = chatName,
-                                                    chatAvatar = chatAvatar
-                                                )
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    AppIcons.Info,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                            }
-                                        )
-
-                                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = when (chatType) {
-                                                        1 -> "删除好友"
-                                                        2 -> "退出群聊"
-                                                        else -> "删除机器人"
-                                                    },
-                                                    color = MaterialTheme.colorScheme.error
-                                                )
-                                            },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                showDeleteConfirm = true
-                                            },
-                                            leadingIcon = {
-                                                AutoMirroredIcon(
-                                                    AppIcons.Logout,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.error
-                                                )
-                                            }
-                                        )
-                                    }
                                 }
                             )
 
@@ -1135,7 +1138,7 @@ fun ChatScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
                                         .shadow(4.dp, RoundedCornerShape(28.dp))
                                         .clip(RoundedCornerShape(28.dp))
                                         .hazeEffect(
