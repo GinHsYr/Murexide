@@ -822,16 +822,6 @@ fun ChatScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Box(modifier = Modifier.fillMaxWidth()) {
-                if (selectionMode) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                    )
-                }
-
                 AnimatedContent(
                     targetState = selectionMode,
                     transitionSpec = {
