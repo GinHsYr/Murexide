@@ -16,7 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
@@ -33,6 +35,7 @@ fun AnimatedNavigationSymbol(
     filledIcon: ImageVector,
     selected: Boolean,
     contentDescription: String,
+    tint: Color = LocalContentColor.current,
     modifier: Modifier = Modifier,
 ) {
     val fillProgress = remember(outlineIcon, filledIcon) {
@@ -84,6 +87,7 @@ fun AnimatedNavigationSymbol(
         Icon(
             imageVector = outlineIcon,
             contentDescription = contentDescription,
+            tint = tint,
             modifier = Modifier
                 .size(24.dp)
                 .drawWithContent {
@@ -96,6 +100,7 @@ fun AnimatedNavigationSymbol(
         Icon(
             imageVector = filledIcon,
             contentDescription = null,
+            tint = tint,
             modifier = Modifier
                 .size(24.dp)
                 .drawWithContent {

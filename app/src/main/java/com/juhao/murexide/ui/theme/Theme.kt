@@ -2,6 +2,8 @@ package com.juhao.murexide.ui.theme
 
 import android.app.Activity
 import android.os.Build
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
@@ -90,14 +92,18 @@ fun MurexideTheme(
     val themeMode by UiState.themeMode
     val themeColor by UiState.themeColor
 
-    val darkTheme = when (themeMode) {
+    val requestedDarkTheme = when (themeMode) {
         "system" -> isSystemInDarkTheme()
         "light" -> false
         "dark", "oled" -> true
         else -> false
     }
+    val darkTheme = if (themeColor == "WHITE") false else requestedDarkTheme
 
-    val colorScheme = when {
+    val targetColorScheme = when {
+        themeColor == "WHITE" -> {
+            WhiteLightColorScheme
+        }
         themeMode == "oled" -> {
             getOledColorScheme(themeColor)
         }
@@ -125,6 +131,7 @@ fun MurexideTheme(
             if (darkTheme) PurpleDarkColorScheme else PurpleLightColorScheme
         }
     }
+    val colorScheme = animateColorScheme(targetColorScheme)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -141,5 +148,91 @@ fun MurexideTheme(
         colorScheme = colorScheme,
         typography = Typography(),
         content = content
+    )
+}
+
+@Composable
+private fun animateColorScheme(target: ColorScheme): ColorScheme {
+    val animationSpec = tween<Color>(durationMillis = 280)
+    val primary by animateColorAsState(target.primary, animationSpec, "themePrimary")
+    val onPrimary by animateColorAsState(target.onPrimary, animationSpec, "themeOnPrimary")
+    val primaryContainer by animateColorAsState(target.primaryContainer, animationSpec, "themePrimaryContainer")
+    val onPrimaryContainer by animateColorAsState(target.onPrimaryContainer, animationSpec, "themeOnPrimaryContainer")
+    val secondary by animateColorAsState(target.secondary, animationSpec, "themeSecondary")
+    val onSecondary by animateColorAsState(target.onSecondary, animationSpec, "themeOnSecondary")
+    val secondaryContainer by animateColorAsState(target.secondaryContainer, animationSpec, "themeSecondaryContainer")
+    val onSecondaryContainer by animateColorAsState(target.onSecondaryContainer, animationSpec, "themeOnSecondaryContainer")
+    val tertiary by animateColorAsState(target.tertiary, animationSpec, "themeTertiary")
+    val onTertiary by animateColorAsState(target.onTertiary, animationSpec, "themeOnTertiary")
+    val tertiaryContainer by animateColorAsState(target.tertiaryContainer, animationSpec, "themeTertiaryContainer")
+    val onTertiaryContainer by animateColorAsState(target.onTertiaryContainer, animationSpec, "themeOnTertiaryContainer")
+    val background by animateColorAsState(target.background, animationSpec, "themeBackground")
+    val onBackground by animateColorAsState(target.onBackground, animationSpec, "themeOnBackground")
+    val surface by animateColorAsState(target.surface, animationSpec, "themeSurface")
+    val onSurface by animateColorAsState(target.onSurface, animationSpec, "themeOnSurface")
+    val surfaceVariant by animateColorAsState(target.surfaceVariant, animationSpec, "themeSurfaceVariant")
+    val onSurfaceVariant by animateColorAsState(target.onSurfaceVariant, animationSpec, "themeOnSurfaceVariant")
+    val outline by animateColorAsState(target.outline, animationSpec, "themeOutline")
+    val outlineVariant by animateColorAsState(target.outlineVariant, animationSpec, "themeOutlineVariant")
+    val surfaceTint by animateColorAsState(target.surfaceTint, animationSpec, "themeSurfaceTint")
+    val inverseSurface by animateColorAsState(target.inverseSurface, animationSpec, "themeInverseSurface")
+    val inverseOnSurface by animateColorAsState(target.inverseOnSurface, animationSpec, "themeInverseOnSurface")
+    val inversePrimary by animateColorAsState(target.inversePrimary, animationSpec, "themeInversePrimary")
+    val surfaceContainerHighest by animateColorAsState(
+        target.surfaceContainerHighest,
+        animationSpec,
+        "themeSurfaceContainerHighest"
+    )
+    val surfaceContainerHigh by animateColorAsState(
+        target.surfaceContainerHigh,
+        animationSpec,
+        "themeSurfaceContainerHigh"
+    )
+    val surfaceContainer by animateColorAsState(
+        target.surfaceContainer,
+        animationSpec,
+        "themeSurfaceContainer"
+    )
+    val surfaceContainerLow by animateColorAsState(
+        target.surfaceContainerLow,
+        animationSpec,
+        "themeSurfaceContainerLow"
+    )
+    val surfaceContainerLowest by animateColorAsState(
+        target.surfaceContainerLowest,
+        animationSpec,
+        "themeSurfaceContainerLowest"
+    )
+
+    return target.copy(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+        tertiary = tertiary,
+        onTertiary = onTertiary,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+        outline = outline,
+        outlineVariant = outlineVariant,
+        surfaceTint = surfaceTint,
+        inverseSurface = inverseSurface,
+        inverseOnSurface = inverseOnSurface,
+        inversePrimary = inversePrimary,
+        surfaceContainerHighest = surfaceContainerHighest,
+        surfaceContainerHigh = surfaceContainerHigh,
+        surfaceContainer = surfaceContainer,
+        surfaceContainerLow = surfaceContainerLow,
+        surfaceContainerLowest = surfaceContainerLowest
     )
 }

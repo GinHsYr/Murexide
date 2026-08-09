@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -32,6 +33,7 @@ import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.StickyItem
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.components.*
+import com.juhao.murexide.ui.theme.UiState
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
@@ -63,6 +65,8 @@ fun ConversationListScreen(
     )
 ) {
     val context = LocalContext.current
+    val themeColor by UiState.themeColor
+    val listContainerColor = if (themeColor == "WHITE") Color.White else MaterialTheme.colorScheme.surface
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val uiState by viewModel.uiState.collectAsState()
     val isWsConnected by viewModel.isWsConnected.collectAsState()
@@ -148,7 +152,9 @@ fun ConversationListScreen(
             val state = uiState
             if (state is ConversationUiState.Success) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(listContainerColor)
                 ) {
                     if (showSticky && state.stickyConversations.isNotEmpty()) {
                         item {
@@ -279,13 +285,16 @@ fun ConversationItem(
     isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
+    val themeColor by UiState.themeColor
+    val listItemColor = if (themeColor == "WHITE") Color.White else MaterialTheme.colorScheme.surface
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(if (isSelected)
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
             else
-                MaterialTheme.colorScheme.surface
+                listItemColor
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),

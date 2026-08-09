@@ -50,9 +50,11 @@ import com.juhao.murexide.ui.components.LiteHtmlContent
 import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.showImageViewer
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.utils.imageAspectRatio
 import com.juhao.murexide.utils.imageThumbnailUrl
 import com.juhao.murexide.utils.videoAspectRatio
+
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,6 +62,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.core.graphics.toColorInt
+
+private val WhiteThemeIncomingBubbleColor = Color(0xFFEEEEF0)
 
 internal fun resolveSenderDisplayName(senderName: String, isMine: Boolean): String = when {
     senderName.isNotEmpty() -> senderName
@@ -110,6 +114,8 @@ fun MessageBubble(
     val scope = rememberCoroutineScope()
 
     val isMine = if (hideMyInfo) false else message.isMine
+    val themeColor by UiState.themeColor
+    val isWhiteTheme = themeColor == "WHITE"
     val context = LocalContext.current
     val defaultEmojis = remember(context) { DefaultEmojiCatalog.load(context.assets) }
 
@@ -267,6 +273,8 @@ fun MessageBubble(
                                     Color.Transparent
                                 else if (isMine)
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                                else if (isWhiteTheme)
+                                    WhiteThemeIncomingBubbleColor
                                 else
                                     MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                             )
@@ -483,6 +491,8 @@ fun MessageBubble(
                                                 },
                                                 backgroundColor = if (isMine)
                                                     MaterialTheme.colorScheme.primaryContainer
+                                                else if (isWhiteTheme)
+                                                    WhiteThemeIncomingBubbleColor
                                                 else
                                                     MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                                             )
@@ -496,7 +506,7 @@ fun MessageBubble(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .height(120.dp),
-                                                    color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                                                    color = if (isWhiteTheme) WhiteThemeIncomingBubbleColor else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                                                     shape = RoundedCornerShape(
                                                         topStart = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp,
                                                         topEnd = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp
@@ -604,7 +614,7 @@ fun MessageBubble(
                                                             .clip(imageShape)
                                                             .background(
                                                                 if (isImageMessage || isVideoMessage) {
-                                                                    MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                                                                    if (isWhiteTheme) WhiteThemeIncomingBubbleColor else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                                                                 } else {
                                                                     Color.Transparent
                                                                 }
@@ -795,6 +805,8 @@ fun MessageBubble(
                                                         .background(
                                                             if (isMine)
                                                                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+                                                            else if (isWhiteTheme)
+                                                                WhiteThemeIncomingBubbleColor
                                                             else
                                                                 MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
                                                         )
