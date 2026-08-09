@@ -921,7 +921,7 @@ fun ChatScreen(
                                 hazeState = hazeState,
                                 navigationIcon = if (!bigScreenMode) {
                                     {
-                                        IconButtons(
+                                        IconButton(
                                             modifier = Modifier.size(46.dp),
                                             onClick = onBackClick
                                         ) {
