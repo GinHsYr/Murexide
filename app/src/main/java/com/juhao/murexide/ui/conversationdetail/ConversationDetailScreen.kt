@@ -40,7 +40,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -86,6 +85,8 @@ import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.CapsuleTabBar
+import com.juhao.murexide.ui.components.ExpressiveDropdownMenu
+import com.juhao.murexide.ui.components.ExpressiveOverflowIconButton
 import com.juhao.murexide.ui.components.MediaViewerPagination
 import com.juhao.murexide.ui.components.imageMessagePreviewItem
 import com.juhao.murexide.ui.components.showImageViewer
@@ -182,10 +183,15 @@ fun ConversationDetailScreen(
                         }
                     }
                     Box {
-                        IconButton(onClick = { showMore = true }) {
-                            Icon(AppIcons.MoreVert, "更多")
-                        }
-                        DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                        ExpressiveOverflowIconButton(
+                            expanded = showMore,
+                            onClick = { showMore = true },
+                            contentDescription = "更多"
+                        )
+                        ExpressiveDropdownMenu(
+                            expanded = showMore,
+                            onDismissRequest = { showMore = false }
+                        ) {
                             DropdownMenuItem(
                                 text = { Text("刷新") },
                                 leadingIcon = { Icon(AppIcons.Refresh, null) },

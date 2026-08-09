@@ -67,6 +67,14 @@ object LocalCache {
             db().conversations().getConversations(accountId).map { it.toModel() }
         }
 
+    suspend fun getCachedConversation(
+        accountId: String,
+        chatId: String,
+        chatType: Int
+    ): ConversationItem? = withContext(Dispatchers.IO) {
+        db().conversations().getConversation(accountId, chatId, chatType)?.toModel()
+    }
+
     fun observeMessages(
         accountId: String,
         chatId: String,

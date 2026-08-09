@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.ExpressiveDropdownMenu
+import com.juhao.murexide.ui.components.ExpressiveOverflowIconButton
 import com.juhao.murexide.ui.components.StyledIconButton
 import com.juhao.murexide.ui.components.StyledTopBar
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
@@ -456,16 +458,13 @@ fun MemberItem(
 
             if (canManage && !isGroupOwner) {
                 Box {
-                    IconButton(
-                        onClick = { expanded = !expanded }
-                    ) {
-                        Icon(
-                            AppIcons.MoreVert,
-                            contentDescription = "管理"
-                        )
-                    }
+                    ExpressiveOverflowIconButton(
+                        expanded = expanded,
+                        onClick = { expanded = !expanded },
+                        contentDescription = "管理"
+                    )
 
-                    DropdownMenu(
+                    ExpressiveDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {

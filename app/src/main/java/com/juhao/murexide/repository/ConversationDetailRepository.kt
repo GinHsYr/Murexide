@@ -186,6 +186,7 @@ class ConversationDetailRepository(
                             onlineDay = d?.online_day,
                             continuousOnlineDay = d?.continuous_online_day,
                             ipGeo = d?.ipGeo?.takeIf { it.isNotEmpty() },
+                            doNotDisturb = d?.do_not_disturb ?: false,
                             isVip = (d?.is_vip ?: 0) == 1,
                             gender = d?.profile_info?.gender ?: 3
                         )

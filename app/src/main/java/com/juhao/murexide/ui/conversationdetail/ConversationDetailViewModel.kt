@@ -6,6 +6,7 @@ import com.juhao.murexide.data.ConversationDetail
 import com.juhao.murexide.data.ConversationDetailUiState
 import com.juhao.murexide.data.GroupMember
 import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.data.withCachedMuteState
 import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.repository.CommunityRepository
 import com.juhao.murexide.repository.ConversationDetailRepository
@@ -61,20 +62,31 @@ class ConversationDetailViewModel(
 
     fun loadDetail() {
         viewModelScope.launch {
+            val accountId = LocalCache.currentAccountId()
+            val cachedMuteState = accountId?.let {
+                LocalCache.getCachedConversation(it, chatId, chatType)
+                    ?.let { conversation -> conversation.doNotDisturb == 1 }
+            }
             val cached = repository.getCachedDetail(chatId, chatType)
+                ?.withCachedMuteState(cachedMuteState)
             if (cached != null) {
                 _uiState.update { it.copy(isLoading = false, detail = cached, error = null) }
             } else {
                 _uiState.update { it.copy(isLoading = true, error = null) }
             }
-            val accountId = LocalCache.currentAccountId()
             if (accountId != null &&
                 LocalCache.isPayloadFresh(accountId, LocalCache.KIND_DETAIL, "$chatType:$chatId")
             ) return@launch
 
             repository.getDetail(token, chatId, chatType)
                 .onSuccess { detail ->
-                    _uiState.update { it.copy(isLoading = false, detail = detail, error = null) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            detail = detail.withCachedMuteState(cachedMuteState),
+                            error = null
+                        )
+                    }
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message ?: "加载失败") }

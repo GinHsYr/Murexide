@@ -146,6 +146,13 @@ interface ConversationCacheDao {
     @Query("SELECT * FROM cached_conversations WHERE accountId = :accountId ORDER BY listPosition ASC, chatType ASC, chatId ASC")
     suspend fun getConversations(accountId: String): List<CachedConversationEntity>
 
+    @Query("SELECT * FROM cached_conversations WHERE accountId = :accountId AND chatId = :chatId AND chatType = :chatType LIMIT 1")
+    suspend fun getConversation(
+        accountId: String,
+        chatId: String,
+        chatType: Int
+    ): CachedConversationEntity?
+
     @Query(
         "SELECT * FROM cached_conversations WHERE accountId = :accountId AND chatType = :chatType " +
             "AND (chatId = :chatId OR (:chatType = 1 AND chatId = :senderId)) LIMIT 1"

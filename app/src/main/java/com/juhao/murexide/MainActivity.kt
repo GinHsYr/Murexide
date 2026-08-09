@@ -61,10 +61,12 @@ import com.juhao.murexide.data.local.LocalCache
 import com.juhao.murexide.ui.chat.ChatScreen
 import com.juhao.murexide.ui.chat.ChatViewModel
 import com.juhao.murexide.ui.components.UnreadCountBadge
+import com.juhao.murexide.ui.components.AccountQuickSwitchMenu
 import com.juhao.murexide.ui.community.CommunityScreen
 import com.juhao.murexide.ui.settings.SettingsActivity
 import com.juhao.murexide.utils.getAppVersionInfo
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.combinedClickable
 
 private data class NavItem(
     val route: String,
@@ -161,6 +163,21 @@ fun MainScreen(account: UserAccount) {
     var isContactNewMessagesVisible by remember { mutableStateOf(false) }
     
     var showDevTip by remember { mutableStateOf(context.getAppVersionInfo().commitHash == "dev") }
+    var showAccountMenu by remember { mutableStateOf(false) }
+    val accountStorage = remember(context.applicationContext) {
+        AccountStorage.getInstance(context.applicationContext)
+    }
+    val loggedInAccounts by accountStorage.userAccountsFlow.collectAsState(initial = emptyList())
+
+    val navigateTo: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
     
     if (showDevTip) {
         AlertDialog(
@@ -187,7 +204,28 @@ fun MainScreen(account: UserAccount) {
                 val selected = currentRoute == item.route
                 item(
                     icon = {
-                        if (item.route == "conversations") {
+                        if (item.route == "mine") {
+                            Box(
+                                modifier = Modifier.combinedClickable(
+                                    onClick = { navigateTo(item.route) },
+                                    onLongClick = { showAccountMenu = true },
+                                    onLongClickLabel = "打开账号菜单"
+                                )
+                            ) {
+                                AnimatedNavigationSymbol(
+                                    outlineIcon = item.outlineIcon,
+                                    filledIcon = item.filledIcon,
+                                    selected = selected,
+                                    contentDescription = item.title,
+                                )
+                                AccountQuickSwitchMenu(
+                                    expanded = showAccountMenu,
+                                    accounts = loggedInAccounts,
+                                    currentAccountId = account.id,
+                                    onDismissRequest = { showAccountMenu = false }
+                                )
+                            }
+                        } else if (item.route == "conversations") {
                             BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
                                 AnimatedNavigationSymbol(
                                     outlineIcon = item.outlineIcon,
@@ -216,13 +254,7 @@ fun MainScreen(account: UserAccount) {
                     },
                     selected = selected,
                     onClick = {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navigateTo(item.route)
                     }
                 )
             }
