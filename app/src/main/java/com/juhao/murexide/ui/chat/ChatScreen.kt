@@ -99,6 +99,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.components.handleStaticHtmlLink
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.utils.NotificationHelper
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -327,6 +328,12 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboard.current
     val uiState by viewModel.screenState.collectAsState()
+    val themeColor by UiState.themeColor
+    val chatBackgroundColor = if (themeColor == "WHITE") {
+        Color(0xFFFAFAFA)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
     val forwardViewModel: ForwardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         key = "forward_${chatType}_$chatId",
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -826,7 +833,7 @@ fun ChatScreen(
     
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = chatBackgroundColor,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {

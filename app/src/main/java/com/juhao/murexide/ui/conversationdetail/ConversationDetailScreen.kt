@@ -106,7 +106,8 @@ fun ConversationDetailScreen(
     onOpenMember: (GroupMember) -> Unit = {},
     onOpenBoard: (BaItem) -> Unit = {},
     onInviteBotToGroup: (ConversationDetail) -> Unit = {},
-    onLeaveGroup: () -> Unit = {}
+    onLeaveGroup: () -> Unit = {},
+    currentUserId: String
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -259,6 +260,7 @@ fun ConversationDetailScreen(
                 modifier = Modifier.padding(padding),
                 detail = detail,
                 listState = userListState,
+                isCurrentUser = detail.chatId == currentUserId,
                 isAdded = state.isAdded,
                 isAdding = state.isAdding,
                 onAdd = viewModel::addChat,
@@ -574,6 +576,7 @@ private fun UserConversationDetail(
     modifier: Modifier,
     detail: ConversationDetail,
     listState: LazyListState,
+    isCurrentUser: Boolean,
     isAdded: Boolean?,
     isAdding: Boolean,
     onAdd: () -> Unit,
@@ -617,6 +620,7 @@ private fun UserConversationDetail(
         item(key = "user-header") {
             UserHeader(
                 detail = detail,
+                isCurrentUser = isCurrentUser,
                 isAdded = isAdded,
                 isAdding = isAdding,
                 onAdd = onAdd,
@@ -798,6 +802,7 @@ private fun BotConversationDetail(
 @Composable
 private fun UserHeader(
     detail: ConversationDetail,
+    isCurrentUser: Boolean = false,
     isAdded: Boolean?,
     isAdding: Boolean,
     onAdd: () -> Unit,
@@ -855,7 +860,7 @@ private fun UserHeader(
                 text = if (isBot) {
                     "${detail.usageCount ?: 0} 人使用"
                 } else {
-                    "注册于 ${detail.registerTime ?: "未知"}"
+                    "ID: ${detail.chatId}"
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
@@ -870,7 +875,16 @@ private fun UserHeader(
             }
         }
         Spacer(Modifier.height(12.dp))
-        if (isAdded == true) {
+        if (isCurrentUser) {
+            TelegramAction(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                icon = AppIcons.ChatBubbleOutline,
+                label = "消息",
+                onClick = onMessage
+            )
+        } else if (isAdded == true) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -962,6 +976,7 @@ private fun UserInfoContent(
         )
         UserInfoRow("在线天数", detail.onlineDay?.let { "$it 天" } ?: "未知")
         UserInfoRow("连续在线", detail.continuousOnlineDay?.let { "$it 天" } ?: "未知")
+        UserInfoRow("注册时间", detail.registerTime ?: "未知")
         UserInfoRow(
             label = "创建的板块",
             value = when {
