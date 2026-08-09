@@ -907,49 +907,75 @@ fun ChatScreen(
                             } else {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(1.dp)
                                         .clip(RoundedCornerShape(24.dp))
-                                        .clickable {
-                                            ConversationDetailActivity.start(
-                                                context = context,
-                                                chatId = viewModel.chatId,
-                                                chatType = chatType,
-                                                chatName = chatName,
-                                                chatAvatar = chatAvatar
-                                            )
-                                        }
                                 ) {
-                                    Avatar(
-                                        url = chatAvatar,
-                                        size = 46.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = chatName,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .clickable {
+                                                ConversationDetailActivity.start(
+                                                    context = context,
+                                                    chatId = viewModel.chatId,
+                                                    chatType = chatType,
+                                                    chatName = chatName,
+                                                    chatAvatar = chatAvatar
+                                                )
+                                            }
+                                    ) {
+                                        Avatar(
+                                            url = chatAvatar,
+                                            size = 46.dp
                                         )
-                                        if (chatType == 2 && uiState.memberCount != null) {
-                                            Spacer(modifier = Modifier.height(1.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "${uiState.memberCount} 位成员",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1
+                                                text = chatName,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
+                                            if (chatType == 2 && uiState.memberCount != null) {
+                                                Spacer(modifier = Modifier.height(1.dp))
+                                                Text(
+                                                    text = "${uiState.memberCount} 位成员",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                            if (chatType == 3 && uiState.usageCount != null) {
+                                                Spacer(modifier = Modifier.height(1.dp))
+                                                Text(
+                                                    text = "${uiState.usageCount} 人使用",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
                                         }
-                                        if (chatType == 3 && uiState.usageCount != null) {
-                                            Spacer(modifier = Modifier.height(1.dp))
-                                            Text(
-                                                text = "${uiState.usageCount} 人使用",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1
+                                    }
+                                    if (uiState.boardPanel.boards.isNotEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .height(46.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable { viewModel.toggleBoard() }
+                                                .padding(horizontal = 4.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (uiState.boardPanel.isExpanded) {
+                                                    AppIcons.KeyboardArrowUp
+                                                } else {
+                                                    AppIcons.KeyboardArrowDown
+                                                },
+                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
+                                                modifier = Modifier.size(24.dp)
                                             )
                                         }
                                     }
@@ -959,7 +985,7 @@ fun ChatScreen(
                     },
                     actions = {
                         Box(
-                            modifier = Modifier.animateContentSize(alignment = Alignment.CenterEnd)
+                            modifier = Modifier.animateContentSize()
                         ) {
                             Crossfade(targetState = selectionMode) { isSelectionMode ->
                                 Row {
@@ -1019,25 +1045,6 @@ fun ChatScreen(
                                             )
                                         }
                                     } else {
-                                        if (uiState.boardPanel.boards.isNotEmpty()) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(46.dp)
-                                                    .clip(CircleShape)
-                                                    .clickable { viewModel.toggleBoard() },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (uiState.boardPanel.isExpanded) {
-                                                        AppIcons.KeyboardArrowUp
-                                                    } else {
-                                                        AppIcons.KeyboardArrowDown
-                                                    },
-                                                    contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                            }
-                                        }
                                         Box(
                                             modifier = Modifier
                                                 .size(46.dp)

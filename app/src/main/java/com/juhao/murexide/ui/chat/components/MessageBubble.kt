@@ -241,7 +241,7 @@ fun MessageBubble(
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                } else if (!isMine) {
+                } else {
                     Spacer(modifier = Modifier.width(44.dp))
                 }
     
@@ -1078,7 +1078,7 @@ fun MessageBubble(
                         },
                         size = 36.dp
                     )
-                } else if (isMine && showMyBubbleAvatarSetting) {
+                } else if ((isMine && showMyBubbleAvatarSetting) || !isMine) {
                     Spacer(modifier = Modifier.width(44.dp))
                 }
             }
