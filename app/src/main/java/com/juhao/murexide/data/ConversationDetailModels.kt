@@ -44,6 +44,10 @@ data class ConversationDetail(
     val isStop: Boolean = false
 )
 
+/** The conversation list is the local source of truth after an in-app mute change. */
+internal fun ConversationDetail.withCachedMuteState(muted: Boolean?): ConversationDetail =
+    if (muted == null) this else copy(doNotDisturb = muted)
+
 data class ConversationDetailUiState(
     val isLoading: Boolean = true,
     val detail: ConversationDetail? = null,
@@ -71,6 +75,10 @@ data class ConversationDetailUiState(
     val isLoadingHistory: Boolean = false,
     val hasMoreHistory: Boolean = true,
     val isChangingMute: Boolean = false,
+    val kickTarget: GroupMember? = null,
+    val gagTarget: GroupMember? = null,
+    val showKickConfirm: Boolean = false,
+    val showGagDialog: Boolean = false,
     val isLeaving: Boolean = false,
     val hasLeft: Boolean = false
 )

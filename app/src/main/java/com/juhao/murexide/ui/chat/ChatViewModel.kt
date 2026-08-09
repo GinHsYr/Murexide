@@ -97,6 +97,7 @@ class ChatViewModel(
     companion object {
         private const val TAG = "ChatViewModel"
         private const val RECALL_CONFIRMATION_GRACE_MS = 1_500L
+        private const val HISTORY_PAGE_SIZE = 20
     }
 
     private var uploadJob: Job? = null
@@ -144,7 +145,10 @@ class ChatViewModel(
     private val _downloadingFiles = MutableStateFlow<Map<String, Float>>(emptyMap())
     val downloadingFiles: StateFlow<Map<String, Float>> = _downloadingFiles.asStateFlow()
 
-    private var currentMsgId: String? = null
+    private var historyCursorMessageId: String? = null
+    private var cachedHistoryCursor: MessageItem? = null
+    private var isUsingCachedHistory = false
+    private var historyLoadGeneration = 0L
     private var isLoadingMore = false
     private val historyLoadMutex = Mutex()
 
@@ -339,25 +343,38 @@ class ChatViewModel(
     }
 
     fun loadMessages() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+        val loadGeneration = ++historyLoadGeneration
+        historyCursorMessageId = null
+        cachedHistoryCursor = null
+        isUsingCachedHistory = false
+        msgIdCache.clear()
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                hasMore = false,
+                error = null
+            )
+        }
 
+        viewModelScope.launch {
+            var initialCachedMessages: List<MessageItem> = emptyList()
             LocalCache.currentAccountId()?.let { accountId ->
                 val cached = LocalCache.observeMessages(
                     accountId = accountId,
                     chatId = chatId,
                     chatType = chatType,
-                    limit = 20
+                    limit = HISTORY_PAGE_SIZE
                 ).first()
+                if (loadGeneration != historyLoadGeneration) return@launch
+                initialCachedMessages = cached
                 if (cached.isNotEmpty()) {
                     msgIdCache.clear()
                     msgIdCache.addAll(cached.map { it.msgId })
-                    currentMsgId = cached.last().msgId
                     _uiState.update {
                         it.copy(
                             messages = cached,
-                            isLoading = false,
-                            hasMore = cached.size >= 20,
+                            isLoading = true,
+                            hasMore = false,
                             error = null
                         )
                     }
@@ -369,30 +386,36 @@ class ChatViewModel(
                 chatId = chatId,
                 chatType = chatType
             ).onSuccess { messages ->
+                if (loadGeneration != historyLoadGeneration) return@onSuccess
                 val loadedMessages = messages.map(::withCurrentUserProfileFallback)
-                val resolvedMessages = reconcileLoadedMessages(
+                val snapshot = resolveServerHistorySnapshot(
                     existingMessages = _uiState.value.messages,
-                    loadedMessages = loadedMessages
+                    serverMessages = loadedMessages
                 )
                 msgIdCache.clear()
-                msgIdCache.addAll(resolvedMessages.map { it.msgId })
+                msgIdCache.addAll(snapshot.messages.map { it.msgId })
+                historyCursorMessageId = snapshot.nextAnchorMessageId
+                cachedHistoryCursor = null
+                isUsingCachedHistory = false
 
                 _uiState.update {
                     it.copy(
-                        messages = resolvedMessages,
+                        messages = snapshot.messages,
                         isLoading = false,
-                        hasMore = resolvedMessages.isNotEmpty(),
+                        hasMore = snapshot.hasMore,
                         error = null
                     )
                 }
-                resolvedMessages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
-                if (resolvedMessages.isNotEmpty()) {
-                    currentMsgId = resolvedMessages.last().msgId
-                }
+                snapshot.messages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
             }.onFailure { error ->
+                if (loadGeneration != historyLoadGeneration) return@onFailure
+                cachedHistoryCursor = initialCachedMessages.lastOrNull()
+                isUsingCachedHistory = cachedHistoryCursor != null
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        hasMore = isUsingCachedHistory &&
+                            initialCachedMessages.size >= HISTORY_PAGE_SIZE,
                         error = error.message ?: "加载失败"
                     )
                 }
@@ -401,7 +424,17 @@ class ChatViewModel(
     }
 
     fun loadMore() {
-        if (isLoadingMore || !_uiState.value.hasMore || !historyLoadMutex.tryLock()) return
+        val hasUsableCursor = if (isUsingCachedHistory) {
+            cachedHistoryCursor != null
+        } else {
+            historyCursorMessageId != null
+        }
+        if (
+            isLoadingMore ||
+            !_uiState.value.hasMore ||
+            !hasUsableCursor ||
+            !historyLoadMutex.tryLock()
+        ) return
 
         viewModelScope.launch {
             try {
@@ -468,28 +501,19 @@ class ChatViewModel(
 
         isLoadingMore = true
         _uiState.update { it.copy(isLoadingMore = true) }
+        val loadGeneration = historyLoadGeneration
 
         try {
-            if (targetMessageId == null) {
-                val current = _uiState.value.messages
-                val cached = LocalCache.currentAccountId()?.let { accountId ->
-                    LocalCache.getCachedMessagePage(
-                        accountId = accountId,
-                        chatId = chatId,
-                        chatType = chatType,
-                        offset = current.size
-                    )
-                }.orEmpty().filter { it.msgId !in msgIdCache }
-                if (cached.isNotEmpty()) {
-                    msgIdCache.addAll(cached.map { it.msgId })
-                    currentMsgId = cached.last().msgId
-                    _uiState.update { it.copy(messages = it.messages + cached, hasMore = true) }
-                    return true
-                }
+            if (isUsingCachedHistory) {
+                return loadOlderCachedMessagesUntil(
+                    targetMessageId = targetMessageId,
+                    loadGeneration = loadGeneration
+                )
             }
+
             while (true) {
-                val anchorMessageId = currentMsgId
-                    ?: _uiState.value.messages.lastOrNull()?.msgId
+                if (loadGeneration != historyLoadGeneration) return false
+                val anchorMessageId = historyCursorMessageId
                     ?: return quotedMessageUnavailable(targetMessageId)
 
                 val result = repository.getMessageList(
@@ -498,8 +522,18 @@ class ChatViewModel(
                     chatType = chatType,
                     msgId = anchorMessageId
                 )
+                if (loadGeneration != historyLoadGeneration) return false
                 val error = result.exceptionOrNull()
                 if (error != null) {
+                    cachedHistoryCursor = _uiState.value.messages.lastOrNull()
+                    isUsingCachedHistory = cachedHistoryCursor != null &&
+                        LocalCache.currentAccountId() != null
+                    if (isUsingCachedHistory) {
+                        return loadOlderCachedMessagesUntil(
+                            targetMessageId = targetMessageId,
+                            loadGeneration = loadGeneration
+                        )
+                    }
                     if (targetMessageId != null) {
                         _toastMessage.emit("加载原消息失败")
                     }
@@ -527,7 +561,7 @@ class ChatViewModel(
                         )
                     }
                 }
-                currentMsgId = page.nextAnchorMessageId
+                historyCursorMessageId = page.nextAnchorMessageId
 
                 if (targetMessageId != null &&
                     _uiState.value.messages.any { it.msgId == targetMessageId }
@@ -548,6 +582,62 @@ class ChatViewModel(
         }
     }
 
+    private suspend fun loadOlderCachedMessagesUntil(
+        targetMessageId: String?,
+        loadGeneration: Long
+    ): Boolean {
+        val accountId = LocalCache.currentAccountId()
+            ?: return quotedMessageUnavailable(targetMessageId)
+
+        while (true) {
+            if (loadGeneration != historyLoadGeneration || !isUsingCachedHistory) return false
+            val anchorMessage = cachedHistoryCursor
+                ?: return quotedMessageUnavailable(targetMessageId)
+            val cachedMessages = LocalCache.getCachedMessagesBefore(
+                accountId = accountId,
+                chatId = chatId,
+                chatType = chatType,
+                beforeTimestamp = anchorMessage.timestamp,
+                beforeMsgSeq = anchorMessage.msgSeq,
+                beforeMsgId = anchorMessage.msgId,
+                limit = HISTORY_PAGE_SIZE
+            )
+            if (loadGeneration != historyLoadGeneration || !isUsingCachedHistory) return false
+            if (cachedMessages.isEmpty()) {
+                cachedHistoryCursor = null
+                _uiState.update { it.copy(hasMore = false) }
+                return quotedMessageUnavailable(targetMessageId)
+            }
+
+            val page = resolveCachedHistoryPage(
+                knownMessageIds = msgIdCache,
+                currentAnchorMessageId = anchorMessage.msgId,
+                messages = cachedMessages,
+                pageSize = HISTORY_PAGE_SIZE
+            )
+            cachedHistoryCursor = page.nextAnchorMessage
+            if (page.newMessages.isNotEmpty()) {
+                msgIdCache.addAll(page.newMessages.map { it.msgId })
+            }
+            _uiState.update {
+                it.copy(
+                    messages = it.messages + page.newMessages,
+                    hasMore = page.hasMore
+                )
+            }
+
+            if (targetMessageId != null &&
+                _uiState.value.messages.any { it.msgId == targetMessageId }
+            ) {
+                return true
+            }
+            if (!page.madeCursorProgress || !page.hasMore) {
+                return quotedMessageUnavailable(targetMessageId)
+            }
+            if (targetMessageId == null) return true
+        }
+    }
+
     private suspend fun quotedMessageUnavailable(targetMessageId: String?): Boolean {
         if (targetMessageId != null) {
             _toastMessage.emit("原消息已删除或不可查看")
@@ -556,8 +646,6 @@ class ChatViewModel(
     }
 
     fun refresh() {
-        msgIdCache.clear()
-        currentMsgId = null
         loadMessages()
     }
 

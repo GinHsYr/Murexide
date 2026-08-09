@@ -21,7 +21,6 @@ import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.MainActivity
 import com.juhao.murexide.ui.chat.ChatActivity
 import com.juhao.murexide.ui.community.ba.BaDetailActivity
-import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -87,12 +86,6 @@ class ConversationDetailActivity : ComponentActivity() {
                         },
                         onOpenBoard = { board ->
                             BaDetailActivity.start(this, board.id)
-                        },
-                        onManageMembers = { detail ->
-                            startActivity(Intent(this, GroupMemberActivity::class.java).apply {
-                                putExtra(GroupMemberActivity.EXTRA_GROUP_ID, chatId)
-                                putExtra(GroupMemberActivity.EXTRA_MY_PERMISSION, detail.permissionLevel)
-                            })
                         },
                         onInviteBotToGroup = { detail ->
                             InviteBotToGroupActivity.start(

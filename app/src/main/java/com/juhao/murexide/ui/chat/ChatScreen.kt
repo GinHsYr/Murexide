@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.ExpressiveDropdownMenu
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
@@ -705,7 +706,12 @@ fun ChatScreen(
             }
         }
     }
-    LaunchedEffect(listState) {
+    LaunchedEffect(
+        listState,
+        uiState.hasMore,
+        uiState.isLoadingMore,
+        uiState.isRefreshing
+    ) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
@@ -1055,7 +1061,7 @@ fun ChatScreen(
                                                 .clickable { showMoreMenu = true },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            DropdownMenu(
+                                            ExpressiveDropdownMenu(
                                                 expanded = showMoreMenu,
                                                 onDismissRequest = { showMoreMenu = false }
                                             ) {
