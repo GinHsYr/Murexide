@@ -105,7 +105,6 @@ fun ConversationDetailScreen(
     onEditGroup: (ConversationDetail) -> Unit = {},
     onOpenMember: (GroupMember) -> Unit = {},
     onOpenBoard: (BaItem) -> Unit = {},
-    onManageMembers: (ConversationDetail) -> Unit = {},
     onInviteBotToGroup: (ConversationDetail) -> Unit = {},
     onLeaveGroup: () -> Unit = {}
 ) {
@@ -126,7 +125,7 @@ fun ConversationDetailScreen(
 
     LaunchedEffect(state.message) {
         state.message?.let { message ->
-            snackbars.showSnackbar(message)
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             viewModel.clearMessage()
         }
     }
@@ -204,13 +203,6 @@ fun ConversationDetailScreen(
                                     }
                                 }
                             )
-                            if (group != null && group.permissionLevel >= 2) {
-                                DropdownMenuItem(
-                                    text = { Text("管理成员") },
-                                    leadingIcon = { Icon(AppIcons.Group, null) },
-                                    onClick = { showMore = false; onManageMembers(group) }
-                                )
-                            }
                         }
                     }
                 }
@@ -249,6 +241,9 @@ fun ConversationDetailScreen(
                 onLoadMembers = { viewModel.loadMembers() },
                 onLoadHistory = viewModel::loadMoreHistory,
                 onOpenMember = onOpenMember,
+                canManageMembers = detail.permissionLevel >= 2,
+                onKickMember = viewModel::requestKickMember,
+                onGagMember = viewModel::requestGagMember,
                 onOpenBot = { bot ->
                     ConversationDetailActivity.start(
                         context = context,
@@ -333,6 +328,16 @@ fun ConversationDetailScreen(
         )
     }
 
+    MemberManagementDialogs(
+        kickTarget = state.kickTarget,
+        gagTarget = state.gagTarget,
+        showKickConfirm = state.showKickConfirm,
+        showGagDialog = state.showGagDialog,
+        onDismiss = viewModel::dismissMemberActionDialogs,
+        onConfirmKick = viewModel::confirmKickMember,
+        onConfirmGag = viewModel::confirmGagMember
+    )
+
 }
 
 @Composable
@@ -360,6 +365,9 @@ private fun GroupConversationDetail(
     onLoadMembers: () -> Unit,
     onLoadHistory: () -> Unit,
     onOpenMember: (GroupMember) -> Unit,
+    canManageMembers: Boolean,
+    onKickMember: (GroupMember) -> Unit,
+    onGagMember: (GroupMember) -> Unit,
     onOpenBot: (BotItem) -> Unit
 ) {
     var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
@@ -455,7 +463,13 @@ private fun GroupConversationDetail(
                     items(members, key = GroupMember::userId) { member ->
                         val isLast = member == members.last() && !hasMoreMembers
                         DetailCardSegment(cardColor, isBottom = isLast) {
-                            MemberRow(member, onClick = { onOpenMember(member) })
+                            MemberRow(
+                                member = member,
+                                canManage = canManageMembers && member.permissionLevel != 100,
+                                onClick = { onOpenMember(member) },
+                                onKick = { onKickMember(member) },
+                                onGag = { onGagMember(member) }
+                            )
                             if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
                         }
                     }
@@ -1249,7 +1263,14 @@ private fun TelegramAction(
 }
 
 @Composable
-private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
+private fun MemberRow(
+    member: GroupMember,
+    canManage: Boolean,
+    onClick: () -> Unit,
+    onKick: () -> Unit,
+    onGag: () -> Unit
+) {
+    var expanded by remember(member.userId) { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1287,6 +1308,27 @@ private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        if (canManage) {
+            Box {
+                ExpressiveOverflowIconButton(
+                    expanded = expanded,
+                    onClick = { expanded = !expanded },
+                    contentDescription = "管理成员"
+                )
+                ExpressiveDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(if (member.isGag) "取消禁言" else "禁言") },
+                        onClick = { expanded = false; onGag() },
+                        leadingIcon = { Icon(AppIcons.MicOff, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("踢出群聊", color = MaterialTheme.colorScheme.error) },
+                        onClick = { expanded = false; onKick() },
+                        leadingIcon = { Icon(AppIcons.PersonRemove, null, tint = MaterialTheme.colorScheme.error) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1318,6 +1360,66 @@ private fun BotRow(bot: BotItem, onClick: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MemberManagementDialogs(
+    kickTarget: GroupMember?,
+    gagTarget: GroupMember?,
+    showKickConfirm: Boolean,
+    showGagDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirmKick: () -> Unit,
+    onConfirmGag: (Int) -> Unit
+) {
+    val gagOptions = listOf(
+        600 to "10分钟",
+        3600 to "1小时",
+        21600 to "6小时",
+        43200 to "12小时",
+        -1 to "永久"
+    )
+    var selectedGagIndex by remember(gagTarget?.userId) { mutableStateOf(0) }
+    if (showKickConfirm) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("踢出成员") },
+            text = { Text("确定要踢出 ${kickTarget?.name ?: "该成员"} 吗？") },
+            confirmButton = { TextButton(onClick = onConfirmKick) { Text("踢出", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        )
+    }
+    if (showGagDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(if (gagTarget?.isGag == true) "取消禁言" else "禁言 ${gagTarget?.name ?: ""}") },
+            text = {
+                if (gagTarget?.isGag == true) {
+                    Text("确定要取消 ${gagTarget.name} 的禁言吗？")
+                } else {
+                    Column {
+                        Text("禁言时长：${gagOptions[selectedGagIndex].second}")
+                        androidx.compose.material3.Slider(
+                            value = selectedGagIndex.toFloat(),
+                            onValueChange = { selectedGagIndex = it.toInt() },
+                            valueRange = 0f..gagOptions.lastIndex.toFloat(),
+                            steps = gagOptions.lastIndex - 1
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("10分钟", style = MaterialTheme.typography.labelSmall)
+                            Text("永久", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onConfirmGag(if (gagTarget?.isGag == true) 0 else gagOptions[selectedGagIndex].first) }
+                ) { Text("确定") }
+            },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        )
     }
 }
 

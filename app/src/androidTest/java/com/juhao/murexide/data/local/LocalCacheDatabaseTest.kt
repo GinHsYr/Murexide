@@ -55,6 +55,31 @@ class LocalCacheDatabaseTest {
     }
 
     @Test
+    fun messageQueryPagesBeforeStableCursorWithoutOffset() = runBlocking {
+        val dao = database.messages()
+        dao.upsertMessages(
+            listOf(
+                message("account", "a", "chat", 100L),
+                message("account", "b", "chat", 100L),
+                message("account", "c", "chat", 100L),
+                message("account", "newer", "chat", 200L)
+            )
+        )
+
+        val ids = dao.getMessagesBefore(
+            accountId = "account",
+            chatId = "chat",
+            chatType = 1,
+            beforeTimestamp = 100L,
+            beforeMsgSeq = 100L,
+            beforeMsgId = "c",
+            limit = 20
+        ).map { it.msgId }
+
+        assertEquals(listOf("b", "a"), ids)
+    }
+
+    @Test
     fun conversationQueryPreservesServerPositionInsteadOfResortingByTime() = runBlocking {
         val dao = database.conversations()
         dao.replaceConversations(

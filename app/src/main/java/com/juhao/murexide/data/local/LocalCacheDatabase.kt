@@ -221,7 +221,7 @@ interface MessageCacheDao {
             "ON m.accountId = s.accountId AND m.chatType = s.chatType AND m.chatId = s.chatId " +
             "AND m.senderType = s.senderType AND m.senderId = s.senderId " +
             "WHERE m.accountId = :accountId AND m.chatId = :chatId AND m.chatType = :chatType " +
-            "ORDER BY m.timestamp DESC, m.msgSeq DESC LIMIT :limit"
+            "ORDER BY m.timestamp DESC, m.msgSeq DESC, m.msgId DESC LIMIT :limit"
     )
     fun observeMessages(accountId: String, chatId: String, chatType: Int, limit: Int): Flow<List<CachedMessageRow>>
 
@@ -231,13 +231,18 @@ interface MessageCacheDao {
             "ON m.accountId = s.accountId AND m.chatType = s.chatType AND m.chatId = s.chatId " +
             "AND m.senderType = s.senderType AND m.senderId = s.senderId " +
             "WHERE m.accountId = :accountId AND m.chatId = :chatId AND m.chatType = :chatType " +
-            "ORDER BY m.timestamp DESC, m.msgSeq DESC LIMIT :limit OFFSET :offset"
+            "AND (m.timestamp < :beforeTimestamp " +
+            "OR (m.timestamp = :beforeTimestamp AND m.msgSeq < :beforeMsgSeq) " +
+            "OR (m.timestamp = :beforeTimestamp AND m.msgSeq = :beforeMsgSeq AND m.msgId < :beforeMsgId)) " +
+            "ORDER BY m.timestamp DESC, m.msgSeq DESC, m.msgId DESC LIMIT :limit"
     )
-    suspend fun getMessagePage(
+    suspend fun getMessagesBefore(
         accountId: String,
         chatId: String,
         chatType: Int,
-        offset: Int,
+        beforeTimestamp: Long,
+        beforeMsgSeq: Long,
+        beforeMsgId: String,
         limit: Int
     ): List<CachedMessageRow>
 

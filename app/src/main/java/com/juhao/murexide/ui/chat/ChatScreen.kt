@@ -706,7 +706,12 @@ fun ChatScreen(
             }
         }
     }
-    LaunchedEffect(listState) {
+    LaunchedEffect(
+        listState,
+        uiState.hasMore,
+        uiState.isLoadingMore,
+        uiState.isRefreshing
+    ) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo

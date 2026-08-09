@@ -12,6 +12,7 @@ import com.juhao.murexide.repository.CommunityRepository
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
+import com.juhao.murexide.repository.GroupRepository
 import com.juhao.murexide.repository.InstructionRepository
 import com.juhao.murexide.repository.MessageRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ class ConversationDetailViewModel(
     private val repository: ConversationDetailRepository = ConversationDetailRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
     private val memberRepository: GroupMemberRepository = GroupMemberRepository(),
+    private val groupRepository: GroupRepository = GroupRepository(),
     private val instructionRepository: InstructionRepository = InstructionRepository(),
     private val messageRepository: MessageRepository = MessageRepository(),
     private val communityRepository: CommunityRepository = CommunityRepository(token)
@@ -278,24 +280,91 @@ class ConversationDetailViewModel(
 
     fun toggleMute() {
         val detail = _uiState.value.detail ?: return
-        if (chatType !in 1..3 || _uiState.value.isChangingMute) return
+        if (chatType !in 1..3) return
         val targetMuted = !detail.doNotDisturb
-        _uiState.update { it.copy(isChangingMute = true, detail = detail.copy(doNotDisturb = targetMuted)) }
+        _uiState.update { it.copy(detail = detail.copy(doNotDisturb = targetMuted)) }
         viewModelScope.launch {
             friendRepository.setNoNotify(token, chatId, targetMuted).onSuccess {
                 LocalCache.currentAccountId()?.let { accountId ->
                     LocalCache.setConversationMuted(accountId, chatId, chatType, targetMuted)
                 }
-                _uiState.update { it.copy(isChangingMute = false, message = if (targetMuted) "已静音" else "已取消静音") }
+                _uiState.update { it.copy(message = if (targetMuted) "已静音" else "已取消静音") }
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
-                        isChangingMute = false,
-                        detail = detail,
                         message = error.message ?: "修改免打扰失败"
                     )
                 }
             }
+        }
+    }
+
+    fun requestKickMember(member: GroupMember) {
+        if (!canManageMember(member)) return
+        _uiState.update { it.copy(kickTarget = member, showKickConfirm = true) }
+    }
+
+    fun requestGagMember(member: GroupMember) {
+        if (!canManageMember(member)) return
+        _uiState.update { it.copy(gagTarget = member, showGagDialog = true) }
+    }
+
+    fun dismissMemberActionDialogs() = _uiState.update {
+        it.copy(kickTarget = null, gagTarget = null, showKickConfirm = false, showGagDialog = false)
+    }
+
+    fun confirmKickMember() {
+        val target = _uiState.value.kickTarget ?: return
+        dismissMemberActionDialogs()
+        viewModelScope.launch {
+            groupRepository.removeMember(token, chatId, target.userId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            members = state.members.filterNot { it.userId == target.userId },
+                            message = "已踢出 ${target.name}"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(message = error.message ?: "踢出群聊失败") }
+                }
+        }
+    }
+
+    fun confirmGagMember(duration: Int) {
+        val target = _uiState.value.gagTarget ?: return
+        dismissMemberActionDialogs()
+        viewModelScope.launch {
+            groupRepository.gagMember(token, chatId, target.userId, duration)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            members = state.members.map {
+                                if (it.userId == target.userId) it.copy(isGag = duration != 0) else it
+                            },
+                            message = "${target.name} ${if (duration == 0) "已取消禁言" else "已禁言"}"
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(message = error.message ?: "禁言操作失败") }
+                }
+        }
+    }
+
+    private fun canManageMember(member: GroupMember): Boolean {
+        val detail = _uiState.value.detail
+        return when {
+            chatType != 2 || (detail?.permissionLevel ?: 0) < 2 -> {
+                _uiState.update { it.copy(message = "你没有管理成员的权限") }
+                false
+            }
+            member.permissionLevel == 100 -> {
+                _uiState.update { it.copy(message = "不能操作群主") }
+                false
+            }
+            else -> true
         }
     }
 

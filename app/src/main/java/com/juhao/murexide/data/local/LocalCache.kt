@@ -84,15 +84,24 @@ object LocalCache {
         .observeMessages(accountId, chatId, chatType, limit)
         .map { rows -> rows.mapNotNull(::decodeMessage) }
 
-    suspend fun getCachedMessagePage(
+    suspend fun getCachedMessagesBefore(
         accountId: String,
         chatId: String,
         chatType: Int,
-        offset: Int,
-        limit: Int = 20
+        beforeTimestamp: Long,
+        beforeMsgSeq: Long,
+        beforeMsgId: String,
+        limit: Int
     ): List<MessageItem> = withContext(Dispatchers.IO) {
-        db().messages().getMessagePage(accountId, chatId, chatType, offset, limit)
-            .mapNotNull(::decodeMessage)
+        db().messages().getMessagesBefore(
+            accountId = accountId,
+            chatId = chatId,
+            chatType = chatType,
+            beforeTimestamp = beforeTimestamp,
+            beforeMsgSeq = beforeMsgSeq,
+            beforeMsgId = beforeMsgId,
+            limit = limit
+        ).mapNotNull(::decodeMessage)
     }
 
     suspend fun replaceConversations(
