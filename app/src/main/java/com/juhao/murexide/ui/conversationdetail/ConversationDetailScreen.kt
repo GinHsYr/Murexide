@@ -92,6 +92,7 @@ import com.juhao.murexide.ui.components.imageMessagePreviewItem
 import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.ui.components.videoMessagePreviewItem
 import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AppFilledIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
 import com.juhao.murexide.ui.chat.components.formatVideoDuration
 import kotlinx.coroutines.launch
@@ -120,7 +121,7 @@ fun ConversationDetailScreen(
     val showGroupTitleInAppBar by remember(groupNameBottomOffset) {
         derivedStateOf {
             groupListState.firstVisibleItemIndex > 0 ||
-                    groupListState.firstVisibleItemScrollOffset >= groupNameBottomOffset
+                groupListState.firstVisibleItemScrollOffset >= groupNameBottomOffset
         }
     }
 
@@ -144,15 +145,15 @@ fun ConversationDetailScreen(
                         AnimatedVisibility(
                             visible = showGroupTitleInAppBar,
                             enter = fadeIn(animationSpec = tween(180)) +
-                                    slideInVertically(
-                                        initialOffsetY = { height -> -height / 2 },
-                                        animationSpec = tween(180)
-                                    ),
+                                slideInVertically(
+                                    initialOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(180)
+                                ),
                             exit = fadeOut(animationSpec = tween(140)) +
-                                    slideOutVertically(
-                                        targetOffsetY = { height -> -height / 2 },
-                                        animationSpec = tween(140)
-                                    )
+                                slideOutVertically(
+                                    targetOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(140)
+                                )
                         ) {
                             Column {
                                 Text(
@@ -846,7 +847,7 @@ private fun UserHeader(
                     1 -> Triple(AppIcons.Boy, Color(0xFF2196F3), "男")
                     2 -> Triple(AppIcons.Girl, Color(0xFFFF6B9A), "女")
                     else -> Triple(
-                        AppIcons.Help,
+                        AppFilledIcons.Person,
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         "未知性别"
                     )
@@ -976,7 +977,7 @@ private fun UserInfoContent(
     onOpenBoard: (BaItem) -> Unit,
     onCreatedBoardsClick: () -> Unit
 ) {
-    Column(Modifier.padding(vertical = 4.dp)) {
+    Column(Modifier.padding(bottom = 4.dp)) {
         Text(
             text = "详情信息",
             style = MaterialTheme.typography.titleMedium,
@@ -1047,7 +1048,7 @@ private fun UserInfoRow(
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.weight(1f))
         Text(
             value,
@@ -1276,7 +1277,7 @@ private fun IntroductionContent(
                         .align(Alignment.BottomEnd)
                         .fillMaxWidth()
                         .background(
-                            Brush.horizontalGradient(
+                            Brush.verticalGradient(
                                 listOf(
                                     Color.Transparent,
                                     cardColor

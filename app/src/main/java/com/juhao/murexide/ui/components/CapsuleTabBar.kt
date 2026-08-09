@@ -115,7 +115,7 @@ fun CapsuleTabBar(
                 ) {
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = textColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
