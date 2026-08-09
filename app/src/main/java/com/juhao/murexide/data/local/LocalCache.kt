@@ -178,6 +178,21 @@ object LocalCache {
             }
         }
 
+    suspend fun setConversationMuted(accountId: String, chatId: String, chatType: Int, muted: Boolean) =
+        withContext(Dispatchers.IO) {
+            db().conversations().setDoNotDisturb(accountId, chatId, chatType, if (muted) 1 else 0)
+        }
+
+    suspend fun removeConversation(accountId: String, chatId: String, chatType: Int) =
+        withContext(Dispatchers.IO) {
+            val database = db()
+            database.withTransaction {
+                database.conversations().deleteConversation(accountId, chatId, chatType)
+                database.payloads().delete(accountId, KIND_DETAIL, "$chatType:$chatId")
+                database.payloads().deleteByScopePrefix(accountId, KIND_MEMBERS, "$chatId:%")
+            }
+        }
+
     suspend fun applyNewMessageToConversation(
         accountId: String,
         message: MessageItem,

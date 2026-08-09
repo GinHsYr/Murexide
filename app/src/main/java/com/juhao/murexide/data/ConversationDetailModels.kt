@@ -40,6 +40,7 @@ data class ConversationDetail(
     val createBy: String? = null,
     val createTime: Long? = null,
     val usageCount: Long? = null,
+    val groupLimit: Boolean = false,
     val isStop: Boolean = false
 )
 
@@ -50,5 +51,23 @@ data class ConversationDetailUiState(
     // 添加/进入聊天
     val isAdded: Boolean? = null,   // null 表示尚未查询完成
     val isAdding: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val selectedTab: Int = 0,
+    val members: List<GroupMember> = emptyList(),
+    val isLoadingMembers: Boolean = false,
+    val isLoadingMoreMembers: Boolean = false,
+    val membersPage: Int = 1,
+    val hasMoreMembers: Boolean = true,
+    val mediaMessages: List<MessageItem> = emptyList(),
+    val createdBoards: List<BaItem> = emptyList(),
+    val isLoadingCreatedBoards: Boolean = false,
+    val hasLoadedCreatedBoards: Boolean = false,
+    val fileMessages: List<MessageItem> = emptyList(),
+    val historyAnchorMessageId: String? = null,
+    val mediaImageAnchor: Long = 0L,
+    val isLoadingHistory: Boolean = false,
+    val hasMoreHistory: Boolean = true,
+    val isChangingMute: Boolean = false,
+    val isLeaving: Boolean = false,
+    val hasLeft: Boolean = false
 )

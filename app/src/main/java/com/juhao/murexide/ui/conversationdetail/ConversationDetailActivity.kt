@@ -18,7 +18,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
+import com.juhao.murexide.MainActivity
 import com.juhao.murexide.ui.chat.ChatActivity
+import com.juhao.murexide.ui.community.ba.BaDetailActivity
+import com.juhao.murexide.ui.conversationdetail.groupmember.GroupMemberActivity
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 
@@ -63,6 +66,45 @@ class ConversationDetailActivity : ComponentActivity() {
                                 chatName = detail.name,
                                 chatAvatar = detail.avatarUrl
                             )
+                            finish()
+                        },
+                        onEditGroup = { detail ->
+                            GroupSettingsActivity.start(
+                                context = this,
+                                groupId = detail.chatId,
+                                groupName = detail.name,
+                                groupAvatar = detail.avatarUrl
+                            )
+                        },
+                        onOpenMember = { member ->
+                            ConversationDetailActivity.start(
+                                context = this,
+                                chatId = member.userId,
+                                chatType = 1,
+                                chatName = member.name,
+                                chatAvatar = member.avatarUrl
+                            )
+                        },
+                        onOpenBoard = { board ->
+                            BaDetailActivity.start(this, board.id)
+                        },
+                        onManageMembers = { detail ->
+                            startActivity(Intent(this, GroupMemberActivity::class.java).apply {
+                                putExtra(GroupMemberActivity.EXTRA_GROUP_ID, chatId)
+                                putExtra(GroupMemberActivity.EXTRA_MY_PERMISSION, detail.permissionLevel)
+                            })
+                        },
+                        onInviteBotToGroup = { detail ->
+                            InviteBotToGroupActivity.start(
+                                context = this,
+                                botId = detail.chatId,
+                                botName = detail.name
+                            )
+                        },
+                        onLeaveGroup = {
+                            startActivity(Intent(this, MainActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                            })
                             finish()
                         },
                         viewModel = viewModel(

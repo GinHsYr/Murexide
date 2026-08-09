@@ -62,6 +62,7 @@ object AppIcons {
     val Group get() = MaterialSymbols.Rounded.Group
     val Groups get() = MaterialSymbols.Rounded.Groups
     val History get() = MaterialSymbols.Rounded.History
+    val Help get() = MaterialSymbols.Rounded.Help
     val HowToReg get() = MaterialSymbols.Rounded.How_to_reg
     val Image get() = MaterialSymbols.Rounded.Image
     val ImageNotSupported get() = MaterialSymbols.Rounded.Image_not_supported

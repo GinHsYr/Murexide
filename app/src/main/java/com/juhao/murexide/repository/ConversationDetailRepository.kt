@@ -267,6 +267,7 @@ class ConversationDetailRepository(
                             createBy = d?.create_by?.takeIf { it.isNotEmpty() },
                             createTime = d?.create_time?.takeIf { it > 0 },
                             usageCount = d?.headcount,
+                            groupLimit = (d?.group_limit ?: 0L) == 1L,
                             isPrivate = (d?.private_ ?: 0L) == 1L,
                             isStop = (d?.is_stop ?: 0L) == 1L,
                             doNotDisturb = (d?.do_not_disturb ?: 0L) == 1L

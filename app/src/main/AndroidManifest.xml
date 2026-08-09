@@ -131,6 +131,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ui.conversationdetail.InviteBotToGroupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Murexide" />
+        <activity
             android:name=".ui.mine.EditProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.Murexide" />

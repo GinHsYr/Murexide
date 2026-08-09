@@ -1,111 +1,855 @@
 package com.juhao.murexide.ui.conversationdetail
 
-import com.juhao.murexide.ui.icons.AppIcons
-import com.juhao.murexide.ui.icons.AutoMirroredIcon
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.juhao.murexide.data.ConversationDetail
-import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.UiState
+import android.content.ClipData
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.juhao.murexide.data.BaItem
+import com.juhao.murexide.data.ConversationDetail
+import com.juhao.murexide.data.GroupMember
+import com.juhao.murexide.data.MessageItem
+import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.CapsuleTabBar
+import com.juhao.murexide.ui.components.MediaViewerPagination
+import com.juhao.murexide.ui.components.imageMessagePreviewItem
+import com.juhao.murexide.ui.components.showImageViewer
+import com.juhao.murexide.ui.components.videoMessagePreviewItem
+import com.juhao.murexide.ui.icons.AppIcons
+import com.juhao.murexide.ui.icons.AutoMirroredIcon
+import com.juhao.murexide.ui.chat.components.formatVideoDuration
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationDetailScreen(
     viewModel: ConversationDetailViewModel,
     onBack: () -> Unit,
-    onEnterChat: (ConversationDetail) -> Unit
+    onEnterChat: (ConversationDetail) -> Unit,
+    onEditGroup: (ConversationDetail) -> Unit = {},
+    onOpenMember: (GroupMember) -> Unit = {},
+    onOpenBoard: (BaItem) -> Unit = {},
+    onManageMembers: (ConversationDetail) -> Unit = {},
+    onInviteBotToGroup: (ConversationDetail) -> Unit = {},
+    onLeaveGroup: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    val scrollState = rememberScrollState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(uiState.message) {
-        val msg = uiState.message
-        if (msg != null) {
-            snackbarHostState.showSnackbar(msg)
-            viewModel.clearMessage()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbars = remember { SnackbarHostState() }
+    var showMore by remember { mutableStateOf(false) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
+    val groupListState = rememberLazyListState()
+    val userListState = rememberLazyListState()
+    val groupNameBottomOffset = with(LocalDensity.current) { 130.dp.roundToPx() }
+    val showGroupTitleInAppBar by remember(groupNameBottomOffset) {
+        derivedStateOf {
+            groupListState.firstVisibleItemIndex > 0 ||
+                groupListState.firstVisibleItemScrollOffset >= groupNameBottomOffset
         }
     }
 
+    LaunchedEffect(state.message) {
+        state.message?.let { message ->
+            snackbars.showSnackbar(message)
+            viewModel.clearMessage()
+        }
+    }
+    LaunchedEffect(state.hasLeft) {
+        if (state.hasLeft) onLeaveGroup()
+    }
+
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbars) },
         topBar = {
-            StyledTopBar(
-                title = { Text("会话详情") },
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    StyledIconButton(onClick = onBack) {
-                        AutoMirroredIcon(AppIcons.ArrowBack, contentDescription = "返回")
+            TopAppBar(
+                title = {
+                    val group = state.detail?.takeIf { it.chatType == 2 }
+                    if (group != null) {
+                        AnimatedVisibility(
+                            visible = showGroupTitleInAppBar,
+                            enter = fadeIn(animationSpec = tween(180)) +
+                                slideInVertically(
+                                    initialOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(180)
+                                ),
+                            exit = fadeOut(animationSpec = tween(140)) +
+                                slideOutVertically(
+                                    targetOffsetY = { height -> -height / 2 },
+                                    animationSpec = tween(140)
+                                )
+                        ) {
+                            Column {
+                                Text(
+                                    text = group.name.ifBlank { "未知群聊" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "${group.memberCount ?: 0} 位成员",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { AutoMirroredIcon(AppIcons.ArrowBack, "返回") }
+                },
+                actions = {
+                val group = state.detail?.takeIf { it.chatType == 2 }
+                if (group?.permissionLevel ?: 0 >= 2) {
+                    IconButton(onClick = { onEditGroup(group!!) }) {
+                        Icon(AppIcons.Edit, "编辑群聊")
+                    }
+                }
+                Box {
+                    IconButton(onClick = { showMore = true }) {
+                        Icon(AppIcons.MoreVert, "更多")
+                    }
+                    DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                        DropdownMenuItem(
+                            text = { Text("刷新") },
+                            leadingIcon = { Icon(AppIcons.Refresh, null) },
+                            onClick = {
+                                showMore = false
+                                viewModel.loadDetail()
+                                if (group != null) viewModel.loadMembers(refresh = true)
+                            }
+                        )
+                        if (group != null && group.permissionLevel >= 2) {
+                            DropdownMenuItem(
+                                text = { Text("管理成员") },
+                                leadingIcon = { Icon(AppIcons.Group, null) },
+                                onClick = { showMore = false; onManageMembers(group) }
+                            )
+                        }
+                    }
+                }
                 }
             )
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (val detail = uiState.detail) {
-                null if uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        val detail = state.detail
+        when {
+            detail == null && state.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+            detail == null -> ErrorContent(state.error ?: "加载失败", viewModel::loadDetail)
+            detail.chatType == 2 -> GroupConversationDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                listState = groupListState,
+                selectedTab = state.selectedTab,
+                members = state.members,
+                media = state.mediaMessages,
+                isLoadingMembers = state.isLoadingMembers,
+                isLoadingMoreMembers = state.isLoadingMoreMembers,
+                hasMoreMembers = state.hasMoreMembers,
+                isLoadingHistory = state.isLoadingHistory,
+                hasMoreHistory = state.hasMoreHistory,
+                isChangingMute = state.isChangingMute,
+                isLeaving = state.isLeaving,
+                onMessage = { onEnterChat(detail) },
+                onMute = viewModel::toggleMute,
+                onLeave = { showLeaveConfirm = true },
+                onTabSelected = viewModel::selectTab,
+                onLoadMembers = { viewModel.loadMembers() },
+                onLoadHistory = viewModel::loadMoreHistory,
+                onOpenMember = onOpenMember
+            )
+            detail.chatType == 1 -> UserConversationDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                listState = userListState,
+                isAdded = state.isAdded,
+                isAdding = state.isAdding,
+                onAdd = viewModel::addChat,
+                onMessage = { onEnterChat(detail) },
+                onMute = viewModel::toggleMute,
+                isChangingMute = state.isChangingMute,
+                media = state.mediaMessages,
+                isLoadingHistory = state.isLoadingHistory,
+                hasMoreHistory = state.hasMoreHistory,
+                onLoadHistory = viewModel::loadMoreHistory,
+                createdBoards = state.createdBoards,
+                isLoadingCreatedBoards = state.isLoadingCreatedBoards,
+                hasLoadedCreatedBoards = state.hasLoadedCreatedBoards,
+                onOpenBoard = onOpenBoard
+            )
+            detail.chatType == 3 -> BotConversationDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                isAdded = state.isAdded,
+                isAdding = state.isAdding,
+                onAdd = viewModel::addChat,
+                onMessage = { onEnterChat(detail) },
+                onMute = viewModel::toggleMute,
+                isChangingMute = state.isChangingMute,
+                onInviteToGroup = { onInviteBotToGroup(detail) },
+                media = state.mediaMessages,
+                isLoadingHistory = state.isLoadingHistory,
+                hasMoreHistory = state.hasMoreHistory,
+                onLoadHistory = viewModel::loadMoreHistory
+            )
+            else -> LegacyDetail(
+                modifier = Modifier.padding(padding),
+                detail = detail,
+                isAdded = state.isAdded,
+                isAdding = state.isAdding,
+                onAdd = viewModel::addChat,
+                onMessage = { onEnterChat(detail) }
+            )
+        }
+    }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!state.isLeaving) showLeaveConfirm = false },
+            icon = { Icon(AppIcons.Warning, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("退出群聊") },
+            text = { Text("确定要退出该群聊吗？") },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.isLeaving,
+                    onClick = viewModel::leaveGroup
+                ) {
+                    if (state.isLeaving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("退出", color = MaterialTheme.colorScheme.error)
                 }
-                null -> {
-                    ErrorState(
-                        message = uiState.error ?: "加载失败",
-                        onRetry = viewModel::loadDetail,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+            },
+            dismissButton = {
+                TextButton(enabled = !state.isLeaving, onClick = { showLeaveConfirm = false }) { Text("取消") }
+            }
+        )
+    }
+
+}
+
+@Composable
+private fun GroupConversationDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    listState: LazyListState,
+    selectedTab: Int,
+    members: List<GroupMember>,
+    media: List<MessageItem>,
+    isLoadingMembers: Boolean,
+    isLoadingMoreMembers: Boolean,
+    hasMoreMembers: Boolean,
+    isLoadingHistory: Boolean,
+    hasMoreHistory: Boolean,
+    isChangingMute: Boolean,
+    isLeaving: Boolean,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    onLeave: () -> Unit,
+    onTabSelected: (Int) -> Unit,
+    onLoadMembers: () -> Unit,
+    onLoadHistory: () -> Unit,
+    onOpenMember: (GroupMember) -> Unit
+) {
+    var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val mediaRows = media.chunked(3)
+    LaunchedEffect(
+        listState,
+        selectedTab,
+        members.size,
+        hasMoreMembers,
+        isLoadingMembers,
+        isLoadingMoreMembers,
+        mediaRows.size,
+        hasMoreHistory,
+        isLoadingHistory
+    ) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                selectedTab == 0 &&
+                hasMoreMembers &&
+                !isLoadingMembers &&
+                !isLoadingMoreMembers &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 3
+            ) {
+                onLoadMembers()
+            }
+            if (
+                selectedTab == 1 &&
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
+            }
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item(key = "header") {
+            GroupHeader(
+                detail = detail,
+                onMessage = onMessage,
+                onMute = onMute,
+                onLeave = onLeave,
+                isChangingMute = isChangingMute,
+                isLeaving = isLeaving,
+                introductionExpanded = introductionExpanded,
+                onIntroductionClick = {
+                    introductionExpanded = true
+                }
+            )
+        }
+        item(key = "tabs") {
+            DetailCardSegment(cardColor = cardColor, isTop = true) {
+                val labels = listOf("成员", "媒体", "群云盘")
+                CapsuleTabBar(
+                    tabs = labels,
+                    selectedTabIndex = selectedTab,
+                    onTabSelected = onTabSelected,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+        when (selectedTab) {
+            0 -> when {
+                isLoadingMembers && members.isEmpty() -> item(key = "members-loading") {
+                    DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+                }
+                members.isEmpty() -> item(key = "members-empty") {
+                    DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无可展示的成员") }
                 }
                 else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scrollState)
-                    ) {
-                        DetailHeader(detail)
-
-                        ActionSection(
-                            isAdded = uiState.isAdded,
-                            isAdding = uiState.isAdding,
-                            onAddChat = viewModel::addChat,
-                            onEnterChat = { onEnterChat(detail) }
-                        )
-
-                        when (detail.chatType) {
-                            2 -> GroupSection(detail)
-                            3 -> BotSection(detail)
-                            else -> UserSection(detail)
+                    items(members, key = GroupMember::userId) { member ->
+                        val isLast = member == members.last() && !hasMoreMembers
+                        DetailCardSegment(cardColor, isBottom = isLast) {
+                            MemberRow(member, onClick = { onOpenMember(member) })
+                            if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
                         }
-
-                        if (uiState.error != null) {
-                            Text(
-                                text = uiState.error ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                            )
+                    }
+                    if (hasMoreMembers) item(key = "members-load-more") {
+                        DetailCardSegment(cardColor, isBottom = true) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isLoadingMoreMembers) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
                         }
+                    }
+                }
+            }
+            1 -> when {
+                isLoadingHistory && media.isEmpty() -> item(key = "media-loading") {
+                    DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+                }
+                media.isEmpty() && !hasMoreHistory -> item(key = "media-empty") {
+                    DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无媒体") }
+                }
+                else -> {
+                    items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
+                        DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
+                            MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
+                        }
+                    }
+                    if (hasMoreHistory) item(key = "media-load-more") {
+                        DetailCardSegment(cardColor, isBottom = true) {
+                            AutoLoadingRow(isLoadingHistory)
+                        }
+                    }
+                }
+            }
+            else -> item(key = "cloud-drive") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("群云盘功能即将推出") }
+            }
+        }
+    }
+}
 
-                        Spacer(modifier = Modifier.height(16.dp))
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UserConversationDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    listState: LazyListState,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    media: List<MessageItem>,
+    isLoadingHistory: Boolean,
+    hasMoreHistory: Boolean,
+    onLoadHistory: () -> Unit,
+    createdBoards: List<BaItem>,
+    isLoadingCreatedBoards: Boolean,
+    hasLoadedCreatedBoards: Boolean,
+    onOpenBoard: (BaItem) -> Unit
+) {
+    var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
+    var createdBoardsExpanded by remember(detail.chatId) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val mediaRows = media.chunked(3)
+    LaunchedEffect(listState, isLoadingHistory, hasMoreHistory, mediaRows.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
+            }
+        }
+    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item(key = "user-header") {
+            UserHeader(
+                detail = detail,
+                isAdded = isAdded,
+                isAdding = isAdding,
+                onAdd = onAdd,
+                onMessage = onMessage,
+                onMute = onMute,
+                isChangingMute = isChangingMute,
+                introductionExpanded = introductionExpanded,
+                onIntroductionClick = { introductionExpanded = true }
+            )
+        }
+        item(key = "user-info") {
+            DetailCardSegment(cardColor = cardColor, isTop = true) {
+                UserInfoContent(
+                    detail = detail,
+                    createdBoards = createdBoards,
+                    createdBoardsExpanded = createdBoardsExpanded,
+                    isLoadingCreatedBoards = isLoadingCreatedBoards,
+                    hasLoadedCreatedBoards = hasLoadedCreatedBoards,
+                    onOpenBoard = onOpenBoard,
+                    onCreatedBoardsClick = {
+                        createdBoardsExpanded = !createdBoardsExpanded
+                    }
+                )
+                HorizontalDivider()
+                Text(
+                    text = "媒体",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                )
+            }
+        }
+        when {
+            isLoadingHistory && media.isEmpty() -> item(key = "user-media-loading") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+            }
+            media.isEmpty() && !hasMoreHistory -> item(key = "user-media-empty") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无媒体") }
+            }
+            else -> {
+                    items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
+                        DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
+                            MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
+                    }
+                }
+                if (hasMoreHistory) item(key = "user-media-load-more") {
+                    DetailCardSegment(cardColor, isBottom = true) {
+                        AutoLoadingRow(isLoadingHistory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BotConversationDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    onInviteToGroup: () -> Unit,
+    media: List<MessageItem>,
+    isLoadingHistory: Boolean,
+    hasMoreHistory: Boolean,
+    onLoadHistory: () -> Unit
+) {
+    var introductionExpanded by remember(detail.introduction) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val mediaRows = media.chunked(3)
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState, isLoadingHistory, hasMoreHistory, mediaRows.size) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleItem to layoutInfo.totalItemsCount
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (
+                hasMoreHistory &&
+                !isLoadingHistory &&
+                totalItems > 0 &&
+                lastVisibleItem >= totalItems - 2
+            ) {
+                onLoadHistory()
+            }
+        }
+    }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item(key = "bot-header") {
+            UserHeader(
+                detail = detail,
+                isAdded = isAdded,
+                isAdding = isAdding,
+                onAdd = onAdd,
+                onMessage = onMessage,
+                onMute = onMute,
+                isChangingMute = isChangingMute,
+                introductionExpanded = introductionExpanded,
+                onIntroductionClick = { introductionExpanded = true },
+                isBot = true,
+                onInviteToGroup = onInviteToGroup
+            )
+        }
+        item(key = "bot-info") {
+            DetailCardSegment(cardColor = cardColor, isTop = true) {
+                BotInfoContent(detail)
+                HorizontalDivider()
+                Text(
+                    text = "媒体",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                )
+            }
+        }
+        when {
+            isLoadingHistory && media.isEmpty() -> item(key = "bot-media-loading") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { LoadingContent() }
+            }
+            media.isEmpty() && !hasMoreHistory -> item(key = "bot-media-empty") {
+                DetailCardSegment(cardColor, isBottom = true, minHeight = 180.dp) { EmptyContent("暂无媒体") }
+            }
+            else -> {
+                items(mediaRows, key = { row -> row.joinToString(separator = ":") { it.msgId } }) { row ->
+                    DetailCardSegment(cardColor, isBottom = row == mediaRows.last() && !hasMoreHistory) {
+                        MediaRow(row, media, detail, hasBottomSpacing = row != mediaRows.last())
+                    }
+                }
+                if (hasMoreHistory) item(key = "bot-media-load-more") {
+                    DetailCardSegment(cardColor, isBottom = true) {
+                        AutoLoadingRow(isLoadingHistory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun UserHeader(
+    detail: ConversationDetail,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    isChangingMute: Boolean,
+    introductionExpanded: Boolean,
+    onIntroductionClick: () -> Unit,
+    isBot: Boolean = false,
+    onInviteToGroup: (() -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Avatar(url = detail.avatarUrl, size = 88.dp, canView = true)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                detail.name.ifBlank { "未知用户" },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!isBot) {
+                val (genderIcon, genderColor, genderDescription) = when (detail.gender) {
+                    1 -> Triple(AppIcons.Boy, androidx.compose.ui.graphics.Color(0xFF2196F3), "男")
+                    2 -> Triple(AppIcons.Girl, androidx.compose.ui.graphics.Color(0xFFFF6B9A), "女")
+                    else -> Triple(AppIcons.Help, MaterialTheme.colorScheme.onSurfaceVariant, "未知性别")
+                }
+                Icon(genderIcon, genderDescription, tint = genderColor, modifier = Modifier.size(20.dp))
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = if (isBot) {
+                    "${detail.usageCount ?: 0} 人使用"
+                } else {
+                    "注册于 ${detail.registerTime ?: "未知"}"
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            detail.ipGeo?.takeIf { !isBot }?.let { ip ->
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "IP:$ip",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        if (isAdded == true) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TelegramAction(Modifier.weight(1f), AppIcons.ChatBubbleOutline, "消息", onMessage)
+                TelegramAction(
+                    Modifier.weight(1f),
+                    if (detail.doNotDisturb) AppIcons.NotificationsOff else AppIcons.Notifications,
+                    if (detail.doNotDisturb) "取消静音" else "静音",
+                    onMute,
+                    isChangingMute
+                )
+                TelegramAction(
+                    Modifier.weight(1f),
+                    if (isBot) AppIcons.Group else AppIcons.Phone,
+                    if (isBot) "添加到群" else "通话",
+                    onClick = onInviteToGroup ?: {},
+                    enabled = isBot && onInviteToGroup != null
+                )
+            }
+        } else {
+            TelegramAction(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                icon = AppIcons.PersonAdd,
+                label = "添加好友",
+                onClick = onAdd,
+                loading = isAdding
+            )
+        }
+        if (detail.introduction.isNotBlank()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .combinedClickable(
+                        onClick = onIntroductionClick,
+                        onLongClick = {
+                            scope.launch {
+                                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(if (isBot) "机器人简介" else "用户简介", detail.introduction)))
+                                Toast.makeText(context, "简介已复制", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                IntroductionContent(
+                    introduction = detail.introduction,
+                    expanded = introductionExpanded,
+                    onExpand = onIntroductionClick
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun BotInfoContent(detail: ConversationDetail) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = "详情信息",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+        UserInfoRow("机器人 ID", detail.chatId)
+        UserInfoRow("创建者 ID", detail.createBy ?: "未知")
+        UserInfoRow("创建时间", detail.createTime?.let(::formatBotCreateTime) ?: "未知")
+        UserInfoRow("限制进群", if (detail.groupLimit) "是" else "否")
+    }
+}
+
+private fun formatBotCreateTime(timestampSeconds: Long): String =
+    SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestampSeconds * 1000L))
+
+@Composable
+private fun UserInfoContent(
+    detail: ConversationDetail,
+    createdBoards: List<BaItem>,
+    createdBoardsExpanded: Boolean,
+    isLoadingCreatedBoards: Boolean,
+    hasLoadedCreatedBoards: Boolean,
+    onOpenBoard: (BaItem) -> Unit,
+    onCreatedBoardsClick: () -> Unit
+) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = "详情信息",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+        UserInfoRow("在线天数", detail.onlineDay?.let { "$it 天" } ?: "未知")
+        UserInfoRow("连续在线", detail.continuousOnlineDay?.let { "$it 天" } ?: "未知")
+        UserInfoRow(
+            label = "创建的板块",
+            value = when {
+                isLoadingCreatedBoards -> "加载中"
+                createdBoards.isEmpty() && hasLoadedCreatedBoards -> "无"
+                hasLoadedCreatedBoards -> "${createdBoards.size} 个"
+                else -> "加载失败"
+            },
+            onClick = onCreatedBoardsClick.takeIf { createdBoards.isNotEmpty() },
+            trailingIcon = if (createdBoards.isNotEmpty()) {
+                if (createdBoardsExpanded) AppIcons.KeyboardArrowUp else AppIcons.KeyboardArrowDown
+            } else {
+                null
+            }
+        )
+        AnimatedVisibility(
+            visible = createdBoardsExpanded,
+            enter = expandVertically(animationSpec = tween(180)) + fadeIn(animationSpec = tween(180)),
+            exit = shrinkVertically(animationSpec = tween(140)) + fadeOut(animationSpec = tween(140))
+        ) {
+            when {
+                isLoadingCreatedBoards -> Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                }
+                createdBoards.isEmpty() -> Text(
+                    text = if (hasLoadedCreatedBoards) "暂无创建的板块" else "加载失败，点击重试",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+                )
+                else -> Column {
+                    createdBoards.forEach { board ->
+                        CreatedBoardRow(board, onClick = { onOpenBoard(board) })
                     }
                 }
             }
@@ -114,215 +858,396 @@ fun ConversationDetailScreen(
 }
 
 @Composable
-private fun DetailHeader(detail: ConversationDetail) {
-    SettingsGroup {
-        CustomItemCell {
-            Avatar(url = detail.avatarUrl, size = 64.dp, canView = true)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+private fun UserInfoRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null,
+    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        trailingIcon?.let {
+            Spacer(Modifier.width(4.dp))
+            Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun CreatedBoardRow(board: BaItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Avatar(url = board.avatar, size = 32.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = board.name.ifBlank { "未命名板块" },
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun GroupHeader(
+    detail: ConversationDetail,
+    onMessage: () -> Unit,
+    onMute: () -> Unit,
+    onLeave: () -> Unit,
+    isChangingMute: Boolean,
+    isLeaving: Boolean,
+    introductionExpanded: Boolean,
+    onIntroductionClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(4.dp))
+        Avatar(url = detail.avatarUrl, size = 88.dp, canView = true)
+        Spacer(Modifier.height(10.dp))
+        Text(detail.name.ifBlank { "未知群聊" }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("${detail.memberCount ?: 0} 位成员", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TelegramAction(Modifier.weight(1f), AppIcons.ChatBubbleOutline, "消息", onMessage)
+            TelegramAction(
+                Modifier.weight(1f),
+                if (detail.doNotDisturb) AppIcons.NotificationsOff else AppIcons.Notifications,
+                if (detail.doNotDisturb) "取消静音" else "静音",
+                onMute,
+                isChangingMute
+            )
+            TelegramAction(Modifier.weight(1f), AppIcons.Logout, "退出", onLeave, isLeaving, isDanger = true)
+        }
+        if (detail.introduction.isNotBlank()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .combinedClickable(
+                        onClick = onIntroductionClick,
+                        onLongClick = {
+                            scope.launch {
+                                clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("群简介", detail.introduction)))
+                                Toast.makeText(context, "简介已复制", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                IntroductionContent(
+                    introduction = detail.introduction,
+                    expanded = introductionExpanded,
+                    onExpand = onIntroductionClick
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun IntroductionContent(
+    introduction: String,
+    expanded: Boolean,
+    onExpand: () -> Unit
+) {
+    var hasOverflow by remember(introduction) { mutableStateOf(false) }
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    Column(Modifier.padding(14.dp)) {
+        Box {
+            Text(
+                text = introduction,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Clip,
+                onTextLayout = { hasOverflow = it.hasVisualOverflow }
+            )
+            if (!expanded && hasOverflow) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .fillMaxWidth(.34f)
+                        .height(26.dp)
+                        .background(Brush.horizontalGradient(listOf(androidx.compose.ui.graphics.Color.Transparent, cardColor)))
+                        .clickable(onClick = onExpand),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Text(
+                        "更多",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 2.dp)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("简介", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun TelegramAction(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    loading: Boolean = false,
+    isDanger: Boolean = false,
+    enabled: Boolean = true
+) {
+    val actionColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        isDanger -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+    Card(
+        modifier = modifier.height(56.dp).clickable(enabled = enabled && !loading, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (enabled) {
+                MaterialTheme.colorScheme.surfaceContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            }
+        )
+    ) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            else Icon(icon, null, tint = actionColor)
+            Spacer(Modifier.height(3.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (enabled && !isDanger) MaterialTheme.colorScheme.onSurface else actionColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemberRow(member: GroupMember, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Avatar(url = member.avatarUrl, size = 46.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
-                    text = detail.name.ifEmpty { "未知" },
+                    member.name.ifBlank { "未知用户" },
+                    modifier = Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "ID: ${detail.chatId}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (detail.introduction.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = detail.introduction,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                when (member.permissionLevel) {
+                    100 -> MemberRoleBadge("群主")
+                    2 -> MemberRoleBadge("管理员")
                 }
             }
+            Text(
+                when {
+                    member.permissionLevel == 100 -> "群主"
+                    member.permissionLevel >= 2 -> "管理员"
+                    member.isGag -> "已禁言"
+                    else -> "成员"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
 @Composable
-private fun UserSection(detail: ConversationDetail) {
-    SettingsGroup(title = "用户信息") {
-        if (detail.isVip) {
-            InfoItem(AppIcons.WorkspacePremium, "会员", "VIP 用户")
-        }
-        InfoItem(
-            when (detail.gender) {
-                1 -> AppIcons.Boy
-                2 -> AppIcons.Girl
-                else -> AppIcons.Person
-            },
-            "性别",
-            when (detail.gender) {
-                1 -> "男"
-                2 -> "女"
-                else -> "其他"
-            }
-        )
-        detail.registerTime?.let {
-            InfoItem(AppIcons.Event, "注册时间", it)
-        }
-        detail.onlineDay?.let {
-            InfoItem(AppIcons.AccessTime, "在线天数", "$it 天")
-        }
-        detail.continuousOnlineDay?.let {
-            InfoItem(AppIcons.LocalFireDepartment, "连续在线", "$it 天")
-        }
-        detail.lastActiveTime?.let {
-            InfoItem(AppIcons.AccessTime, "上次活跃", it)
-        }
-        detail.ipGeo?.let {
-            InfoItem(AppIcons.LocationOn, "IP 属地", it)
-        }
-    }
-}
-
-@Composable
-private fun GroupSection(detail: ConversationDetail) {
-    SettingsGroup(title = "群聊信息") {
-        detail.memberCount?.let {
-            InfoItem(AppIcons.Group, "成员数量", "$it 人")
-        }
-        detail.groupCode?.let {
-            InfoItem(AppIcons.Tag, "群口令", it)
-        }
-        detail.categoryName?.let {
-            InfoItem(AppIcons.Category, "分类", it)
-        }
-        detail.ownerId?.let {
-            InfoItem(AppIcons.Person, "群主", it)
-        }
-        detail.myGroupNickname?.let {
-            InfoItem(AppIcons.Edit, "我的群昵称", it)
-        }
-        InfoItem(
-            AppIcons.Lock,
-            "加群方式",
-            if (detail.isPrivate) "需要验证" else "允许任何人加入"
-        )
-        InfoItem(
-            AppIcons.Notifications,
-            "消息免打扰",
-            if (detail.doNotDisturb) "已开启" else "已关闭"
-        )
-    }
-}
-
-@Composable
-private fun BotSection(detail: ConversationDetail) {
-    SettingsGroup(title = "机器人信息") {
-        detail.usageCount?.let {
-            InfoItem(AppIcons.Group, "使用人数", "$it 人")
-        }
-        detail.createBy?.let {
-            InfoItem(AppIcons.Person, "创建者", it)
-        }
-        detail.createTime?.let {
-            InfoItem(AppIcons.Event, "创建时间", formatEpoch(it))
-        }
-        InfoItem(
-            AppIcons.Visibility,
-            "可见性",
-            if (detail.isPrivate) "私有" else "公开"
-        )
-        InfoItem(
-            AppIcons.PowerSettingsNew,
-            "运行状态",
-            if (detail.isStop) "已停用" else "运行中"
-        )
-        InfoItem(
-            AppIcons.Notifications,
-            "消息免打扰",
-            if (detail.doNotDisturb) "已开启" else "已关闭"
-        )
-    }
-}
-
-@Composable
-private fun ActionSection(
-    isAdded: Boolean?,
-    isAdding: Boolean,
-    onAddChat: () -> Unit,
-    onEnterChat: () -> Unit
-) {
-    if (isAdded == null) return
-    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        if (isAdded) {
-            Button(
-                onClick = onEnterChat,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(AppIcons.ChatBubble, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("进入聊天")
-            }
-        } else {
-            Button(
-                onClick = onAddChat,
-                enabled = !isAdding,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isAdding) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(AppIcons.PersonAdd, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("添加")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun InfoItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    value: String
-) {
-    SettingsItemCell(
-        icon = icon,
-        title = title,
-        subtitle = value,
-        onClick = { /* 仅展示 */ }
-    )
-}
-
-private fun formatEpoch(epoch: Long): String {
-    // 兼容秒 / 毫秒时间戳
-    val millis = if (epoch < 100_000_000_000L) epoch * 1000 else epoch
-    return SimpleDateFormat("yyyy/M/d HH:mm", Locale.getDefault()).format(Date(millis))
-}
-
-@Composable
-private fun ErrorState(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun MemberRoleBadge(text: String) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.primaryContainer
     ) {
         Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = onRetry) {
-            Text("重试")
+    }
+}
+
+@Composable
+private fun MediaRow(
+    row: List<MessageItem>,
+    media: List<MessageItem>,
+    detail: ConversationDetail,
+    hasBottomSpacing: Boolean
+) {
+    val context = LocalContext.current
+    val spacing = with(LocalDensity.current) { 1.toDp() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = if (hasBottomSpacing) spacing else 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing)
+    ) {
+        row.forEach { message ->
+            val url = if (message.contentType == MessageItem.CONTENT_TYPE_VIDEO) message.videoUrl else message.imageUrl
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clickable {
+                    val previews = media.map { item ->
+                        if (item.contentType == MessageItem.CONTENT_TYPE_VIDEO) {
+                            videoMessagePreviewItem(item.videoUrl.orEmpty(), item.msgId, item.msgSeq)
+                        } else imageMessagePreviewItem(item.imageUrl.orEmpty(), item.msgId, item.msgSeq)
+                    }
+                    showImageViewer(
+                        context, previews, media.indexOfFirst { it.msgId == message.msgId },
+                        MediaViewerPagination(detail.chatId, detail.chatType)
+                    )
+                }
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = "媒体",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                if (message.contentType == MessageItem.CONTENT_TYPE_VIDEO) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .background(Color.Black.copy(alpha = 0.68f), RectangleShape)
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.PlayArrow,
+                            contentDescription = "视频",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        formatVideoDuration(message.videoTime)?.let { duration ->
+                            Spacer(Modifier.width(2.dp))
+                            Text(
+                                text = duration,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        repeat(3 - row.size) { Spacer(Modifier.weight(1f).aspectRatio(1f)) }
+    }
+}
+
+@Composable
+private fun DetailCardSegment(
+    cardColor: androidx.compose.ui.graphics.Color,
+    isTop: Boolean = false,
+    isBottom: Boolean = false,
+    minHeight: androidx.compose.ui.unit.Dp? = null,
+    content: @Composable () -> Unit
+) {
+    val shape = when {
+        isTop -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        isBottom -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+        else -> RectangleShape
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        shape = shape,
+        color = cardColor
+    ) {
+        if (minHeight == null) {
+            Column { content() }
+        } else {
+            Box(
+                modifier = Modifier.height(minHeight),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
         }
     }
+}
+
+@Composable
+private fun AutoLoadingRow(loading: Boolean) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (loading) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+        } else {
+            Text("继续下滑加载更多", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun LegacyDetail(
+    modifier: Modifier,
+    detail: ConversationDetail,
+    isAdded: Boolean?,
+    isAdding: Boolean,
+    onAdd: () -> Unit,
+    onMessage: () -> Unit
+) {
+    Column(modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Avatar(url = detail.avatarUrl, size = 88.dp, canView = true)
+        Spacer(Modifier.height(14.dp))
+        Text(detail.name.ifBlank { "未知" }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        if (detail.introduction.isNotBlank()) Text(detail.introduction, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = if (isAdded == false) onAdd else onMessage, enabled = !isAdding, modifier = Modifier.fillMaxWidth()) {
+            Text(if (isAdded == false) "添加" else "进入聊天")
+        }
+    }
+}
+
+@Composable
+private fun LoadingContent() = Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+
+@Composable
+private fun EmptyContent(text: String) = Box(Modifier.fillMaxSize(), Alignment.Center) { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+
+@Composable
+private fun ErrorContent(message: String, retry: () -> Unit) = Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Text(message, color = MaterialTheme.colorScheme.error)
+    TextButton(onClick = retry) { Text("重试") }
 }

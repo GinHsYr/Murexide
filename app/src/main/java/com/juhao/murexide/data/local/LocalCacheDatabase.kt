@@ -166,6 +166,12 @@ interface ConversationCacheDao {
     @Query("UPDATE cached_conversations SET unreadMessage = 0, at = 0 WHERE accountId = :accountId AND chatId = :chatId AND chatType = :chatType")
     suspend fun clearUnread(accountId: String, chatId: String, chatType: Int)
 
+    @Query("UPDATE cached_conversations SET doNotDisturb = :doNotDisturb WHERE accountId = :accountId AND chatId = :chatId AND chatType = :chatType")
+    suspend fun setDoNotDisturb(accountId: String, chatId: String, chatType: Int, doNotDisturb: Int)
+
+    @Query("DELETE FROM cached_conversations WHERE accountId = :accountId AND chatId = :chatId AND chatType = :chatType")
+    suspend fun deleteConversation(accountId: String, chatId: String, chatType: Int)
+
     @Query(
         "UPDATE cached_conversations SET listPosition = listPosition + 1 " +
             "WHERE accountId = :accountId AND NOT (chatType = :chatType AND chatId = :chatId)"
