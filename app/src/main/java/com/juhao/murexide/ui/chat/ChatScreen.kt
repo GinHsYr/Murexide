@@ -841,7 +841,7 @@ fun ChatScreen(
                     label = "top_bar_transition"
                 ) { isSelectionMode ->
                     if (isSelectionMode) {
-                        TopAppBar(
+                        FloatingTopBar(
                             title = {
                                 AnimatedContent(
                                     targetState = selectedMessages.size,
@@ -874,35 +874,44 @@ fun ChatScreen(
                                 }
                             },
                             navigationIcon = {
-                                IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                                    Icon(AppIcons.Close, contentDescription = "退出多选")
+                                IconButton(
+                                    onClick = { viewModel.exitSelectionMode() },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(AppIcons.Close, contentDescription = "退出多选", modifier = Modifier.size(24.dp))
                                 }
                             },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Color.Transparent
-                            ),
                             actions = {
-                                IconButton(onClick = { viewModel.recallSelectedMessages() }) {
-                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = "撤回")
+                                IconButton(
+                                    onClick = { viewModel.recallSelectedMessages() },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    AutoMirroredIcon(AppIcons.Undo, contentDescription = "撤回", modifier = Modifier.size(24.dp))
                                 }
                                 if (selectedMessages.size == 1) {
                                     val message = selectedMessages.firstOrNull()
                                     message?.let { 
                                         if (it.content.isNotBlank()) {
-                                            IconButton(onClick = { 
-                                                scope.launch {
-                                                    clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("msg", it.content)))
-                                                }
-                                                Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
-                                                viewModel.exitSelectionMode()
-                                            }) {
-                                                Icon(AppIcons.ContentCopy, contentDescription = "复制")
+                                            IconButton(
+                                                onClick = { 
+                                                    scope.launch {
+                                                        clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("msg", it.content)))
+                                                    }
+                                                    Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
+                                                    viewModel.exitSelectionMode()
+                                                },
+                                                modifier = Modifier.size(46.dp)
+                                            ) {
+                                                Icon(AppIcons.ContentCopy, contentDescription = "复制", modifier = Modifier.size(24.dp))
                                             }
                                         }
                                     }
                                 }
-                                IconButton(onClick = { showScreenshotSheet = true }) {
-                                    Icon(AppIcons.Screenshot, contentDescription = "截图")
+                                IconButton(
+                                    onClick = { showScreenshotSheet = true },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(AppIcons.Screenshot, contentDescription = "截图", modifier = Modifier.size(24.dp))
                                 }
                             }
                         )
