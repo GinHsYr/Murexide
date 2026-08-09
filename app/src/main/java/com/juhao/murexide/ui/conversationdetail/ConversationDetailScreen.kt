@@ -1208,18 +1208,17 @@ private fun TelegramAction(
         isDanger -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
-    Card(
-        modifier = modifier
-            .height(56.dp)
-            .clickable(enabled = enabled && !loading, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) {
-                MaterialTheme.colorScheme.surfaceContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            }
-        )
+    Surface(
+        onClick = onClick,
+        enabled = enabled && !loading,
+        modifier = modifier.height(72.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = if (enabled) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
+        tonalElevation = 1.dp
     ) {
         Column(
             Modifier.fillMaxSize(),
@@ -1227,11 +1226,22 @@ private fun TelegramAction(
             verticalArrangement = Arrangement.Center
         ) {
             if (loading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Icon(icon, null, tint = actionColor)
-            Spacer(Modifier.height(3.dp))
+            else {
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = actionColor.copy(alpha = if (enabled) 0.16f else 0.08f),
+                    contentColor = actionColor
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(icon, null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.height(5.dp))
             Text(
                 label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = if (enabled && !isDanger) MaterialTheme.colorScheme.onSurface else actionColor
             )
         }

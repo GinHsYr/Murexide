@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.ExpressiveDropdownMenu
-import com.juhao.murexide.ui.components.ExpressiveOverflowIconButton
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.juhao.murexide.ui.components.fullImagePreviewItem
@@ -1051,13 +1050,12 @@ fun ChatScreen(
                                         }
                                     } else {
                                         Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .clickable { showMoreMenu = true },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            ExpressiveOverflowIconButton(
-                                                expanded = showMoreMenu,
-                                                onClick = { showMoreMenu = true },
-                                                contentDescription = "更多"
-                                            )
                                             ExpressiveDropdownMenu(
                                                 expanded = showMoreMenu,
                                                 onDismissRequest = { showMoreMenu = false }
@@ -1096,6 +1094,11 @@ fun ChatScreen(
                                                     }
                                                 )
                                             }
+                                            Icon(
+                                                imageVector = AppIcons.MoreVert,
+                                                contentDescription = "更多",
+                                                modifier = Modifier.size(24.dp)
+                                            )
                                         }
                                     }
                                 }
