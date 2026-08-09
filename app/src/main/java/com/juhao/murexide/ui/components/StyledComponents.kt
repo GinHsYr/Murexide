@@ -1,7 +1,7 @@
 package com.juhao.murexide.ui.components
 
 import com.juhao.murexide.ui.icons.AppIcons
-
+import com.juhao.murexide.ui.icons.AppFilledIcons
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -21,7 +21,7 @@ fun StyledSwitch(
         modifier = modifier,
         thumbContent = {
             Icon(                 
-                imageVector = if (checked) AppIcons.Check else AppIcons.Close,
+                imageVector = if (checked) AppFilledIcons.Star else AppIcons.Close,
                 contentDescription = null,
                 modifier = Modifier.size(SwitchDefaults.IconSize),
                 tint = if (checked) {
