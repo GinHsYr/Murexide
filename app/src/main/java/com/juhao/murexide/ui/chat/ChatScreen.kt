@@ -130,7 +130,7 @@ private fun FloatingChatTopBar(
     val controlSize = 48.dp
     val buttonShape = CircleShape
     val topBarColor = MaterialTheme.colorScheme.surface
-    val buttonHazeStyle = HazeMaterials.ultraThin(
+    val buttonHazeStyle = HazeMaterials.thin(
         containerColor = topBarColor
     ).copy(
         blurRadius = 32.dp,
@@ -146,8 +146,8 @@ private fun FloatingChatTopBar(
                     Brush.verticalGradient(
                         colors = listOf(
                             topBarColor.copy(alpha = 0.8f),
+                            topBarColor.copy(alpha = 0.7f),
                             topBarColor.copy(alpha = 0.6f),
-                            topBarColor.copy(alpha = 0.4f),
                             Color.Transparent
                         )
                     )
@@ -1140,7 +1140,7 @@ fun ChatScreen(
                                         .clip(RoundedCornerShape(28.dp))
                                         .hazeEffect(
                                             state = hazeState,
-                                            style = HazeMaterials.ultraThin(
+                                            style = HazeMaterials.thin(
                                                 containerColor = MaterialTheme.colorScheme.surface
                                             ).copy(
                                                 blurRadius = 32.dp,

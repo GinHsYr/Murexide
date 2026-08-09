@@ -130,7 +130,6 @@ object AppFilledIcons {
     val Group get() = MaterialSymbols.RoundedFilled.Group
     val Explore get() = MaterialSymbols.RoundedFilled.Explore
     val Person get() = MaterialSymbols.RoundedFilled.Person
-    val Star get() = MaterialSymbols.RoundedFilled.Star
 }
 
 @Composable
