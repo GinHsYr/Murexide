@@ -4,6 +4,40 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
+// ===== White =====
+
+val WhiteLightColorScheme = lightColorScheme(
+    primary = Color(0xFF6750A4),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFF4F0FF),
+    onPrimaryContainer = Color(0xFF21005D),
+    secondary = Color(0xFFF3F1F7),
+    onSecondary = Color(0xFF25232A),
+    secondaryContainer = Color(0xFFF8F7FA),
+    onSecondaryContainer = Color(0xFF25232A),
+    tertiary = Color(0xFFF0EEF4),
+    onTertiary = Color(0xFF25232A),
+    tertiaryContainer = Color(0xFFF6F4F8),
+    onTertiaryContainer = Color(0xFF25232A),
+    background = Color(0xFFF1F1F3),
+    onBackground = Color(0xFF242127),
+    surface = Color(0xFFF1F1F3),
+    onSurface = Color(0xFF242127),
+    surfaceVariant = Color(0xFFF1F1F3),
+    onSurfaceVariant = Color(0xFF49454F),
+    outline = Color(0xFF79747E),
+    outlineVariant = Color(0xFFDAD6E0),
+    surfaceTint = Color(0xFF6750A4),
+    inverseSurface = Color(0xFF313033),
+    inverseOnSurface = Color(0xFFF4EFF4),
+    inversePrimary = Color(0xFFD0BCFF),
+    surfaceContainerHighest = Color.White,
+    surfaceContainerHigh = Color.White,
+    surfaceContainer = Color(0xFFF8F8F8),
+    surfaceContainerLow = Color.White,
+    surfaceContainerLowest = Color.White
+)
+
 // ===== Purple =====
 
 val PurpleLightColorScheme = lightColorScheme(

@@ -26,8 +26,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.juhao.murexide.ui.theme.UiState
 import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -474,10 +476,13 @@ private fun ProfileStat(
     value: String,
     modifier: Modifier = Modifier
 ) {
+    val themeColor by UiState.themeColor
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        color = if (themeColor == "WHITE") Color(0xFFF6F1FC)
+        else MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),

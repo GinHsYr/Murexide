@@ -29,11 +29,13 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,6 +53,7 @@ import com.juhao.murexide.ui.conversation.HomeSearchActivity
 import com.juhao.murexide.ui.login.LoginActivity
 import com.juhao.murexide.ui.mine.MineScreen
 import com.juhao.murexide.ui.theme.MurexideTheme
+import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.data.ConversationItem
 import com.juhao.murexide.data.ConversationKey
@@ -129,6 +132,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(account: UserAccount) {
+    val themeColor by UiState.themeColor
     val token = account.token
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -199,6 +203,14 @@ fun MainScreen(account: UserAccount) {
             currentRoute == "contacts" && isContactNewMessagesVisible -> NavigationSuiteType.None
             else -> NavigationSuiteType.NavigationBar
         },
+        navigationSuiteColors = if (themeColor == "WHITE") {
+            NavigationSuiteDefaults.colors(
+                navigationBarContainerColor = Color(0xFFF8F8F8),
+                navigationRailContainerColor = Color(0xFFF8F8F8)
+            )
+        } else {
+            NavigationSuiteDefaults.colors()
+        },
         navigationSuiteItems = {
             navItems.forEach { item ->
                 val selected = currentRoute == item.route
@@ -217,6 +229,7 @@ fun MainScreen(account: UserAccount) {
                                     filledIcon = item.filledIcon,
                                     selected = selected,
                                     contentDescription = item.title,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 AccountQuickSwitchMenu(
                                     expanded = showAccountMenu,
@@ -232,6 +245,7 @@ fun MainScreen(account: UserAccount) {
                                     filledIcon = item.filledIcon,
                                     selected = selected,
                                     contentDescription = item.title,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         } else {
@@ -240,6 +254,7 @@ fun MainScreen(account: UserAccount) {
                                 filledIcon = item.filledIcon,
                                 selected = selected,
                                 contentDescription = item.title,
+                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     },
@@ -249,7 +264,14 @@ fun MainScreen(account: UserAccount) {
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically()
                         ) {
-                            Text(item.title)
+                            Text(
+                                text = item.title,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
                         }
                     },
                     selected = selected,

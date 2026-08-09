@@ -3,14 +3,26 @@ package com.juhao.murexide.ui.settings.appearance
 import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.components.*
@@ -142,71 +154,62 @@ fun AppearanceScreen(
                         }
                     }
                 )
-                SettingsDropdownItem(
-                    icon = AppIcons.Draw,
-                    title = "主题颜色",
-                    subtitle = when (themeColor) {
-                        "PURPLE" -> "紫色"
-                        "BLUE" -> "蓝色"
-                        "GREEN" -> "绿色"
-                        "ORANGE" -> "橙色"
-                        else -> "动态取色"
-                    },
-                    options = listOf(
-                        "DYNAMIC" to "动态取色",
-                        "PURPLE" to "紫色",
-                        "BLUE" to "蓝色",
-                        "GREEN" to "绿色",
-                        "ORANGE" to "橙色"
-                    ),
-                    selectedValue = themeMode,
-                    onOptionSelected = { selected ->
+                ThemeColorPicker(
+                    selectedColor = themeColor,
+                    onColorSelected = { selected ->
                         UiState.themeColor.value = selected
-                        scope.launch {
-                            settingsStorage.setThemeColor(selected)
-                        }
+                        scope.launch { settingsStorage.setThemeColor(selected) }
                     }
                 )
             }
             
             // 气泡预览区域
             SettingsGroup(title = "消息气泡预览") {
-                Column(
+                Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
-                    MessageBubble(
-                        message = previewMessages[0],
-                        isLastFromSender = true,
-                        isFirstFromSender = false,
-                        showAvatar = false,
-                        showTags = showMsgTags,
-                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                        bubbleOpacity = bubbleOpacity,
-                        bubbleCornerRadius = bubbleCornerRadius
-                    )
-                    
-                    MessageBubble(
-                        message = previewMessages[1],
-                        isLastFromSender = false,
-                        isFirstFromSender = true,
-                        showAvatar = true,
-                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                        bubbleOpacity = bubbleOpacity,
-                        bubbleCornerRadius = bubbleCornerRadius
-                    )
-                    
-                    MessageBubble(
-                        message = previewMessages[2],
-                        isLastFromSender = true,
-                        isFirstFromSender = true,
-                        showAvatar = showMyBubbleAvatar,
-                        showMyBubbleAvatarSetting = showMyBubbleAvatar,
-                        bubbleOpacity = bubbleOpacity,
-                        bubbleCornerRadius = bubbleCornerRadius
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        MessageBubble(
+                            message = previewMessages[0],
+                            isLastFromSender = true,
+                            isFirstFromSender = false,
+                            showAvatar = false,
+                            showTags = showMsgTags,
+                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius
+                        )
+
+                        MessageBubble(
+                            message = previewMessages[1],
+                            isLastFromSender = false,
+                            isFirstFromSender = true,
+                            showAvatar = true,
+                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius
+                        )
+
+                        MessageBubble(
+                            message = previewMessages[2],
+                            isLastFromSender = true,
+                            isFirstFromSender = true,
+                            showAvatar = showMyBubbleAvatar,
+                            showMyBubbleAvatarSetting = showMyBubbleAvatar,
+                            bubbleOpacity = bubbleOpacity,
+                            bubbleCornerRadius = bubbleCornerRadius
+                        )
+                    }
                 }
             }
 
@@ -469,6 +472,85 @@ fun AppearanceScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+private data class ThemeColorOption(
+    val value: String,
+    val label: String,
+    val color: Color
+)
+
+private val themeColorOptions = listOf(
+    ThemeColorOption("DYNAMIC", "动态取色", Color(0xFFD946EF)),
+    ThemeColorOption("WHITE", "白色", Color.White),
+    ThemeColorOption("PURPLE", "紫色", Color(0xFF7C4DFF)),
+    ThemeColorOption("BLUE", "蓝色", Color(0xFF008CFF)),
+    ThemeColorOption("GREEN", "绿色", Color(0xFF00A63E)),
+    ThemeColorOption("ORANGE", "橙色", Color(0xFFFF6D00))
+)
+
+@Composable
+private fun ThemeColorPicker(
+    selectedColor: String,
+    onColorSelected: (String) -> Unit
+) {
+    CustomItemCell {
+        Icon(
+            imageVector = AppIcons.Draw,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = "主题颜色",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            themeColorOptions.forEach { option ->
+                val selected = selectedColor == option.value
+                val scale by animateFloatAsState(
+                    targetValue = if (selected) 1.16f else 1f,
+                    animationSpec = spring(),
+                    label = "themeColorScale"
+                )
+                val borderWidth by animateDpAsState(
+                    targetValue = if (selected) 3.dp else 1.dp,
+                    label = "themeColorBorderWidth"
+                )
+                val borderColor by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    },
+                    label = "themeColorBorder"
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = option.color,
+                    border = BorderStroke(
+                        width = borderWidth,
+                        color = borderColor
+                    ),
+                    modifier = Modifier
+                        .size(28.dp)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .semantics { contentDescription = "${option.label}主题" }
+                        .selectable(
+                            selected = selected,
+                            onClick = { onColorSelected(option.value) },
+                            role = Role.RadioButton
+                        )
+                ) {}
+            }
         }
     }
 }

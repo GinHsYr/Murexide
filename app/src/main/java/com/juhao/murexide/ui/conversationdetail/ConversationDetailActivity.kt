@@ -42,12 +42,12 @@ class ConversationDetailActivity : ComponentActivity() {
         val chatAvatar = intent.getStringExtra("chat_avatar") ?: ""
 
         val accountStorage = AccountStorage.getInstance(this)
-        val tokenState = mutableStateOf<String?>(null)
+        val accountState = mutableStateOf<com.juhao.murexide.datastore.UserAccount?>(null)
 
         setContent {
             MurexideTheme {
-                val token = tokenState.value
-                if (token == null) {
+                val account = accountState.value
+                if (account == null) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -100,12 +100,13 @@ class ConversationDetailActivity : ComponentActivity() {
                             })
                             finish()
                         },
+                        currentUserId = account.id,
                         viewModel = viewModel(
                             factory = object : ViewModelProvider.Factory {
                                 @Suppress("UNCHECKED_CAST")
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                                     return ConversationDetailViewModel(
-                                        token = token,
+                                        token = account.token,
                                         chatId = chatId,
                                         chatType = chatType,
                                         fallbackName = chatName,
@@ -120,13 +121,13 @@ class ConversationDetailActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
-            val token = runCatching { accountStorage.getCurrentToken() }.getOrNull()
-            if (token == null) {
+            val account = runCatching { accountStorage.getCurrentAccount() }.getOrNull()
+            if (account?.token.isNullOrEmpty()) {
                 Toast.makeText(this@ConversationDetailActivity, "请先登录", Toast.LENGTH_SHORT).show()
                 finish()
                 return@launch
             }
-            tokenState.value = token
+            accountState.value = account
         }
     }
 
