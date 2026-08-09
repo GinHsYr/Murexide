@@ -107,6 +107,7 @@ fun MessageInput(
     onAddFileClick: () -> Unit,
     isEmojiPanelVisible: Boolean = false,
     onEmojiClick: () -> Unit,
+    hasInstructions: Boolean = false,
     isInstructionPanelVisible: Boolean = false,
     onInstructionClick: () -> Unit = {},
     mentions: List<MentionToken> = emptyList(),
@@ -176,14 +177,14 @@ fun MessageInput(
         )
 
         AnimatedContent(
-            targetState = inputText.isNotBlank(),
+            targetState = inputText.isNotBlank() || !hasInstructions,
             transitionSpec = {
                 fadeIn(animationSpec = tween(200)) togetherWith
                         fadeOut(animationSpec = tween(200))
             },
             label = "bottom_bar_button_transition"
-        ) { isNotBlank ->
-            if (isNotBlank) {
+        ) { showSendButton ->
+            if (showSendButton) {
                 FormatSendButton(
                     enabled = !isSending,
                     isSending = isSending,

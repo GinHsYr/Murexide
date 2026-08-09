@@ -21,12 +21,15 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.view.doOnPreDraw
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.flyjingfish.openimagelib.OpenImage
 import com.flyjingfish.openimagelib.beans.DownloadParams
 import com.flyjingfish.openimagelib.beans.OpenImageUrl
 import com.flyjingfish.openimagelib.enums.MediaType
 import com.juhao.murexide.R
 import com.juhao.murexide.utils.imageThumbnailUrl
+import java.util.WeakHashMap
 
 data class OpenImageItem(
     val originalUrl: String,
@@ -134,17 +137,27 @@ fun showImageViewer(
             Toast.makeText(activity, "链接已复制", Toast.LENGTH_SHORT).show()
         }
 
+    val launchSession = ImageViewerLaunchSession(activity)
+    if (!launchSession.start()) return false
+    viewer.setOnExitListener(launchSession::close)
+
     val origin = sourceBounds?.takeIf { it.isValid }
     val decorView = activity.window.decorView
     if (origin != null) {
         captureTransitionSource(activity, decorView, origin) { transitionSource ->
-            if (activity.isFinishing || activity.isDestroyed) {
+            if (!launchSession.isActive || activity.isFinishing || activity.isDestroyed) {
                 transitionSource?.let(::removeTransitionSource)
+                launchSession.close()
                 return@captureTransitionSource
             }
 
             if (transitionSource == null) {
-                showWithBoundsFallback(viewer, selectedIndex)
+                showWithBoundsFallback(viewer, selectedIndex, launchSession)
+                return@captureTransitionSource
+            }
+
+            if (!launchSession.attachTransitionSource(transitionSource)) {
+                removeTransitionSource(transitionSource)
                 return@captureTransitionSource
             }
 
@@ -154,20 +167,20 @@ fun showImageViewer(
                 .setClickImageViews(List(images.size) { transitionSource })
                 .setClickPosition(selectedIndex)
                 .setSrcImageViewScaleType(sourceScaleType(origin), true)
-                .setOnExitListener { removeTransitionSource(transitionSource) }
 
             // A newly attached shared element can be laid out before Android has committed
             // its first frame. Launch on the following frame so the transition is reliable.
             transitionSource.doOnPreDraw {
                 transitionSource.postOnAnimation {
                     if (
+                        launchSession.isActive &&
                         transitionSource.isAttachedToWindow &&
                         !activity.isFinishing &&
                         !activity.isDestroyed
                     ) {
-                        viewer.show()
+                        launchSession.show(viewer)
                     } else {
-                        removeTransitionSource(transitionSource)
+                        launchSession.close()
                     }
                 }
             }
@@ -178,18 +191,105 @@ fun showImageViewer(
     viewer
         .setNoneClickView()
         .setClickPosition(selectedIndex)
-        .show()
+    launchSession.show(viewer)
     return true
 }
 
 private fun showWithBoundsFallback(
     viewer: OpenImage,
-    selectedIndex: Int
+    selectedIndex: Int,
+    launchSession: ImageViewerLaunchSession
 ) {
     viewer
         .setNoneClickView()
         .setClickPosition(selectedIndex)
-        .show()
+    launchSession.show(viewer)
+}
+
+/** Prevents two rapid taps from starting competing viewer transitions for one Activity. */
+internal class ImageViewerLaunchGate {
+    private val activeTokens = WeakHashMap<Any, Any>()
+
+    @Synchronized
+    fun tryAcquire(owner: Any, token: Any): Boolean {
+        if (activeTokens.containsKey(owner)) return false
+        activeTokens[owner] = token
+        return true
+    }
+
+    @Synchronized
+    fun release(owner: Any, token: Any) {
+        if (activeTokens[owner] === token) {
+            activeTokens.remove(owner)
+        }
+    }
+}
+
+private class ImageViewerLaunchSession(
+    private val activity: Activity
+) : DefaultLifecycleObserver {
+    private val handler = Handler(Looper.getMainLooper())
+    private val lifecycleOwner = activity as? LifecycleOwner
+    private var transitionSource: ImageView? = null
+    private var hasLeftActivity = false
+    private val launchTimeout = Runnable(::close)
+    private val returnCleanup = Runnable(::close)
+
+    var isActive: Boolean = false
+        private set
+
+    fun start(): Boolean {
+        if (!imageViewerLaunchGate.tryAcquire(activity, this)) return false
+
+        isActive = true
+        lifecycleOwner?.lifecycle?.addObserver(this)
+        if (!isActive) return false
+        handler.postDelayed(launchTimeout, VIEWER_LAUNCH_TIMEOUT_MS)
+        return true
+    }
+
+    fun attachTransitionSource(source: ImageView): Boolean {
+        if (!isActive) return false
+        transitionSource = source
+        return true
+    }
+
+    fun show(viewer: OpenImage) {
+        if (!isActive) return
+        try {
+            viewer.show()
+        } catch (error: Throwable) {
+            close()
+            throw error
+        }
+    }
+
+    override fun onPause(owner: LifecycleOwner) {
+        hasLeftActivity = true
+        handler.removeCallbacks(launchTimeout)
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        if (hasLeftActivity) {
+            handler.removeCallbacks(returnCleanup)
+            handler.postDelayed(returnCleanup, VIEWER_RETURN_CLEANUP_DELAY_MS)
+        }
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        close()
+    }
+
+    fun close() {
+        if (!isActive) return
+        isActive = false
+        handler.removeCallbacks(launchTimeout)
+        handler.removeCallbacks(returnCleanup)
+        lifecycleOwner?.lifecycle?.removeObserver(this)
+        transitionSource?.let(::removeTransitionSource)
+        transitionSource = null
+        imageViewerLaunchGate.release(activity, this)
+    }
 }
 
 @Suppress("DEPRECATION")
@@ -309,4 +409,8 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 private const val WECHAT_TRANSITION_DURATION_MS = 250L
+private const val VIEWER_RETURN_CLEANUP_DELAY_MS = WECHAT_TRANSITION_DURATION_MS + 150L
+private const val VIEWER_LAUNCH_TIMEOUT_MS = 5_000L
 private const val TRANSITION_TAG = "MurexideMediaTransition"
+
+private val imageViewerLaunchGate = ImageViewerLaunchGate()

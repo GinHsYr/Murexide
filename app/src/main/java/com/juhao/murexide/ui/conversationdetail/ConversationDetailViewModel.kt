@@ -11,6 +11,7 @@ import com.juhao.murexide.repository.CommunityRepository
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.repository.FriendRepository
 import com.juhao.murexide.repository.GroupMemberRepository
+import com.juhao.murexide.repository.InstructionRepository
 import com.juhao.murexide.repository.MessageRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ class ConversationDetailViewModel(
     private val repository: ConversationDetailRepository = ConversationDetailRepository(),
     private val friendRepository: FriendRepository = FriendRepository(),
     private val memberRepository: GroupMemberRepository = GroupMemberRepository(),
+    private val instructionRepository: InstructionRepository = InstructionRepository(),
     private val messageRepository: MessageRepository = MessageRepository(),
     private val communityRepository: CommunityRepository = CommunityRepository(token)
 ) : ViewModel() {
@@ -48,7 +50,10 @@ class ConversationDetailViewModel(
     init {
         loadDetail()
         checkAdded()
-        if (chatType == 2) loadMembers()
+        if (chatType == 2) {
+            loadMembers()
+            loadGroupBots()
+        }
         if (chatType == 1) {
             loadCreatedBoards()
         }
@@ -110,10 +115,10 @@ class ConversationDetailViewModel(
     }
 
     fun selectTab(index: Int) {
-        val maxTab = if (chatType == 2) 2 else 0
+        val maxTab = if (chatType == 2) 3 else 0
         if (index !in 0..maxTab) return
         _uiState.update { it.copy(selectedTab = index) }
-        val mediaTab = if (chatType == 2) 1 else 0
+        val mediaTab = if (chatType == 2) 2 else 0
         if (index == mediaTab && _uiState.value.mediaMessages.isEmpty()) {
             loadMoreHistory()
         }
@@ -162,11 +167,36 @@ class ConversationDetailViewModel(
         }
     }
 
+    fun loadGroupBots(refresh: Boolean = false) {
+        val current = _uiState.value
+        if (chatType != 2 || current.isLoadingGroupBots || (!refresh && current.hasLoadedGroupBots)) return
+        _uiState.update { it.copy(isLoadingGroupBots = true) }
+        viewModelScope.launch {
+            instructionRepository.getGroupBots(token, chatId).onSuccess { (bots, _) ->
+                _uiState.update {
+                    it.copy(
+                        groupBots = bots,
+                        isLoadingGroupBots = false,
+                        hasLoadedGroupBots = true
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isLoadingGroupBots = false,
+                        hasLoadedGroupBots = true,
+                        message = error.message ?: "机器人加载失败"
+                    )
+                }
+            }
+        }
+    }
+
     /** Loads history pages until the active media tab receives a new image or video, or history ends. */
     fun loadMoreHistory() {
         val initial = _uiState.value
         if (chatType !in 1..3 || initial.isLoadingHistory || !initial.hasMoreHistory) return
-        val mediaTab = if (chatType == 2) 1 else 0
+        val mediaTab = if (chatType == 2) 2 else 0
         if (initial.selectedTab != mediaTab) return
         _uiState.update { it.copy(isLoadingHistory = true) }
         viewModelScope.launch {
