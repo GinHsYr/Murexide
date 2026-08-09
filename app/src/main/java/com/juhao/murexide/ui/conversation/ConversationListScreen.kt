@@ -66,7 +66,11 @@ fun ConversationListScreen(
 ) {
     val context = LocalContext.current
     val themeColor by UiState.themeColor
-    val listContainerColor = if (themeColor == "WHITE") Color.White else MaterialTheme.colorScheme.surface
+    val listContainerColor = if (themeColor == "WHITE") {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val uiState by viewModel.uiState.collectAsState()
     val isWsConnected by viewModel.isWsConnected.collectAsState()
@@ -286,7 +290,11 @@ fun ConversationItem(
     onClick: () -> Unit
 ) {
     val themeColor by UiState.themeColor
-    val listItemColor = if (themeColor == "WHITE") Color.White else MaterialTheme.colorScheme.surface
+    val listItemColor = if (themeColor == "WHITE") {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
 
     Row(
         modifier = Modifier

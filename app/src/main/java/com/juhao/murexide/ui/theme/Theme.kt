@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat
 
 private fun getOledColorScheme(baseScheme: String): ColorScheme {
     val baseColors = when (baseScheme) {
+        "WHITE" -> WhiteDarkColorScheme
         "PURPLE", "DYNAMIC" -> PurpleDarkColorScheme
         "BLUE" -> BlueDarkColorScheme
         "GREEN" -> GreenDarkColorScheme
@@ -77,6 +78,13 @@ private fun getOledColorScheme(baseScheme: String): ColorScheme {
     )
 }
 
+internal fun usesDarkTheme(themeMode: String, systemInDarkTheme: Boolean): Boolean = when (themeMode) {
+    "system" -> systemInDarkTheme
+    "light" -> false
+    "dark", "oled" -> true
+    else -> false
+}
+
 @Composable
 fun MurexideTheme(
     content: @Composable () -> Unit
@@ -92,20 +100,14 @@ fun MurexideTheme(
     val themeMode by UiState.themeMode
     val themeColor by UiState.themeColor
 
-    val requestedDarkTheme = when (themeMode) {
-        "system" -> isSystemInDarkTheme()
-        "light" -> false
-        "dark", "oled" -> true
-        else -> false
-    }
-    val darkTheme = if (themeColor == "WHITE") false else requestedDarkTheme
+    val darkTheme = usesDarkTheme(themeMode, isSystemInDarkTheme())
 
     val targetColorScheme = when {
-        themeColor == "WHITE" -> {
-            WhiteLightColorScheme
-        }
         themeMode == "oled" -> {
             getOledColorScheme(themeColor)
+        }
+        themeColor == "WHITE" -> {
+            if (darkTheme) WhiteDarkColorScheme else WhiteLightColorScheme
         }
         themeColor == "DYNAMIC" -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

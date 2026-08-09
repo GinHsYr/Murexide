@@ -44,6 +44,7 @@ object AppIcons {
     val Code get() = MaterialSymbols.Rounded.Code
     val Contacts get() = MaterialSymbols.Rounded.Contacts
     val ContentCopy get() = MaterialSymbols.Rounded.Content_copy
+    val Colorize get() = MaterialSymbols.Rounded.Colorize
     val Delete get() = MaterialSymbols.Rounded.Delete
     val Description get() = MaterialSymbols.Rounded.Description
     val Download get() = MaterialSymbols.Rounded.Download

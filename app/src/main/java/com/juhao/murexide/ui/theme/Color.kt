@@ -38,6 +38,55 @@ val WhiteLightColorScheme = lightColorScheme(
     surfaceContainerLowest = Color.White
 )
 
+val WhiteDarkColorScheme = darkColorScheme(
+    primary = Color(0xFFD0BCFF),
+    onPrimary = Color(0xFF381E72),
+    primaryContainer = Color(0xFF4F378B),
+    onPrimaryContainer = Color(0xFFEADDFF),
+    secondary = Color(0xFFCAC4D0),
+    onSecondary = Color(0xFF332D41),
+    secondaryContainer = Color(0xFF49454F),
+    onSecondaryContainer = Color(0xFFE7E0EC),
+    tertiary = Color(0xFFE7E0EC),
+    onTertiary = Color(0xFF303034),
+    tertiaryContainer = Color(0xFF46464D),
+    onTertiaryContainer = Color(0xFFE7E0EC),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF121214),
+    onBackground = Color(0xFFE5E1E6),
+    surface = Color(0xFF121214),
+    onSurface = Color(0xFFE5E1E6),
+    surfaceVariant = Color(0xFF45454C),
+    onSurfaceVariant = Color(0xFFC9C5CC),
+    outline = Color(0xFF938F99),
+    outlineVariant = Color(0xFF45454C),
+    surfaceTint = Color(0xFFD0BCFF),
+    inverseSurface = Color(0xFFE5E1E6),
+    inverseOnSurface = Color(0xFF303034),
+    inversePrimary = Color(0xFF6750A4),
+    surfaceContainerHighest = Color(0xFF191919),
+    surfaceContainerHigh = Color(0xFF2C2C2C),
+    surfaceContainer = Color(0xFF111111),
+    surfaceContainerLow = Color(0xFF1C1C20),
+    surfaceContainerLowest = Color(0xFF0D0D0F),
+    primaryFixed = Color(0xFFEADDFF),
+    primaryFixedDim = Color(0xFFD0BCFF),
+    onPrimaryFixed = Color(0xFF21005D),
+    onPrimaryFixedVariant = Color(0xFF4F378B),
+    secondaryFixed = Color(0xFFE7E0EC),
+    secondaryFixedDim = Color(0xFFCAC4D0),
+    onSecondaryFixed = Color(0xFF1D1B20),
+    onSecondaryFixedVariant = Color(0xFF49454F),
+    tertiaryFixed = Color(0xFFE7E0EC),
+    tertiaryFixedDim = Color(0xFFCAC4D0),
+    onTertiaryFixed = Color(0xFF1D1B20),
+    onTertiaryFixedVariant = Color(0xFF46464D),
+    scrim = Color(0xFF000000)
+)
+
 // ===== Purple =====
 
 val PurpleLightColorScheme = lightColorScheme(

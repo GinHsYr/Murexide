@@ -503,7 +503,10 @@ private fun ContactItemRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (themeColor == "WHITE") Color(0xFFFFFFFF) else Color.Transparent)
+            .background(
+                if (themeColor == "WHITE") MaterialTheme.colorScheme.surfaceContainerHighest
+                else Color.Transparent
+            )
     ) {
         Row(
             modifier = Modifier

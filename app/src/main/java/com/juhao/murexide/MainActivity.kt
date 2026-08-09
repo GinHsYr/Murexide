@@ -205,8 +205,8 @@ fun MainScreen(account: UserAccount) {
         },
         navigationSuiteColors = if (themeColor == "WHITE") {
             NavigationSuiteDefaults.colors(
-                navigationBarContainerColor = Color(0xFFF8F8F8),
-                navigationRailContainerColor = Color(0xFFF8F8F8)
+                navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                navigationRailContainerColor = MaterialTheme.colorScheme.surfaceContainer
             )
         } else {
             NavigationSuiteDefaults.colors()
