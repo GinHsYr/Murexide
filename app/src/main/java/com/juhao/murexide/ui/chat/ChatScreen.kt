@@ -915,6 +915,7 @@ fun ChatScreen(
                                 ) {
                                     Row(
                                         modifier = Modifier
+                                            .weight(1f)
                                             .clip(RoundedCornerShape(4.dp))
                                             .clickable {
                                                 ConversationDetailActivity.start(
@@ -931,7 +932,7 @@ fun ChatScreen(
                                             size = 46.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
+                                        Column {
                                             Text(
                                                 text = chatName,
                                                 style = MaterialTheme.typography.bodyLarge,
