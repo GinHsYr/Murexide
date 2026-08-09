@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -51,6 +52,7 @@ import com.juhao.murexide.ui.components.fullImagePreviewItem
 import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.showImageViewer
 import com.juhao.murexide.ui.theme.UiState
+import com.juhao.murexide.ui.theme.usesDarkTheme
 import com.juhao.murexide.utils.imageAspectRatio
 import com.juhao.murexide.utils.imageThumbnailUrl
 import com.juhao.murexide.utils.videoAspectRatio
@@ -115,7 +117,25 @@ fun MessageBubble(
 
     val isMine = if (hideMyInfo) false else message.isMine
     val themeColor by UiState.themeColor
-    val isWhiteTheme = themeColor == "WHITE"
+    val themeMode by UiState.themeMode
+    val isWhiteLightTheme = themeColor == "WHITE" && !usesDarkTheme(
+        themeMode,
+        isSystemInDarkTheme()
+    )
+    val isWhiteDarkTheme = themeColor == "WHITE" && themeMode != "oled" && usesDarkTheme(
+        themeMode,
+        isSystemInDarkTheme()
+    )
+    val incomingBubbleColor = when {
+        isWhiteLightTheme -> WhiteThemeIncomingBubbleColor
+        isWhiteDarkTheme -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+    }
+    val incomingAttachmentBackgroundColor = when {
+        isWhiteLightTheme -> WhiteThemeIncomingBubbleColor
+        isWhiteDarkTheme -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+    }
     val context = LocalContext.current
     val defaultEmojis = remember(context) { DefaultEmojiCatalog.load(context.assets) }
 
@@ -273,10 +293,8 @@ fun MessageBubble(
                                     Color.Transparent
                                 else if (isMine)
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                                else if (isWhiteTheme)
-                                    WhiteThemeIncomingBubbleColor
                                 else
-                                    MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+                                    incomingBubbleColor
                             )
                         ) {
                             Column(
@@ -491,10 +509,8 @@ fun MessageBubble(
                                                 },
                                                 backgroundColor = if (isMine)
                                                     MaterialTheme.colorScheme.primaryContainer
-                                                else if (isWhiteTheme)
-                                                    WhiteThemeIncomingBubbleColor
                                                 else
-                                                    MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                                                    incomingAttachmentBackgroundColor
                                             )
                                         }
 
@@ -506,7 +522,7 @@ fun MessageBubble(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .height(120.dp),
-                                                    color = if (isWhiteTheme) WhiteThemeIncomingBubbleColor else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                                                    color = incomingAttachmentBackgroundColor,
                                                     shape = RoundedCornerShape(
                                                         topStart = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp,
                                                         topEnd = if (isLastFromSender) bubbleCornerRadius.dp else (bubbleCornerRadius / 4).dp
@@ -614,7 +630,7 @@ fun MessageBubble(
                                                             .clip(imageShape)
                                                             .background(
                                                                 if (isImageMessage || isVideoMessage) {
-                                                                    if (isWhiteTheme) WhiteThemeIncomingBubbleColor else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
+                                                                incomingAttachmentBackgroundColor
                                                                 } else {
                                                                     Color.Transparent
                                                                 }
@@ -805,10 +821,8 @@ fun MessageBubble(
                                                         .background(
                                                             if (isMine)
                                                                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
-                                                            else if (isWhiteTheme)
-                                                                WhiteThemeIncomingBubbleColor
                                                             else
-                                                                MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp).copy(alpha = bubbleOpacity)
+                                                                incomingBubbleColor
                                                         )
                                                         .combinedClickable(
                                                             onClick = {

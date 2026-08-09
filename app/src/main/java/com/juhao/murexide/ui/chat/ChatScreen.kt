@@ -330,7 +330,7 @@ fun ChatScreen(
     val uiState by viewModel.screenState.collectAsState()
     val themeColor by UiState.themeColor
     val chatBackgroundColor = if (themeColor == "WHITE") {
-        Color(0xFFFAFAFA)
+        MaterialTheme.colorScheme.surfaceContainer
     } else {
         MaterialTheme.colorScheme.surface
     }

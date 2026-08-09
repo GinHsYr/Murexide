@@ -504,52 +504,67 @@ private fun ThemeColorPicker(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = "主题颜色",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            themeColorOptions.forEach { option ->
-                val selected = selectedColor == option.value
-                val scale by animateFloatAsState(
-                    targetValue = if (selected) 1.16f else 1f,
-                    animationSpec = spring(),
-                    label = "themeColorScale"
-                )
-                val borderWidth by animateDpAsState(
-                    targetValue = if (selected) 3.dp else 1.dp,
-                    label = "themeColorBorderWidth"
-                )
-                val borderColor by animateColorAsState(
-                    targetValue = if (selected) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant
-                    },
-                    label = "themeColorBorder"
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = option.color,
-                    border = BorderStroke(
-                        width = borderWidth,
-                        color = borderColor
-                    ),
-                    modifier = Modifier
-                        .size(28.dp)
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "主题颜色",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                themeColorOptions.forEach { option ->
+                    val selected = selectedColor == option.value
+                    val scale by animateFloatAsState(
+                        targetValue = if (selected) 1.16f else 1f,
+                        animationSpec = spring(),
+                        label = "themeColorScale"
+                    )
+                    val borderWidth by animateDpAsState(
+                        targetValue = if (selected) 3.dp else 1.dp,
+                        label = "themeColorBorderWidth"
+                    )
+                    val borderColor by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                        label = "themeColorBorder"
+                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = if (option.value == "DYNAMIC") {
+                            Color.Transparent
+                        } else {
+                            option.color
+                        },
+                        border = BorderStroke(
+                            width = borderWidth,
+                            color = borderColor
+                        ),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .semantics { contentDescription = "${option.label}主题" }
+                            .selectable(
+                                selected = selected,
+                                onClick = { onColorSelected(option.value) },
+                                role = Role.RadioButton
+                            )
+                    ) {
+                        if (option.value == "DYNAMIC") {
+                            Icon(
+                                imageVector = AppIcons.Colorize,
+                                contentDescription = null,
+                                modifier = Modifier.padding(4.dp),
+                                tint = Color.Black
+                            )
                         }
-                        .semantics { contentDescription = "${option.label}主题" }
-                        .selectable(
-                            selected = selected,
-                            onClick = { onColorSelected(option.value) },
-                            role = Role.RadioButton
-                        )
-                ) {}
+                    }
+                }
             }
         }
     }

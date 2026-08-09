@@ -154,12 +154,15 @@ private fun mergeMessageIdentity(
     existing: MessageItem,
     incoming: MessageItem
 ): MessageItem {
-    if (incoming.isRecalled && !incoming.hasReliableSender && existing.hasReliableSender) {
+    // Recall updates can report the operator (notably a bot) as sender. Once the original
+    // message is known, never replace its author/direction with recall metadata.
+    if (incoming.isRecalled && existing.hasReliableSender) {
         return incoming.copy(
             senderId = existing.senderId,
             senderName = existing.senderName,
             senderAvatar = existing.senderAvatar,
             senderType = existing.senderType,
+            tags = existing.tags,
             direction = existing.direction,
             hasReliableSender = true
         )

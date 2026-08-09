@@ -28,6 +28,7 @@ message request_list {
     string groupName = 5;
     string groupAvatar = 6;
     string inviterId = 7;
+    string alternateInviterId = 8; // 部分服务端响应将邀请者 ID 放在字段 8
     int32 sourceType = 9;
     int32 targetType = 10;
     string targetId = 11;

@@ -1,6 +1,7 @@
 package com.juhao.murexide.repository
 
 import com.juhao.murexide.data.ContactRequestItem
+import com.juhao.murexide.proto.friend.request_list
 import com.juhao.murexide.proto.friend.request_list_send
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -33,6 +34,24 @@ class FriendRepositoryRequestTest {
         assertEquals(0L, body.contentLength())
         assertArrayEquals(request_list_send().encode(), payload)
         assertEquals(request_list_send(), request_list_send.ADAPTER.decode(payload))
+    }
+
+    @Test
+    fun alternateInviterIdFromFieldEightIsDecoded() {
+        val payload = request_list.Request(alternateInviterId = "8418077").encode()
+        val decoded = request_list.Request.ADAPTER.decode(payload)
+
+        assertEquals("", decoded.inviterId)
+        assertEquals("8418077", decoded.alternateInviterId)
+        assertEquals(
+            "8418077",
+            resolveInviterId(decoded.inviterId, decoded.alternateInviterId)
+        )
+    }
+
+    @Test
+    fun primaryInviterIdTakesPrecedenceOverAlternateField() {
+        assertEquals("primary", resolveInviterId("primary", "alternate"))
     }
 
     @Test

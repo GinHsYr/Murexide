@@ -55,7 +55,7 @@ fun CapsuleTabBar(
 
     val selectedIndex = selectedTabIndex.coerceIn(tabs.indices)
     val selectedIndicatorColor = if (UiState.themeColor.value == "WHITE") {
-        Color.White
+        MaterialTheme.colorScheme.surfaceContainerHighest
     } else {
         MaterialTheme.colorScheme.secondaryContainer
     }
