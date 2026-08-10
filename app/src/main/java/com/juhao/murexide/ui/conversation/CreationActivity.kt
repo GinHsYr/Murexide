@@ -60,6 +60,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.juhao.murexide.datastore.AccountStorage
 import com.juhao.murexide.ui.components.Avatar
+import com.juhao.murexide.ui.components.StyledSwitch
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
@@ -256,7 +257,11 @@ fun CreationScreen(
                         Text("私有机器人")
                         Text("仅允许被添加后使用", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = state.isPrivate, onCheckedChange = viewModel::updatePrivate, enabled = !state.isCreating)
+                    StyledSwitch(
+                        checked = state.isPrivate,
+                        onCheckedChange = viewModel::updatePrivate,
+                        enabled = !state.isCreating,
+                    )
                 }
             }
             state.error?.let {

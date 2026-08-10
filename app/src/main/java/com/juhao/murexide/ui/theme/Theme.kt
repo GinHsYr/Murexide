@@ -12,11 +12,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.juhao.murexide.datastore.SettingsStorage
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 private fun getOledColorScheme(baseScheme: String): ColorScheme {
     val baseColors = when (baseScheme) {
@@ -99,6 +105,7 @@ fun MurexideTheme(
 
     val themeMode by UiState.themeMode
     val themeColor by UiState.themeColor
+    val liquidGlassEnabled by settingsStorage.liquidGlassEnabledFlow.collectAsState(initial = false)
 
     val darkTheme = usesDarkTheme(themeMode, isSystemInDarkTheme())
 
@@ -149,7 +156,32 @@ fun MurexideTheme(
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         typography = Typography(),
-        content = content
+        content = {
+            val backdrop = if (liquidGlassEnabled) rememberLayerBackdrop() else null
+            CompositionLocalProvider(
+                LocalLiquidGlassEnabled provides liquidGlassEnabled,
+                LocalLiquidGlassBackdrop provides backdrop
+            ) {
+                if (backdrop != null) {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .layerBackdrop(backdrop)
+                                .background(colorScheme.background)
+                        )
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                        ) {
+                            content()
+                        }
+                    }
+                } else {
+                    content()
+                }
+            }
+        }
     )
 }
 

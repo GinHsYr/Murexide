@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.components.*
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.theme.UiState
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSlider
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.ui.chat.components.MessageBubble
@@ -57,6 +58,7 @@ fun AppearanceScreen(
     var bubbleCornerRadius by remember { mutableFloatStateOf(16f) }
     val showMyBubbleAvatar by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     val showMsgTags by settingsStorage.showMsgTagsFlow.collectAsState(initial = true)
+    val liquidGlassEnabled by settingsStorage.liquidGlassEnabledFlow.collectAsState(initial = false)
     var bubbleOpacity by remember { mutableFloatStateOf(0.9f) }
     var backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
 
@@ -161,6 +163,17 @@ fun AppearanceScreen(
                         scope.launch { settingsStorage.setThemeColor(selected) }
                     }
                 )
+                SettingsSwitchItem(
+                    icon = AppIcons.Opacity,
+                    title = "启用液态玻璃效果",
+                    subtitle = "使用液态玻璃风格显示界面元素",
+                    checked = liquidGlassEnabled,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            settingsStorage.setLiquidGlassEnabled(enabled)
+                        }
+                    }
+                )
             }
             
             // 气泡预览区域
@@ -252,7 +265,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = bubbleCornerRadius,
                             onValueChange = { bubbleCornerRadius = it },
                             onValueChangeFinished = {
@@ -321,7 +334,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = bubbleOpacity,
                             onValueChange = { bubbleOpacity = it },
                             onValueChangeFinished = {
@@ -389,7 +402,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = backgroundOpacity,
                             onValueChange = { backgroundOpacity = it },
                             onValueChangeFinished = {

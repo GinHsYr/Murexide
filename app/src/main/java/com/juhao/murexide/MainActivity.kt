@@ -88,6 +88,14 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.liquidGlass
+import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.liquidglass.LiquidBottomTabs
+import com.juhao.murexide.ui.theme.liquidglass.LiquidNavigationRail
 
 private data class NavItem(
     val route: String,
@@ -203,22 +211,32 @@ private fun TelegramFloatingNavigationBar(
     currentAccountId: String,
     selectedIndicatorColor: Color,
     hazeState: HazeState,
+    liquidBackdrop: Backdrop?,
     onNavigate: (String) -> Unit,
     onShowAccountMenu: () -> Unit,
     onDismissAccountMenu: () -> Unit,
 ) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val showGlassHighlight = liquidGlassHighlightEnabled()
     val shape = RoundedCornerShape(32.dp)
     val navigationBarHeight = 64.dp
     val indicatorInset = 5.dp
     val indicatorHeight = navigationBarHeight - indicatorInset * 2f
     val indicatorShape = RoundedCornerShape(26.dp)
 
-    NavigationBar(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp)
-            .shadow(elevation = 2.dp, shape = shape, clip = false)
+    val containerModifier = if (liquidGlassEnabled && liquidBackdrop != null) {
+        Modifier.liquidGlass(
+            enabled = true,
+            backdrop = liquidBackdrop,
+            shape = shape,
+            surfaceColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.56f),
+            blurRadius = 16.dp,
+            lensHeight = 12.dp,
+            lensAmount = 22.dp,
+            showHighlight = showGlassHighlight
+        )
+    } else {
+        Modifier
             .clip(shape)
             .hazeEffect(
                 state = hazeState,
@@ -230,6 +248,15 @@ private fun TelegramFloatingNavigationBar(
                 ),
                 block = null
             )
+    }
+
+    NavigationBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp)
+            .shadow(elevation = 2.dp, shape = shape, clip = false)
+            .then(containerModifier)
             .height(navigationBarHeight),
         containerColor = Color.Transparent,
         tonalElevation = 0.dp,
@@ -268,8 +295,24 @@ private fun TelegramFloatingNavigationBar(
                             scaleX = indicatorProgress
                             scaleY = indicatorProgress
                         }
-                        .clip(indicatorShape)
-                        .background(selectedIndicatorColor)
+                        .then(
+                            if (liquidGlassEnabled && liquidBackdrop != null) {
+                                Modifier.liquidGlass(
+                                    enabled = true,
+                                    backdrop = liquidBackdrop,
+                                    shape = indicatorShape,
+                                    surfaceColor = selectedIndicatorColor.copy(alpha = 0.48f),
+                                    blurRadius = 6.dp,
+                                    lensHeight = 6.dp,
+                                    lensAmount = 10.dp,
+                                    showHighlight = showGlassHighlight
+                                )
+                            } else {
+                                Modifier
+                                    .clip(indicatorShape)
+                                    .background(selectedIndicatorColor)
+                            }
+                        )
                 )
             }
 
@@ -334,6 +377,8 @@ private fun TelegramFloatingNavigationBar(
     }
 }
 
+
+
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSlideDirection():
     AnimatedContentTransitionScope.SlideDirection {
     val initialIndex = navItems.indexOfFirst { it.route == initialState.destination.route }
@@ -382,6 +427,8 @@ fun MainScreen(account: UserAccount) {
     val token = account.token
     val navController = rememberNavController()
     val hazeState = remember { HazeState() }
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidBackdrop = if (liquidGlassEnabled) rememberLayerBackdrop() else null
     val context = LocalContext.current
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -448,21 +495,30 @@ fun MainScreen(account: UserAccount) {
     }
 
     NavigationSuiteScaffold(
-        layoutType = if (useNavigationRail) {
+        layoutType = if (useNavigationRail && !liquidGlassEnabled) {
             NavigationSuiteType.NavigationRail
         } else {
             NavigationSuiteType.None
         },
-        navigationSuiteColors = if (themeColor == "WHITE") {
+        navigationSuiteColors = if (themeColor == "WHITE" || liquidGlassEnabled) {
             NavigationSuiteDefaults.colors(
-                navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                navigationRailContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                navigationBarContainerColor = if (liquidGlassEnabled) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+                navigationRailContainerColor = if (liquidGlassEnabled) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                }
             )
         } else {
             NavigationSuiteDefaults.colors()
         },
         navigationSuiteItems = {
-            navItems.forEach { item ->
+            if (!(useNavigationRail && liquidGlassEnabled)) {
+                navItems.forEach { item ->
                 val selected = currentRoute == item.route
                 item(
                     icon = {
@@ -484,6 +540,7 @@ fun MainScreen(account: UserAccount) {
                         navigateTo(item.route)
                     }
                 )
+                }
             }
         }
     ) {
@@ -492,31 +549,115 @@ fun MainScreen(account: UserAccount) {
             contentWindowInsets = WindowInsets(0),
             bottomBar = {
                 if (!useNavigationRail && !hideMobileNavigation) {
-                    TelegramFloatingNavigationBar(
-                        currentRoute = currentRoute,
-                        unreadCount = unreadCount,
-                        showAccountMenu = showAccountMenu,
-                        accounts = loggedInAccounts,
-                        currentAccountId = account.id,
-                        selectedIndicatorColor = if (themeColor == "WHITE") {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        },
-                        hazeState = hazeState,
-                        onNavigate = navigateTo,
-                        onShowAccountMenu = { showAccountMenu = true },
-                        onDismissAccountMenu = { showAccountMenu = false },
-                    )
+                    if (liquidGlassEnabled && liquidBackdrop != null) {
+                        LiquidBottomTabs(
+                            selectedTabIndex = navItems.indexOfFirst { it.route == currentRoute }
+                                .coerceAtLeast(0),
+                            onTabSelected = { index -> navigateTo(navItems[index].route) },
+                            backdrop = liquidBackdrop,
+                            tabsCount = navItems.size,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
+                            onTabLongClick = { index ->
+                                if (navItems[index].route == "mine") showAccountMenu = true
+                            },
+                            onTabLongClickLabel = { index ->
+                                if (navItems[index].route == "mine") "打开账号菜单" else null
+                            },
+                        ) { index, selected, overlayPass ->
+                            val item = navItems[index]
+                            HomeNavigationIcon(
+                                item = item,
+                                selected = selected,
+                                unreadCount = unreadCount,
+                                showAccountMenu = showAccountMenu && !overlayPass,
+                                accounts = loggedInAccounts,
+                                currentAccountId = account.id,
+                                onNavigate = navigateTo,
+                                onShowAccountMenu = { showAccountMenu = true },
+                                onDismissAccountMenu = { showAccountMenu = false },
+                                handleAccountGestures = false,
+                            )
+                            HomeNavigationLabel(item, selected, compact = true)
+                        }
+                    } else {
+                        TelegramFloatingNavigationBar(
+                            currentRoute = currentRoute,
+                            unreadCount = unreadCount,
+                            showAccountMenu = showAccountMenu,
+                            accounts = loggedInAccounts,
+                            currentAccountId = account.id,
+                            selectedIndicatorColor = if (themeColor == "WHITE") {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            hazeState = hazeState,
+                            liquidBackdrop = liquidBackdrop,
+                            onNavigate = navigateTo,
+                            onShowAccountMenu = { showAccountMenu = true },
+                            onDismissAccountMenu = { showAccountMenu = false },
+                        )
+                    }
                 }
             }
-        ) { _ ->
-            NavHost(
+        ) { innerPadding ->
+            Row(Modifier.fillMaxSize().consumeWindowInsets(innerPadding)) {
+                if (useNavigationRail && liquidGlassEnabled && liquidBackdrop != null) {
+                    LiquidNavigationRail(
+                        selectedTabIndex = navItems.indexOfFirst { it.route == currentRoute }
+                            .coerceAtLeast(0),
+                        onTabSelected = { index -> navigateTo(navItems[index].route) },
+                        backdrop = liquidBackdrop,
+                        tabsCount = navItems.size,
+                        modifier = Modifier
+                            .padding(start = 12.dp, top = 20.dp, bottom = 20.dp)
+                            .align(Alignment.Top),
+                        onTabLongClick = { index ->
+                            if (navItems[index].route == "mine") showAccountMenu = true
+                        },
+                        onTabLongClickLabel = { index ->
+                            if (navItems[index].route == "mine") "打开账号菜单" else null
+                        },
+                    ) { index, selected ->
+                        val item = navItems[index]
+                        HomeNavigationIcon(
+                            item = item,
+                            selected = selected,
+                            unreadCount = unreadCount,
+                            showAccountMenu = showAccountMenu,
+                            accounts = loggedInAccounts,
+                            currentAccountId = account.id,
+                            onNavigate = navigateTo,
+                            onShowAccountMenu = { showAccountMenu = true },
+                            onDismissAccountMenu = { showAccountMenu = false },
+                            handleAccountGestures = false,
+                        )
+                        HomeNavigationLabel(item, selected, compact = true)
+                    }
+                }
+
+                NavHost(
                 navController = navController,
                 startDestination = "conversations",
                 modifier = Modifier
-                    .fillMaxSize()
+                    .then(
+                        if (useNavigationRail && liquidGlassEnabled) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.fillMaxSize()
+                        }
+                    )
                     .hazeSource(hazeState)
+                    .then(
+                        if (liquidBackdrop != null) {
+                            Modifier.layerBackdrop(liquidBackdrop)
+                        } else {
+                            Modifier
+                        }
+                    )
                     .pointerInput(blockContentInput) {
                         if (blockContentInput) {
                             awaitPointerEventScope {
@@ -552,7 +693,7 @@ fun MainScreen(account: UserAccount) {
                         animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
                     )
                 }
-            ) {
+                ) {
             composable("conversations") {
                 Row(modifier = Modifier.fillMaxSize()) {
                     ConversationListScreen(
@@ -694,4 +835,5 @@ fun MainScreen(account: UserAccount) {
             }
         }
     }
+}
 }

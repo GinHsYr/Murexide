@@ -47,6 +47,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -106,6 +107,16 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.liquidGlass
+import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -120,11 +131,13 @@ private val DefaultInputPanelHeight = 280.dp
 @Composable
 private fun FloatingTopBar(
     hazeState: HazeState,
+    liquidBackdrop: Backdrop?,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
     title: @Composable () -> Unit,
     showOverlay: Boolean = true
 ) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val controlSize = 48.dp
     val buttonShape = CircleShape
     val topBarColor = MaterialTheme.colorScheme.surface
@@ -132,9 +145,33 @@ private fun FloatingTopBar(
         blurRadius = 32.dp,
         noiseFactor = 0f
     )
+    val useGlassBar = liquidGlassEnabled && liquidBackdrop != null
+    val glassSurfaceColor = topBarColor.copy(alpha = 0.08f)
+
+    fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape): Modifier =
+        if (useGlassBar) {
+            drawBackdrop(
+                backdrop = requireNotNull(liquidBackdrop),
+                shape = { shape },
+                effects = {
+                    vibrancy()
+                    blur(1.dp.toPx())
+                    lens(16.dp.toPx(), 32.dp.toPx())
+                },
+                onDrawSurface = {
+                    drawRect(glassSurfaceColor)
+                },
+            )
+        } else {
+            shadow(2.dp, shape).clip(shape).hazeEffect(
+                state = hazeState,
+                style = buttonHazeStyle,
+                block = null
+            )
+        }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        if (showOverlay) {
+        if (showOverlay && !useGlassBar) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -162,13 +199,7 @@ private fun FloatingTopBar(
                 Box(
                     modifier = Modifier
                         .size(controlSize)
-                        .shadow(2.dp, buttonShape)
-                        .clip(buttonShape)
-                        .hazeEffect(
-                            state = hazeState,
-                            style = buttonHazeStyle,
-                            block = null
-                        ),
+                        .glassControl(buttonShape),
                     contentAlignment = Alignment.Center
                 ) {
                     navigationIcon()
@@ -179,29 +210,17 @@ private fun FloatingTopBar(
                 modifier = Modifier
                     .weight(1f)
                     .height(controlSize)
-                    .shadow(2.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .hazeEffect(
-                        state = hazeState,
-                        style = buttonHazeStyle,
-                        block = null
-                    ),
+                    .glassControl(RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.CenterStart
             ) {
                 title()
             }
-            
+
             if (actions != null) {
                 Row(
                     modifier = Modifier
                         .height(controlSize)
-                        .shadow(2.dp, buttonShape)
-                        .clip(buttonShape)
-                        .hazeEffect(
-                            state = hazeState,
-                            style = buttonHazeStyle,
-                            block = null
-                        ),
+                        .glassControl(buttonShape),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     actions()
@@ -533,6 +552,16 @@ fun ChatScreen(
     }
     
     val hazeState = remember { HazeState() }
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val showGlassHighlight = liquidGlassHighlightEnabled()
+    val liquidBackdrop = if (liquidGlassEnabled) {
+        rememberLayerBackdrop {
+            drawRect(chatBackgroundColor)
+            drawContent()
+        }
+    } else {
+        null
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -839,6 +868,7 @@ fun ChatScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 FloatingTopBar(
                     hazeState = hazeState,
+                    liquidBackdrop = liquidBackdrop,
                     navigationIcon = if (selectionMode || !bigScreenMode) {
                         {
                             Crossfade(targetState = selectionMode) { isSelectionMode ->
@@ -923,15 +953,16 @@ fun ChatScreen(
                             } else {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(1.dp)
+                                        .padding(4.dp)
                                         .clip(RoundedCornerShape(24.dp))
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .weight(1f)
+                                            .fillMaxHeight()
                                             .clip(RoundedCornerShape(4.dp))
                                             .clickable {
                                                 ConversationDetailActivity.start(
@@ -941,11 +972,12 @@ fun ChatScreen(
                                                     chatName = chatName,
                                                     chatAvatar = chatAvatar
                                                 )
-                                            }
+                                            },
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Avatar(
                                             url = chatAvatar,
-                                            size = 46.dp
+                                            size = 40.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column {
@@ -1134,21 +1166,38 @@ fun ChatScreen(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
+                    val boardShape = RoundedCornerShape(28.dp)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 6.dp, vertical = 4.dp)
-                            .shadow(4.dp, RoundedCornerShape(28.dp))
-                            .clip(RoundedCornerShape(28.dp))
-                            .hazeEffect(
-                                state = hazeState,
-                                style = HazeMaterials.thin(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ).copy(
-                                    blurRadius = 32.dp,
-                                    noiseFactor = 0f
-                                ),
-                                block = null
+                                        .shadow(4.dp, boardShape)
+                            .then(
+                                if (liquidGlassEnabled) {
+                                    Modifier.liquidGlass(
+                                        enabled = true,
+                                        backdrop = liquidBackdrop,
+                                        shape = boardShape,
+                                        surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
+                                        blurRadius = 5.dp,
+                                        lensHeight = 6.dp,
+                                        lensAmount = 12.dp,
+                                        showHighlight = showGlassHighlight
+                                    )
+                                } else {
+                                    Modifier
+                                        .clip(boardShape)
+                                        .hazeEffect(
+                                            state = hazeState,
+                                            style = HazeMaterials.thin(
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                            ).copy(
+                                                blurRadius = 32.dp,
+                                                noiseFactor = 0f
+                                            ),
+                                            block = null
+                                        )
+                                }
                             )
                     ) {
                         BoardPanel(
@@ -1169,12 +1218,25 @@ fun ChatScreen(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .hazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.regular().copy(
-                                noiseFactor = 0f
-                            ),
-                            block = null
+                        .then(
+                            if (liquidGlassEnabled) {
+                                Modifier.liquidGlass(
+                                    enabled = true,
+                                    backdrop = liquidBackdrop,
+                                    shape = RectangleShape,
+                                    surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f),
+                                    blurRadius = 5.dp,
+                                    showHighlight = showGlassHighlight
+                                )
+                            } else {
+                                Modifier.hazeEffect(
+                                    state = hazeState,
+                                    style = HazeMaterials.regular().copy(
+                                        noiseFactor = 0f
+                                    ),
+                                    block = null
+                                )
+                            }
                         )
                 )
 
@@ -1500,27 +1562,39 @@ fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .hazeSource(hazeState)
-        ) {
-            uiState.backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
-                val bgRequest = remember(bgUrl) {
-                    ImageRequest.Builder(context)
-                        .data(bgUrl)
-                        .apply {
-                            if (bgUrl.contains("jwznb.com")) {
-                                setHeader("Referer", "https://myapp.jwznb.com")
-                            }
-                        }
-                        .build()
-                }
-                AsyncImage(
-                    model = bgRequest,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(backgroundOpacity),
-                    contentScale = ContentScale.Crop
+                .then(
+                    if (liquidBackdrop != null) {
+                        Modifier.layerBackdrop(liquidBackdrop)
+                    } else {
+                        Modifier.hazeSource(hazeState)
+                    }
                 )
+        ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(chatBackgroundColor)
+            ) {
+                uiState.backgroundUrl?.takeIf { it.isNotEmpty() }?.let { bgUrl ->
+                    val bgRequest = remember(bgUrl) {
+                        ImageRequest.Builder(context)
+                            .data(bgUrl)
+                            .apply {
+                                if (bgUrl.contains("jwznb.com")) {
+                                    setHeader("Referer", "https://myapp.jwznb.com")
+                                }
+                            }
+                            .build()
+                    }
+                    AsyncImage(
+                        model = bgRequest,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(backgroundOpacity),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
             if (uiState.isLoading && uiState.messages.isEmpty()) {
