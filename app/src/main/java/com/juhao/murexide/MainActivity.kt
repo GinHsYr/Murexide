@@ -209,7 +209,7 @@ private fun TelegramFloatingNavigationBar(
 ) {
     val shape = RoundedCornerShape(32.dp)
     val navigationBarHeight = 64.dp
-    val indicatorInset = 6.dp
+    val indicatorInset = 5.dp
     val indicatorHeight = navigationBarHeight - indicatorInset * 2f
     val indicatorShape = RoundedCornerShape(26.dp)
 
@@ -218,7 +218,7 @@ private fun TelegramFloatingNavigationBar(
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp)
-            .shadow(elevation = 8.dp, shape = shape, clip = false)
+            .shadow(elevation = 2.dp, shape = shape, clip = false)
             .clip(shape)
             .hazeEffect(
                 state = hazeState,
