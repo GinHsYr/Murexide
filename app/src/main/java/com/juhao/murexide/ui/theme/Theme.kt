@@ -106,6 +106,7 @@ fun MurexideTheme(
     val themeMode by UiState.themeMode
     val themeColor by UiState.themeColor
     val liquidGlassEnabled by settingsStorage.liquidGlassEnabledFlow.collectAsState(initial = false)
+    val liquidGlassBlur by settingsStorage.liquidGlassBlurFlow.collectAsState(initial = 1f)
 
     val darkTheme = usesDarkTheme(themeMode, isSystemInDarkTheme())
 
@@ -160,6 +161,7 @@ fun MurexideTheme(
             val backdrop = if (liquidGlassEnabled) rememberLayerBackdrop() else null
             CompositionLocalProvider(
                 LocalLiquidGlassEnabled provides liquidGlassEnabled,
+                LocalLiquidGlassBlur provides liquidGlassBlur,
                 LocalLiquidGlassBackdrop provides backdrop
             ) {
                 if (backdrop != null) {

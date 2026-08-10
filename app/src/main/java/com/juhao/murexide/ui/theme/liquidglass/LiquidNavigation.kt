@@ -63,6 +63,7 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -86,6 +87,7 @@ fun LiquidBottomTabs(
     onTabLongClickLabel: ((Int) -> String?)? = null,
     content: @Composable (index: Int, selected: Boolean, overlayPass: Boolean) -> Unit,
 ) {
+    val blurScale = LocalLiquidGlassBlur.current
     val accentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
     val isLightTheme =
         androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -161,7 +163,7 @@ fun LiquidBottomTabs(
                     shape = { Capsule() },
                     effects = {
                         vibrancy()
-                        blur(1.dp.toPx())
+                        blur(1.dp.toPx() * blurScale)
                         lens(24.dp.toPx(), 32.dp.toPx())
                     },
                     highlight = if (isLightTheme) {
@@ -219,7 +221,7 @@ fun LiquidBottomTabs(
                         effects = {
                             val progress = dragAnimation.pressProgress
                             vibrancy()
-                            blur(5.dp.toPx())
+                            blur(5.dp.toPx() * blurScale)
                             lens(24.dp.toPx() * progress, 24.dp.toPx() * progress)
                         },
                         highlight = if (isLightTheme) {
@@ -382,6 +384,7 @@ fun LiquidNavigationRail(
     onTabLongClickLabel: ((Int) -> String?)? = null,
     content: @Composable (index: Int, selected: Boolean) -> Unit,
 ) {
+    val blurScale = LocalLiquidGlassBlur.current
     val accentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
     val isLightTheme =
         androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -431,7 +434,7 @@ fun LiquidNavigationRail(
                 shape = { Capsule() },
                 effects = {
                     vibrancy()
-                    blur(5.dp.toPx())
+                    blur(5.dp.toPx() * blurScale)
                     lens(24.dp.toPx(), 24.dp.toPx())
                 },
                 highlight = if (isLightTheme) {

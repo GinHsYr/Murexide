@@ -27,6 +27,9 @@ import com.kyant.backdrop.shadow.Shadow
 /** Whether the user opted into the GPU-backed liquid glass treatment. */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { false }
 
+/** User-controlled multiplier for the blur used by liquid glass surfaces. */
+val LocalLiquidGlassBlur = staticCompositionLocalOf { 1f }
+
 /** The nearest backdrop source used by glass surfaces. */
 val LocalLiquidGlassBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
@@ -88,7 +91,7 @@ fun LiquidGlassSurface(
             backdrop = LocalLiquidGlassBackdrop.current,
             shape = shape,
             surfaceColor = color,
-            blurRadius = blurRadius,
+            blurRadius = blurRadius * LocalLiquidGlassBlur.current,
             lensHeight = lensHeight,
             lensAmount = lensAmount,
             showHighlight = liquidGlassHighlightEnabled(),

@@ -44,6 +44,7 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.lerp
 import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.theme.LocalLiquidGlassBackdrop
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -66,6 +67,7 @@ fun LiquidGlassToggle(
     enabled: Boolean = true,
 ) {
     val backdrop = LocalLiquidGlassBackdrop.current
+    val blurScale = LocalLiquidGlassBlur.current
     if (!LocalLiquidGlassEnabled.current || backdrop == null) {
         Switch(
             checked = checked,
@@ -93,6 +95,7 @@ fun LiquidGlassToggle(
         onCheckedChange = onCheckedChange,
         enabled = enabled,
         backdrop = backdrop,
+        blurScale = blurScale,
         modifier = modifier,
     )
 }
@@ -103,6 +106,7 @@ private fun LiquidToggleContent(
     onCheckedChange: ((Boolean) -> Unit)?,
     enabled: Boolean,
     backdrop: Backdrop,
+    blurScale: Float,
     modifier: Modifier,
 ) {
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -215,7 +219,7 @@ private fun LiquidToggleContent(
                     shape = { Capsule() },
                     effects = {
                         val progress = dragAnimation.pressProgress
-                        blur(4.dp.toPx() * (1f - progress))
+                        blur(4.dp.toPx() * blurScale * (1f - progress))
                         lens(
                             5.dp.toPx() * progress,
                             10.dp.toPx() * progress,

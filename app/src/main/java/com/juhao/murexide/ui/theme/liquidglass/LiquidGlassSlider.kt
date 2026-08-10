@@ -43,6 +43,7 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import com.juhao.murexide.ui.theme.LocalLiquidGlassBackdrop
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -85,6 +86,7 @@ fun LiquidGlassSlider(
 ) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val backdrop = LocalLiquidGlassBackdrop.current
+    val blurScale = LocalLiquidGlassBlur.current
     if (!liquidGlassEnabled || backdrop == null) {
         Slider(
             value = value,
@@ -106,6 +108,7 @@ fun LiquidGlassSlider(
         enabled = enabled,
         onValueChangeFinished = onValueChangeFinished,
         backdrop = backdrop,
+        blurScale = blurScale,
         modifier = modifier,
     )
 }
@@ -119,6 +122,7 @@ private fun LiquidSliderContent(
     enabled: Boolean,
     onValueChangeFinished: (() -> Unit)?,
     backdrop: Backdrop,
+    blurScale: Float,
     modifier: Modifier,
 ) {
     val accentColor = MaterialTheme.colorScheme.primary
@@ -268,7 +272,7 @@ private fun LiquidSliderContent(
                     shape = { Capsule() },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
-                        blur(4.dp.toPx() * (1f - progress))
+                        blur(4.dp.toPx() * blurScale * (1f - progress))
                         lens(
                             10.dp.toPx() * progress,
                             14.dp.toPx() * progress,

@@ -65,6 +65,7 @@ class SettingsStorage(private val context: Context) {
         private val BACKGROUND_OPACITY_KEY = floatPreferencesKey("background_opacity")
         private val SHOW_MY_BUBBLE_AVATAR_KEY = booleanPreferencesKey("show_my_bubble_avatar")
         private val LIQUID_GLASS_ENABLED_KEY = booleanPreferencesKey("liquid_glass_enabled")
+        private val LIQUID_GLASS_BLUR_KEY = floatPreferencesKey("liquid_glass_blur")
         private val RECENT_DEFAULT_EMOJI_NAMES_KEY =
             stringPreferencesKey("recent_default_emoji_names")
 
@@ -279,6 +280,21 @@ class SettingsStorage(private val context: Context) {
 
     suspend fun getLiquidGlassEnabled(): Boolean {
         return liquidGlassEnabledFlow.first()
+    }
+
+    // ====== 液态玻璃模糊强度 ======
+    val liquidGlassBlurFlow: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[LIQUID_GLASS_BLUR_KEY]?.coerceIn(0f, 4f) ?: 1f
+    }
+
+    suspend fun setLiquidGlassBlur(value: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[LIQUID_GLASS_BLUR_KEY] = value.coerceIn(0f, 4f)
+        }
+    }
+
+    suspend fun getLiquidGlassBlur(): Float {
+        return liquidGlassBlurFlow.first()
     }
 
     // ====== 最近使用的默认表情 ======

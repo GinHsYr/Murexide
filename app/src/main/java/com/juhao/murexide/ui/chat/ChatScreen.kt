@@ -115,6 +115,7 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import kotlin.coroutines.resume
@@ -138,6 +139,7 @@ private fun FloatingTopBar(
     showOverlay: Boolean = true
 ) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidGlassBlur = LocalLiquidGlassBlur.current
     val controlSize = 48.dp
     val buttonShape = CircleShape
     val topBarColor = MaterialTheme.colorScheme.surface
@@ -155,7 +157,7 @@ private fun FloatingTopBar(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(1.dp.toPx())
+                    blur(1.dp.toPx() * liquidGlassBlur)
                     lens(16.dp.toPx(), 32.dp.toPx())
                 },
                 onDrawSurface = {
@@ -553,6 +555,7 @@ fun ChatScreen(
     
     val hazeState = remember { HazeState() }
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidGlassBlur = LocalLiquidGlassBlur.current
     val showGlassHighlight = liquidGlassHighlightEnabled()
     val liquidBackdrop = if (liquidGlassEnabled) {
         rememberLayerBackdrop {
@@ -1179,7 +1182,7 @@ fun ChatScreen(
                                         backdrop = liquidBackdrop,
                                         shape = boardShape,
                                         surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
-                                        blurRadius = 5.dp,
+                                        blurRadius = 5.dp * liquidGlassBlur,
                                         lensHeight = 6.dp,
                                         lensAmount = 12.dp,
                                         showHighlight = showGlassHighlight
@@ -1225,7 +1228,7 @@ fun ChatScreen(
                                     backdrop = liquidBackdrop,
                                     shape = RectangleShape,
                                     surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f),
-                                    blurRadius = 5.dp,
+                                    blurRadius = 5.dp * liquidGlassBlur,
                                     showHighlight = showGlassHighlight
                                 )
                             } else {
