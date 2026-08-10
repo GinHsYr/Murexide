@@ -510,7 +510,7 @@ private fun ThemeColorPicker(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 themeColorOptions.forEach { option ->
                     val selected = selectedColor == option.value
@@ -559,8 +559,7 @@ private fun ThemeColorPicker(
                             Icon(
                                 imageVector = AppIcons.Colorize,
                                 contentDescription = null,
-                                modifier = Modifier.padding(4.dp),
-                                tint = Color.Black
+                                modifier = Modifier.padding(4.dp)
                             )
                         }
                     }

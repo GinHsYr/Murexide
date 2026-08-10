@@ -977,12 +977,12 @@ private fun UserInfoContent(
     onOpenBoard: (BaItem) -> Unit,
     onCreatedBoardsClick: () -> Unit
 ) {
-    Column(Modifier.padding(bottom = 4.dp)) {
+    Column(Modifier.padding(vertical = 4.dp)) {
         Text(
             text = "详情信息",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
         )
         UserInfoRow("在线天数", detail.onlineDay?.let { "$it 天" } ?: "未知")
         UserInfoRow("连续在线", detail.continuousOnlineDay?.let { "$it 天" } ?: "未知")
@@ -1045,7 +1045,7 @@ private fun UserInfoRow(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)

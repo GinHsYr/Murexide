@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -219,9 +220,10 @@ fun MainScreen(account: UserAccount) {
                         if (item.route == "mine") {
                             Box(
                                 modifier = Modifier.combinedClickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
                                     onClick = { navigateTo(item.route) },
-                                    onLongClick = { showAccountMenu = true },
-                                    onLongClickLabel = "打开账号菜单"
+                                    onLongClick = { showAccountMenu = true }
                                 )
                             ) {
                                 AnimatedNavigationSymbol(
