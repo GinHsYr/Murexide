@@ -12,6 +12,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -28,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
@@ -198,6 +201,7 @@ private fun TelegramFloatingNavigationBar(
     showAccountMenu: Boolean,
     accounts: List<UserAccount>,
     currentAccountId: String,
+    selectedIndicatorColor: Color,
     hazeState: HazeState,
     onNavigate: (String) -> Unit,
     onShowAccountMenu: () -> Unit,
@@ -242,7 +246,14 @@ private fun TelegramFloatingNavigationBar(
                 val selected = currentRoute == item.route
                 val indicatorProgress by animateFloatAsState(
                     targetValue = if (selected) 1f else 0f,
-                    animationSpec = tween(200),
+                    animationSpec = tween(
+                        durationMillis = if (selected) 220 else 160,
+                        easing = if (selected) {
+                            LinearOutSlowInEasing
+                        } else {
+                            FastOutLinearInEasing
+                        }
+                    ),
                     label = "${item.route} bottom navigation indicator"
                 )
 
@@ -253,12 +264,12 @@ private fun TelegramFloatingNavigationBar(
                         .width(selectionWidth)
                         .height(indicatorHeight)
                         .graphicsLayer {
-                            alpha = indicatorProgress
-                            scaleX = 0.85f + (0.15f * indicatorProgress)
-                            scaleY = 0.85f + (0.15f * indicatorProgress)
+                            transformOrigin = TransformOrigin.Center
+                            scaleX = indicatorProgress
+                            scaleY = indicatorProgress
                         }
                         .clip(indicatorShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .background(selectedIndicatorColor)
                 )
             }
 
@@ -487,6 +498,11 @@ fun MainScreen(account: UserAccount) {
                         showAccountMenu = showAccountMenu,
                         accounts = loggedInAccounts,
                         currentAccountId = account.id,
+                        selectedIndicatorColor = if (themeColor == "WHITE") {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        },
                         hazeState = hazeState,
                         onNavigate = navigateTo,
                         onShowAccountMenu = { showAccountMenu = true },
