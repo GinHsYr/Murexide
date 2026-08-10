@@ -930,6 +930,7 @@ fun ChatScreen(
                                         .clip(RoundedCornerShape(24.dp))
                                 ) {
                                     Row(
+                                        verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .weight(1f)
                                             .clip(RoundedCornerShape(4.dp))
@@ -977,7 +978,7 @@ fun ChatScreen(
                                             if (chatType == 1 && uiState.continuousOnlineDay != null) {
                                                 Spacer(modifier = Modifier.height(1.dp))
                                                 Text(
-                                                    text = "连续在线${uiState.continuousOnlineDay}天",
+                                                    text = "连续在线 ${uiState.continuousOnlineDay} 天",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1
