@@ -1016,8 +1016,7 @@ fun ChatScreen(
                                                     chatName = chatName,
                                                     chatAvatar = chatAvatar
                                                 )
-                                            },
-                                        verticalAlignment = Alignment.CenterVertically
+                                            }
                                     ) {
                                         Avatar(
                                             url = chatAvatar,
