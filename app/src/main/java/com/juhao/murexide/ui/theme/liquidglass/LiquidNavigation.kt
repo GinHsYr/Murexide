@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +66,7 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
 import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
+import com.juhao.murexide.ui.theme.liquidGlassContentColor
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -96,6 +99,11 @@ fun LiquidBottomTabs(
     } else {
         Color(0xFF121212).copy(alpha = 0.4f)
     }
+    val navigationContentColor = liquidGlassContentColor(
+        preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        glassColor = containerColor,
+        backgroundColor = MaterialTheme.colorScheme.background,
+    )
     val tabsBackdrop = rememberLayerBackdrop()
 
     BoxWithConstraints(modifier, contentAlignment = Alignment.CenterStart) {
@@ -191,6 +199,7 @@ fun LiquidBottomTabs(
             repeat(tabsCount) { index ->
                 LiquidBottomTab(
                     selected = currentIndex == index,
+                    contentColor = navigationContentColor,
                     onClick = {
                         currentIndex = index
                         dragAnimation.animateToValue(index.toFloat())
@@ -241,6 +250,7 @@ fun LiquidBottomTabs(
                 repeat(tabsCount) { index ->
                     LiquidBottomTab(
                         selected = currentIndex == index,
+                        contentColor = navigationContentColor,
                         onClick = {},
                         interactive = false,
                     ) {
@@ -316,6 +326,7 @@ fun LiquidBottomTabs(
             repeat(tabsCount) { index ->
                 LiquidBottomTab(
                     selected = currentIndex == index,
+                    contentColor = navigationContentColor,
                     onClick = {},
                     interactive = false,
                 ) {
@@ -329,6 +340,7 @@ fun LiquidBottomTabs(
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.LiquidBottomTab(
     selected: Boolean,
+    contentColor: Color,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
@@ -369,7 +381,9 @@ private fun androidx.compose.foundation.layout.RowScope.LiquidBottomTab(
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        content()
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            content()
+        }
     }
 }
 
@@ -390,6 +404,11 @@ fun LiquidNavigationRail(
         androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() > 0.5f
     val containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
         .copy(alpha = 0.42f)
+    val navigationContentColor = liquidGlassContentColor(
+        preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        glassColor = containerColor,
+        backgroundColor = MaterialTheme.colorScheme.background,
+    )
     val animationScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val itemHeight = 64.dp
@@ -469,7 +488,9 @@ fun LiquidNavigationRail(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    content(index, currentIndex == index)
+                    CompositionLocalProvider(LocalContentColor provides navigationContentColor) {
+                        content(index, currentIndex == index)
+                    }
                 }
             }
         }

@@ -26,13 +26,13 @@ fun LiteHtmlContent(
     htmlContent: String,
     modifier: Modifier = Modifier,
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     onImageClick: ((String) -> Unit)? = null,
     onLinkClick: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val darkTheme = isSystemInDarkTheme()
-    val textColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
     val codeColor = MaterialTheme.colorScheme.surfaceVariant
     val borderColor = MaterialTheme.colorScheme.outlineVariant

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.juhao.murexide.ui.theme.LiquidGlassSurface
+import com.juhao.murexide.ui.theme.resolvedLiquidGlassContentColor
 
 /**
  * 设置组容器 (Card 样式)
@@ -68,12 +69,18 @@ fun SettingsItem(
         onClick = onClick,
         isEnabled = isEnabled
     ) {
+        val contentColor = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+        val secondaryContentColor =
+            resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
+        val mutedContentColor = resolvedLiquidGlassContentColor(
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (isDestructive) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                else secondaryContentColor,
                 modifier = Modifier.size(24.dp)
             )
             
@@ -85,7 +92,7 @@ fun SettingsItem(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isDestructive) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurface,
+                else contentColor,
                 fontWeight = FontWeight.Normal
             )
             if (subtitle != null) {
@@ -93,7 +100,7 @@ fun SettingsItem(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = secondaryContentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -103,7 +110,7 @@ fun SettingsItem(
         AutoMirroredIcon(
             AppIcons.NavigateNext,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            tint = mutedContentColor,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -127,12 +134,15 @@ fun SettingsItemCell(
         onClick = onClick,
         isEnabled = isEnabled
     ) {
+        val contentColor = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+        val secondaryContentColor =
+            resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (isDestructive) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                else secondaryContentColor,
                 modifier = Modifier.size(24.dp)
             )
             
@@ -144,14 +154,14 @@ fun SettingsItemCell(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isDestructive) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurface
+                else contentColor
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = secondaryContentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -166,7 +176,7 @@ fun SettingsItemCell(
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
                 tint = if (isDestructive) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
+                else secondaryContentColor
             )
         }
     }
@@ -190,13 +200,16 @@ fun SettingsSwitchItem(
         onClick = { onCheckedChange(!checked) },
         isEnabled = isEnabled
     ) {
+        val contentColor = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+        val secondaryContentColor =
+            resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = title,
                 modifier = Modifier.size(24.dp),
                 tint = if (isError) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
+                else secondaryContentColor
             )
         
             Spacer(modifier = Modifier.width(16.dp))
@@ -206,14 +219,14 @@ fun SettingsSwitchItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = contentColor
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = secondaryContentColor
                 )
             }
         }
@@ -248,12 +261,18 @@ fun SettingsDropdownItem(
         onClick = { expanded = true },
         isEnabled = isEnabled
     ) {
+        val contentColor = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+        val secondaryContentColor =
+            resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
+        val mutedContentColor = resolvedLiquidGlassContentColor(
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
         if (icon != null) {
             Icon(
                 imageVector = icon,
                 contentDescription = title,
                 modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = secondaryContentColor
             )
     
             Spacer(modifier = Modifier.width(16.dp))
@@ -263,14 +282,14 @@ fun SettingsDropdownItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = contentColor
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = secondaryContentColor
                 )
             }
         }
@@ -279,7 +298,7 @@ fun SettingsDropdownItem(
             imageVector = AppIcons.KeyboardArrowDown,
             contentDescription = "选择",
             modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            tint = mutedContentColor
         )
 
         DropdownMenu(

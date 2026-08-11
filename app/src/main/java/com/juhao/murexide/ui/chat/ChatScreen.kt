@@ -117,6 +117,9 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.ProvideLiquidGlassContentColor
+import com.juhao.murexide.ui.theme.ProvideAdaptiveLiquidGlassForeground
+import com.juhao.murexide.ui.theme.adaptiveLiquidGlassForeground
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -188,14 +191,19 @@ private fun FloatingTopBar(
             )
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ProvideAdaptiveLiquidGlassForeground(
+            backdrop = if (useGlassBar) liquidBackdrop else null,
+            glassColor = glassSurfaceColor,
+            blurRadius = 1.dp * liquidGlassBlur,
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
             if (navigationIcon != null) {
                 Box(
                     modifier = Modifier
@@ -226,6 +234,7 @@ private fun FloatingTopBar(
                 ) {
                     actions()
                 }
+            }
             }
         }
     }
@@ -923,7 +932,9 @@ fun ChatScreen(
                                         Icon(
                                             AppIcons.Close,
                                             contentDescription = "退出多选",
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .adaptiveLiquidGlassForeground()
                                         )
                                     }
                                 } else {
@@ -934,7 +945,9 @@ fun ChatScreen(
                                         AutoMirroredIcon(
                                             imageVector = AppIcons.ArrowBack,
                                             contentDescription = "返回",
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .adaptiveLiquidGlassForeground()
                                         )
                                     }
                                 }
@@ -949,7 +962,8 @@ fun ChatScreen(
                                 Row(
                                     modifier = Modifier
                                         .padding(start = 12.dp)
-                                        .height(46.dp),
+                                        .height(46.dp)
+                                        .adaptiveLiquidGlassForeground(),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
@@ -1023,7 +1037,7 @@ fun ChatScreen(
                                             size = 40.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Column {
+                                        Column(Modifier.adaptiveLiquidGlassForeground()) {
                                             Text(
                                                 text = chatName,
                                                 style = MaterialTheme.typography.bodyLarge,
@@ -1069,15 +1083,17 @@ fun ChatScreen(
                                                 .padding(horizontal = 4.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Icon(
-                                                imageVector = if (uiState.boardPanel.isExpanded) {
-                                                    AppIcons.KeyboardArrowUp
-                                                } else {
-                                                    AppIcons.KeyboardArrowDown
-                                                },
-                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
-                                                modifier = Modifier.size(24.dp)
-                                            )
+                                                Icon(
+                                                    imageVector = if (uiState.boardPanel.isExpanded) {
+                                                        AppIcons.KeyboardArrowUp
+                                                    } else {
+                                                        AppIcons.KeyboardArrowDown
+                                                    },
+                                                    contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
+                                                    modifier = Modifier
+                                                        .size(24.dp)
+                                                        .adaptiveLiquidGlassForeground()
+                                                )
                                         }
                                     }
                                 }
@@ -1098,7 +1114,9 @@ fun ChatScreen(
                                             AutoMirroredIcon(
                                                 AppIcons.Undo,
                                                 contentDescription = "撤回",
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .adaptiveLiquidGlassForeground()
                                             )
                                         }
                                         if (selectedMessages.size == 1) {
@@ -1129,7 +1147,9 @@ fun ChatScreen(
                                                         Icon(
                                                             AppIcons.ContentCopy,
                                                             contentDescription = "复制",
-                                                            modifier = Modifier.size(24.dp)
+                                                            modifier = Modifier
+                                                                .size(24.dp)
+                                                                .adaptiveLiquidGlassForeground()
                                                         )
                                                     }
                                                 }
@@ -1142,7 +1162,9 @@ fun ChatScreen(
                                             Icon(
                                                 AppIcons.Screenshot,
                                                 contentDescription = "截图",
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .adaptiveLiquidGlassForeground()
                                             )
                                         }
                                     } else {
@@ -1194,7 +1216,9 @@ fun ChatScreen(
                                             Icon(
                                                 imageVector = AppIcons.MoreVert,
                                                 contentDescription = "更多",
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .adaptiveLiquidGlassForeground()
                                             )
                                         }
                                     }
@@ -1210,6 +1234,7 @@ fun ChatScreen(
                     exit = fadeOut() + shrinkVertically()
                 ) {
                     val boardShape = RoundedCornerShape(28.dp)
+                    val boardGlassColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1221,7 +1246,7 @@ fun ChatScreen(
                                         enabled = true,
                                         backdrop = liquidBackdrop,
                                         shape = boardShape,
-                                        surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f),
+                                        surfaceColor = boardGlassColor,
                                         blurRadius = 5.dp * liquidGlassBlur,
                                         lensHeight = 6.dp,
                                         lensAmount = 12.dp,
@@ -1243,15 +1268,20 @@ fun ChatScreen(
                                 }
                             )
                     ) {
-                        BoardPanel(
-                            boards = uiState.boardPanel.boards,
-                            onImageClick = { url ->
-                                showImageViewer(
-                                    context = context,
-                                    images = listOf(fullImagePreviewItem(url))
-                                )
-                            }
-                        )
+                        ProvideLiquidGlassContentColor(
+                            glassColor = boardGlassColor,
+                            preferredColor = MaterialTheme.colorScheme.onSurface,
+                        ) {
+                            BoardPanel(
+                                boards = uiState.boardPanel.boards,
+                                onImageClick = { url ->
+                                    showImageViewer(
+                                        context = context,
+                                        images = listOf(fullImagePreviewItem(url))
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
