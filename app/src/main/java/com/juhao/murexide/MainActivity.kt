@@ -23,12 +23,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-<<<<<<< HEAD
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-=======
-import androidx.compose.foundation.interaction.MutableInteractionSource
->>>>>>> f4c13edd9c1a5482992604d2a488fa70d7366640
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -568,22 +564,6 @@ fun MainScreen(account: UserAccount) {
                                 selected = selected,
                                 contentDescription = item.title,
                                 tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    label = {
-                        AnimatedVisibility(
-                            visible = selected,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
-                        ) {
-                            Text(
-                                text = item.title,
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
                             )
                         }
                     },
