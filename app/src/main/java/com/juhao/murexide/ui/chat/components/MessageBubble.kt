@@ -390,24 +390,20 @@ fun MessageBubble(
     
                                 if (message.quoteMsgText != null) {
                                     val quoteText = message.quoteMsgText
-                                    val quoteClickModifier = if (
-                                        !isSelectionMode &&
-                                        !message.quoteMsgId.isNullOrBlank() &&
-                                        onQuoteClick != null
-                                    ) {
-                                        Modifier.clickable(
-                                            onClickLabel = "跳转至原消息",
-                                            onClick = { onQuoteClick(message) }
-                                        )
-                                    } else {
-                                        Modifier
-                                    }
+                                    
                                     Surface(
-                                        modifier = Modifier
-                                            .padding(bottom = 4.dp)
-                                            .then(quoteClickModifier),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                                        shape = RoundedCornerShape(8.dp)
+                                        modifier = Modifier.padding(bottom = 4.dp),
+                                        onClick = {
+                                            if (
+                                                !isSelectionMode &&
+                                                !message.quoteMsgId.isNullOrBlank() &&
+                                                onQuoteClick != null
+                                            ) {
+                                                onQuoteClick(message)
+                                            }
+                                        },
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(6.dp)
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
@@ -580,9 +576,9 @@ fun MessageBubble(
                                                         )
                                                     }
                                                     val imageMaxWidth = if (imageRatio >= 1f) {
-                                                        200.dp
+                                                        240.dp
                                                     } else {
-                                                        100.dp
+                                                        160.dp
                                                     }
                                                     val displayUrl = if (isImageMessage) imageThumbnailUrl(url) else url
                                                     var retryCount by remember(url) { mutableIntStateOf(0) }
@@ -728,35 +724,6 @@ fun MessageBubble(
                                                                 )
                                                                 Text(
                                                                     text = duration,
-                                                                    fontSize = 10.sp,
-                                                                    lineHeight = 16.sp,
-                                                                    maxLines = 1,
-                                                                    color = Color.White
-                                                                )
-                                                            }
-                                                        }
-
-                                                        if (!isMine && isLastFromSender) {
-                                                            Row(
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                                                modifier = Modifier
-                                                                    .align(Alignment.TopStart)
-                                                                    .padding(start = 6.dp, top = 6.dp)
-                                                                    .background(
-                                                                        color = Color.Black.copy(alpha = 0.3f),
-                                                                        shape = RoundedCornerShape(50.dp)
-                                                                    )
-                                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                            ) {
-                                                                Icon(
-                                                                    imageVector = AppIcons.Person,
-                                                                    contentDescription = "sender",
-                                                                    modifier = Modifier.size(12.dp),
-                                                                    tint = Color.White
-                                                                )
-                                                                Text(
-                                                                    text = displayName,
                                                                     fontSize = 10.sp,
                                                                     lineHeight = 16.sp,
                                                                     maxLines = 1,
