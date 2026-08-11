@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.juhao.murexide.ui.components.*
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.theme.UiState
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSlider
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.ui.chat.components.MessageBubble
@@ -57,6 +58,8 @@ fun AppearanceScreen(
     var bubbleCornerRadius by remember { mutableFloatStateOf(16f) }
     val showMyBubbleAvatar by settingsStorage.showMyBubbleAvatarFlow.collectAsState(initial = true)
     val showMsgTags by settingsStorage.showMsgTagsFlow.collectAsState(initial = true)
+    val liquidGlassEnabled by settingsStorage.liquidGlassEnabledFlow.collectAsState(initial = false)
+    var liquidGlassBlur by remember { mutableFloatStateOf(1f) }
     var bubbleOpacity by remember { mutableFloatStateOf(0.9f) }
     var backgroundOpacity by remember { mutableFloatStateOf(0.5f) }
 
@@ -65,6 +68,7 @@ fun AppearanceScreen(
         bubbleCornerRadius = settingsStorage.getBubbleCornerRadius()
         bubbleOpacity = settingsStorage.getBubbleOpacity()
         backgroundOpacity = settingsStorage.getBackgroundOpacity()
+        liquidGlassBlur = settingsStorage.getLiquidGlassBlur()
     }
 
     val previewMessages = remember {
@@ -161,6 +165,68 @@ fun AppearanceScreen(
                         scope.launch { settingsStorage.setThemeColor(selected) }
                     }
                 )
+                SettingsSwitchItem(
+                    icon = AppIcons.Opacity,
+                    title = "启用液态玻璃效果",
+                    subtitle = "使用液态玻璃风格显示界面元素",
+                    checked = liquidGlassEnabled,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            settingsStorage.setLiquidGlassEnabled(enabled)
+                        }
+                    }
+                )
+                if (liquidGlassEnabled) {
+                    CustomItemCell {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        AppIcons.Opacity,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("液态玻璃模糊", style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer
+                                ) {
+                                    Text(
+                                        text = "${"%.1f".format(java.util.Locale.US, liquidGlassBlur)}x",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LiquidGlassSlider(
+                                value = liquidGlassBlur,
+                                onValueChange = { liquidGlassBlur = it },
+                                onValueChangeFinished = {
+                                    scope.launch { settingsStorage.setLiquidGlassBlur(liquidGlassBlur) }
+                                },
+                                valueRange = 0f..4f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("0", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("4", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
             }
             
             // 气泡预览区域
@@ -252,7 +318,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = bubbleCornerRadius,
                             onValueChange = { bubbleCornerRadius = it },
                             onValueChangeFinished = {
@@ -321,7 +387,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = bubbleOpacity,
                             onValueChange = { bubbleOpacity = it },
                             onValueChangeFinished = {
@@ -389,7 +455,7 @@ fun AppearanceScreen(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Slider(
+                        LiquidGlassSlider(
                             value = backgroundOpacity,
                             onValueChange = { backgroundOpacity = it },
                             onValueChangeFinished = {

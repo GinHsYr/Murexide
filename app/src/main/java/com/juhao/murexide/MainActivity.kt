@@ -12,16 +12,30 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+<<<<<<< HEAD
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+=======
+import androidx.compose.foundation.interaction.MutableInteractionSource
+>>>>>>> f4c13edd9c1a5482992604d2a488fa70d7366640
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -34,12 +48,14 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaul
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -71,6 +87,20 @@ import com.juhao.murexide.ui.settings.SettingsActivity
 import com.juhao.murexide.utils.getAppVersionInfo
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.combinedClickable
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
+import com.juhao.murexide.ui.theme.liquidGlass
+import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.liquidglass.LiquidBottomTabs
+import com.juhao.murexide.ui.theme.liquidglass.LiquidNavigationRail
 
 private data class NavItem(
     val route: String,
@@ -88,6 +118,272 @@ private val navItems = listOf(
 )
 
 private const val TAB_TRANSITION_DURATION_MILLIS = 300
+
+@Composable
+private fun HomeNavigationIcon(
+    item: NavItem,
+    selected: Boolean,
+    unreadCount: Int,
+    showAccountMenu: Boolean,
+    accounts: List<UserAccount>,
+    currentAccountId: String,
+    onNavigate: (String) -> Unit,
+    onShowAccountMenu: () -> Unit,
+    onDismissAccountMenu: () -> Unit,
+    handleAccountGestures: Boolean = true,
+) {
+    val icon: @Composable () -> Unit = {
+        AnimatedNavigationSymbol(
+            outlineIcon = item.outlineIcon,
+            filledIcon = item.filledIcon,
+            selected = selected,
+            contentDescription = item.title,
+            tint = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+    }
+
+    when (item.route) {
+        "mine" -> {
+            Box(
+                modifier = if (handleAccountGestures) {
+                    Modifier.combinedClickable(
+                        onClick = { onNavigate(item.route) },
+                        onLongClick = onShowAccountMenu,
+                        onLongClickLabel = "打开账号菜单"
+                    )
+                } else {
+                    Modifier
+                }
+            ) {
+                icon()
+                AccountQuickSwitchMenu(
+                    expanded = showAccountMenu,
+                    accounts = accounts,
+                    currentAccountId = currentAccountId,
+                    onDismissRequest = onDismissAccountMenu
+                )
+            }
+        }
+
+        "conversations" -> {
+            BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
+                icon()
+            }
+        }
+
+        else -> icon()
+    }
+}
+
+@Composable
+private fun HomeNavigationLabel(
+    item: NavItem,
+    selected: Boolean,
+    compact: Boolean = false,
+) {
+    AnimatedVisibility(
+        visible = compact || selected,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Text(
+            text = item.title,
+            style = if (compact) {
+                MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp)
+            } else {
+                LocalTextStyle.current
+            },
+            color = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalHazeMaterialsApi::class)
+private fun TelegramFloatingNavigationBar(
+    currentRoute: String?,
+    unreadCount: Int,
+    showAccountMenu: Boolean,
+    accounts: List<UserAccount>,
+    currentAccountId: String,
+    selectedIndicatorColor: Color,
+    hazeState: HazeState,
+    liquidBackdrop: Backdrop?,
+    onNavigate: (String) -> Unit,
+    onShowAccountMenu: () -> Unit,
+    onDismissAccountMenu: () -> Unit,
+) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidGlassBlur = LocalLiquidGlassBlur.current
+    val showGlassHighlight = liquidGlassHighlightEnabled()
+    val shape = RoundedCornerShape(32.dp)
+    val navigationBarHeight = 64.dp
+    val indicatorInset = 5.dp
+    val indicatorHeight = navigationBarHeight - indicatorInset * 2f
+    val indicatorShape = RoundedCornerShape(26.dp)
+
+    val containerModifier = if (liquidGlassEnabled && liquidBackdrop != null) {
+        Modifier.liquidGlass(
+            enabled = true,
+            backdrop = liquidBackdrop,
+            shape = shape,
+            surfaceColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.56f),
+            blurRadius = 16.dp * liquidGlassBlur,
+            lensHeight = 12.dp,
+            lensAmount = 22.dp,
+            showHighlight = showGlassHighlight
+        )
+    } else {
+        Modifier
+            .clip(shape)
+            .hazeEffect(
+                state = hazeState,
+                style = HazeMaterials.thin(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
+                ).copy(
+                    blurRadius = 28.dp,
+                    noiseFactor = 0f
+                ),
+                block = null
+            )
+    }
+
+    NavigationBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp)
+            .shadow(elevation = 2.dp, shape = shape, clip = false)
+            .then(containerModifier)
+            .height(navigationBarHeight),
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val contentInset = 12.dp
+            val itemWidth = (maxWidth - contentInset * 2f) / navItems.size
+            val selectionWidth = itemWidth + (contentInset - indicatorInset) * 2f
+
+            navItems.forEachIndexed { index, item ->
+                val selected = currentRoute == item.route
+                val indicatorProgress by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0f,
+                    animationSpec = tween(
+                        durationMillis = if (selected) 220 else 160,
+                        easing = if (selected) {
+                            LinearOutSlowInEasing
+                        } else {
+                            FastOutLinearInEasing
+                        }
+                    ),
+                    label = "${item.route} bottom navigation indicator"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .offset(x = itemWidth * index.toFloat() + indicatorInset)
+                        .width(selectionWidth)
+                        .height(indicatorHeight)
+                        .graphicsLayer {
+                            transformOrigin = TransformOrigin.Center
+                            scaleX = indicatorProgress
+                            scaleY = indicatorProgress
+                        }
+                        .then(
+                            if (liquidGlassEnabled && liquidBackdrop != null) {
+                                Modifier.liquidGlass(
+                                    enabled = true,
+                                    backdrop = liquidBackdrop,
+                                    shape = indicatorShape,
+                                    surfaceColor = selectedIndicatorColor.copy(alpha = 0.48f),
+                                    blurRadius = 6.dp * liquidGlassBlur,
+                                    lensHeight = 6.dp,
+                                    lensAmount = 10.dp,
+                                    showHighlight = showGlassHighlight
+                                )
+                            } else {
+                                Modifier
+                                    .clip(indicatorShape)
+                                    .background(selectedIndicatorColor)
+                            }
+                        )
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = contentInset),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                navItems.forEach { item ->
+                    val selected = currentRoute == item.route
+                    val interactionSource = remember(item.route) { MutableInteractionSource() }
+                    val interactionModifier = if (item.route == "mine") {
+                        Modifier.combinedClickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { onNavigate(item.route) },
+                            onLongClick = onShowAccountMenu,
+                            onLongClickLabel = "打开账号菜单"
+                        )
+                    } else {
+                        Modifier.selectable(
+                            selected = selected,
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { onNavigate(item.route) },
+                            role = Role.Tab
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .then(interactionModifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            HomeNavigationIcon(
+                                item = item,
+                                selected = selected,
+                                unreadCount = unreadCount,
+                                showAccountMenu = showAccountMenu,
+                                accounts = accounts,
+                                currentAccountId = currentAccountId,
+                                onNavigate = onNavigate,
+                                onShowAccountMenu = onShowAccountMenu,
+                                onDismissAccountMenu = onDismissAccountMenu,
+                                handleAccountGestures = false,
+                            )
+                            Spacer(modifier = Modifier.height(1.dp))
+                            HomeNavigationLabel(item, selected, compact = true)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSlideDirection():
     AnimatedContentTransitionScope.SlideDirection {
@@ -130,12 +426,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun MainScreen(account: UserAccount) {
     val themeColor by UiState.themeColor
     val token = account.token
     val navController = rememberNavController()
+    val hazeState = remember { HazeState() }
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val liquidBackdrop = if (liquidGlassEnabled) rememberLayerBackdrop() else null
     val context = LocalContext.current
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -183,6 +482,9 @@ fun MainScreen(account: UserAccount) {
             restoreState = true
         }
     }
+
+    val useNavigationRail = bigScreenEnabled && isBigScreen
+    val hideMobileNavigation = currentRoute == "contacts" && isContactNewMessagesVisible
     
     if (showDevTip) {
         AlertDialog(
@@ -199,21 +501,30 @@ fun MainScreen(account: UserAccount) {
     }
 
     NavigationSuiteScaffold(
-        layoutType = when {
-            bigScreenEnabled && isBigScreen -> NavigationSuiteType.NavigationRail
-            currentRoute == "contacts" && isContactNewMessagesVisible -> NavigationSuiteType.None
-            else -> NavigationSuiteType.NavigationBar
+        layoutType = if (useNavigationRail && !liquidGlassEnabled) {
+            NavigationSuiteType.NavigationRail
+        } else {
+            NavigationSuiteType.None
         },
-        navigationSuiteColors = if (themeColor == "WHITE") {
+        navigationSuiteColors = if (themeColor == "WHITE" || liquidGlassEnabled) {
             NavigationSuiteDefaults.colors(
-                navigationBarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                navigationRailContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                navigationBarContainerColor = if (liquidGlassEnabled) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+                navigationRailContainerColor = if (liquidGlassEnabled) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                }
             )
         } else {
             NavigationSuiteDefaults.colors()
         },
         navigationSuiteItems = {
-            navItems.forEach { item ->
+            if (!(useNavigationRail && liquidGlassEnabled)) {
+                navItems.forEach { item ->
                 val selected = currentRoute == item.route
                 item(
                     icon = {
@@ -276,55 +587,166 @@ fun MainScreen(account: UserAccount) {
                             )
                         }
                     },
+                    label = { HomeNavigationLabel(item, selected) },
                     selected = selected,
                     onClick = {
                         navigateTo(item.route)
                     }
                 )
+                }
             }
         }
     ) {
-        NavHost(
-            navController = navController,
-            startDestination = "conversations",
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(blockContentInput) {
-                    if (blockContentInput) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent(PointerEventPass.Initial).changes.forEach {
-                                    it.consume()
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+            bottomBar = {
+                if (!useNavigationRail && !hideMobileNavigation) {
+                    if (liquidGlassEnabled && liquidBackdrop != null) {
+                        LiquidBottomTabs(
+                            selectedTabIndex = navItems.indexOfFirst { it.route == currentRoute }
+                                .coerceAtLeast(0),
+                            onTabSelected = { index -> navigateTo(navItems[index].route) },
+                            backdrop = liquidBackdrop,
+                            tabsCount = navItems.size,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(start = 20.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
+                            onTabLongClick = { index ->
+                                if (navItems[index].route == "mine") showAccountMenu = true
+                            },
+                            onTabLongClickLabel = { index ->
+                                if (navItems[index].route == "mine") "打开账号菜单" else null
+                            },
+                        ) { index, selected, overlayPass ->
+                            val item = navItems[index]
+                            HomeNavigationIcon(
+                                item = item,
+                                selected = selected,
+                                unreadCount = unreadCount,
+                                showAccountMenu = showAccountMenu && !overlayPass,
+                                accounts = loggedInAccounts,
+                                currentAccountId = account.id,
+                                onNavigate = navigateTo,
+                                onShowAccountMenu = { showAccountMenu = true },
+                                onDismissAccountMenu = { showAccountMenu = false },
+                                handleAccountGestures = false,
+                            )
+                            HomeNavigationLabel(item, selected, compact = true)
+                        }
+                    } else {
+                        TelegramFloatingNavigationBar(
+                            currentRoute = currentRoute,
+                            unreadCount = unreadCount,
+                            showAccountMenu = showAccountMenu,
+                            accounts = loggedInAccounts,
+                            currentAccountId = account.id,
+                            selectedIndicatorColor = if (themeColor == "WHITE") {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            hazeState = hazeState,
+                            liquidBackdrop = liquidBackdrop,
+                            onNavigate = navigateTo,
+                            onShowAccountMenu = { showAccountMenu = true },
+                            onDismissAccountMenu = { showAccountMenu = false },
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Row(Modifier.fillMaxSize().consumeWindowInsets(innerPadding)) {
+                if (useNavigationRail && liquidGlassEnabled && liquidBackdrop != null) {
+                    LiquidNavigationRail(
+                        selectedTabIndex = navItems.indexOfFirst { it.route == currentRoute }
+                            .coerceAtLeast(0),
+                        onTabSelected = { index -> navigateTo(navItems[index].route) },
+                        backdrop = liquidBackdrop,
+                        tabsCount = navItems.size,
+                        modifier = Modifier
+                            .padding(start = 12.dp, top = 20.dp, bottom = 20.dp)
+                            .align(Alignment.Top),
+                        onTabLongClick = { index ->
+                            if (navItems[index].route == "mine") showAccountMenu = true
+                        },
+                        onTabLongClickLabel = { index ->
+                            if (navItems[index].route == "mine") "打开账号菜单" else null
+                        },
+                    ) { index, selected ->
+                        val item = navItems[index]
+                        HomeNavigationIcon(
+                            item = item,
+                            selected = selected,
+                            unreadCount = unreadCount,
+                            showAccountMenu = showAccountMenu,
+                            accounts = loggedInAccounts,
+                            currentAccountId = account.id,
+                            onNavigate = navigateTo,
+                            onShowAccountMenu = { showAccountMenu = true },
+                            onDismissAccountMenu = { showAccountMenu = false },
+                            handleAccountGestures = false,
+                        )
+                        HomeNavigationLabel(item, selected, compact = true)
+                    }
+                }
+
+                NavHost(
+                navController = navController,
+                startDestination = "conversations",
+                modifier = Modifier
+                    .then(
+                        if (useNavigationRail && liquidGlassEnabled) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.fillMaxSize()
+                        }
+                    )
+                    .hazeSource(hazeState)
+                    .then(
+                        if (liquidBackdrop != null) {
+                            Modifier.layerBackdrop(liquidBackdrop)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .pointerInput(blockContentInput) {
+                        if (blockContentInput) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach {
+                                        it.consume()
+                                    }
                                 }
                             }
                         }
-                    }
+                    },
+                enterTransition = {
+                    slideIntoContainer(
+                        towards = tabSlideDirection(),
+                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                    )
                 },
-            enterTransition = {
-                slideIntoContainer(
-                    towards = tabSlideDirection(),
-                    animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                )
-            },
-            exitTransition = {
-                slideOutOfContainer(
-                    towards = tabSlideDirection(),
-                    animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                )
-            },
-            popEnterTransition = {
-                slideIntoContainer(
-                    towards = tabSlideDirection(),
-                    animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                )
-            },
-            popExitTransition = {
-                slideOutOfContainer(
-                    towards = tabSlideDirection(),
-                    animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                )
-            }
-        ) {
+                exitTransition = {
+                    slideOutOfContainer(
+                        towards = tabSlideDirection(),
+                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                    )
+                },
+                popEnterTransition = {
+                    slideIntoContainer(
+                        towards = tabSlideDirection(),
+                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                    )
+                },
+                popExitTransition = {
+                    slideOutOfContainer(
+                        towards = tabSlideDirection(),
+                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                    )
+                }
+                ) {
             composable("conversations") {
                 Row(modifier = Modifier.fillMaxSize()) {
                     ConversationListScreen(
@@ -463,6 +885,8 @@ fun MainScreen(account: UserAccount) {
                     }
                 )
             }
+            }
         }
     }
+}
 }

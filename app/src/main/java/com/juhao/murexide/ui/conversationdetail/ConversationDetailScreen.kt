@@ -36,8 +36,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,8 +52,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -95,7 +97,18 @@ import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.icons.AppFilledIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
 import com.juhao.murexide.ui.chat.components.formatVideoDuration
+import com.juhao.murexide.ui.theme.LiquidGlassSurface
+import com.juhao.murexide.ui.theme.LocalLiquidGlassBackdrop
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.liquidGlass
+import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSlider
 import kotlinx.coroutines.launch
+
+@Composable
+private fun detailGlassColor(color: Color): Color = color.copy(
+    alpha = if (LocalLiquidGlassEnabled.current) 0.64f else color.alpha
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,6 +125,11 @@ fun ConversationDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val showGlassHighlight = liquidGlassHighlightEnabled()
+    // The theme owns a sibling backdrop source. Do not wrap this content in a
+    // second source: glass surfaces inside that source would record themselves.
+    val liquidBackdrop = LocalLiquidGlassBackdrop.current
     val snackbars = remember { SnackbarHostState() }
     var showMore by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
@@ -139,6 +157,23 @@ fun ConversationDetailScreen(
         snackbarHost = { SnackbarHost(snackbars) },
         topBar = {
             TopAppBar(
+                modifier = if (liquidGlassEnabled) {
+                    Modifier.liquidGlass(
+                        enabled = true,
+                        backdrop = liquidBackdrop,
+                        shape = RectangleShape,
+                        surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f),
+                        blurRadius = 6.dp,
+                        showHighlight = showGlassHighlight
+                    )
+                } else {
+                    Modifier
+                },
+                colors = if (liquidGlassEnabled) {
+                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                } else {
+                    TopAppBarDefaults.topAppBarColors()
+                },
                 title = {
                     val group = state.detail?.takeIf { it.chatType == 2 }
                     if (group != null) {
@@ -211,99 +246,106 @@ fun ConversationDetailScreen(
             )
         }
     ) { padding ->
-        val detail = state.detail
-        when {
-            detail == null && state.isLoading -> Box(
-                Modifier.fillMaxSize(),
-                Alignment.Center
-            ) { CircularProgressIndicator() }
+        CompositionLocalProvider(LocalLiquidGlassBackdrop provides liquidBackdrop) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                val detail = state.detail
+                when {
+                    detail == null && state.isLoading -> Box(
+                        Modifier.fillMaxSize(),
+                        Alignment.Center
+                    ) { CircularProgressIndicator() }
 
-            detail == null -> ErrorContent(state.error ?: "加载失败", viewModel::loadDetail)
-            detail.chatType == 2 -> GroupConversationDetail(
-                modifier = Modifier.padding(padding),
-                detail = detail,
-                listState = groupListState,
-                selectedTab = state.selectedTab,
-                members = state.members,
-                bots = state.groupBots,
-                media = state.mediaMessages,
-                isLoadingMembers = state.isLoadingMembers,
-                isLoadingMoreMembers = state.isLoadingMoreMembers,
-                hasMoreMembers = state.hasMoreMembers,
-                isLoadingBots = state.isLoadingGroupBots,
-                hasLoadedBots = state.hasLoadedGroupBots,
-                isLoadingHistory = state.isLoadingHistory,
-                hasMoreHistory = state.hasMoreHistory,
-                isChangingMute = state.isChangingMute,
-                isLeaving = state.isLeaving,
-                onMessage = { onEnterChat(detail) },
-                onMute = viewModel::toggleMute,
-                onLeave = { showLeaveConfirm = true },
-                onTabSelected = viewModel::selectTab,
-                onLoadMembers = { viewModel.loadMembers() },
-                onLoadHistory = viewModel::loadMoreHistory,
-                onOpenMember = onOpenMember,
-                canManageMembers = detail.permissionLevel >= 2,
-                isGroupOwner = detail.permissionLevel == 100,
-                onKickMember = viewModel::requestKickMember,
-                onGagMember = viewModel::requestGagMember,
-                onAdminToggle = viewModel::requestAdminToggle,
-                onOpenBot = { bot ->
-                    ConversationDetailActivity.start(
-                        context = context,
-                        chatId = bot.id,
-                        chatType = 3,
-                        chatName = bot.name,
-                        chatAvatar = bot.avatarUrl
+                    detail == null -> ErrorContent(state.error ?: "加载失败", viewModel::loadDetail)
+                    detail.chatType == 2 -> GroupConversationDetail(
+                        modifier = Modifier.padding(padding),
+                        detail = detail,
+                        listState = groupListState,
+                        selectedTab = state.selectedTab,
+                        members = state.members,
+                        bots = state.groupBots,
+                        media = state.mediaMessages,
+                        isLoadingMembers = state.isLoadingMembers,
+                        isLoadingMoreMembers = state.isLoadingMoreMembers,
+                        hasMoreMembers = state.hasMoreMembers,
+                        isLoadingBots = state.isLoadingGroupBots,
+                        hasLoadedBots = state.hasLoadedGroupBots,
+                        isLoadingHistory = state.isLoadingHistory,
+                        hasMoreHistory = state.hasMoreHistory,
+                        isChangingMute = state.isChangingMute,
+                        isLeaving = state.isLeaving,
+                        onMessage = { onEnterChat(detail) },
+                        onMute = viewModel::toggleMute,
+                        onLeave = { showLeaveConfirm = true },
+                        onTabSelected = viewModel::selectTab,
+                        onLoadMembers = { viewModel.loadMembers() },
+                        onLoadHistory = viewModel::loadMoreHistory,
+                        onOpenMember = onOpenMember,
+                        canManageMembers = detail.permissionLevel >= 2,
+                        isGroupOwner = detail.permissionLevel == 100,
+                        onKickMember = viewModel::requestKickMember,
+                        onGagMember = viewModel::requestGagMember,
+                        onAdminToggle = viewModel::requestAdminToggle,
+                        onOpenBot = { bot ->
+                            ConversationDetailActivity.start(
+                                context = context,
+                                chatId = bot.id,
+                                chatType = 3,
+                                chatName = bot.name,
+                                chatAvatar = bot.avatarUrl
+                            )
+                        }
+                    )
+
+                    detail.chatType == 1 -> UserConversationDetail(
+                        modifier = Modifier.padding(padding),
+                        detail = detail,
+                        listState = userListState,
+                        isCurrentUser = detail.chatId == currentUserId,
+                        isAdded = state.isAdded,
+                        isAdding = state.isAdding,
+                        onAdd = viewModel::addChat,
+                        onMessage = { onEnterChat(detail) },
+                        onMute = viewModel::toggleMute,
+                        isChangingMute = state.isChangingMute,
+                        media = state.mediaMessages,
+                        isLoadingHistory = state.isLoadingHistory,
+                        hasMoreHistory = state.hasMoreHistory,
+                        onLoadHistory = viewModel::loadMoreHistory,
+                        createdBoards = state.createdBoards,
+                        isLoadingCreatedBoards = state.isLoadingCreatedBoards,
+                        hasLoadedCreatedBoards = state.hasLoadedCreatedBoards,
+                        onOpenBoard = onOpenBoard
+                    )
+
+                    detail.chatType == 3 -> BotConversationDetail(
+                        modifier = Modifier.padding(padding),
+                        detail = detail,
+                        isAdded = state.isAdded,
+                        isAdding = state.isAdding,
+                        onAdd = viewModel::addChat,
+                        onMessage = { onEnterChat(detail) },
+                        onMute = viewModel::toggleMute,
+                        isChangingMute = state.isChangingMute,
+                        onInviteToGroup = { onInviteBotToGroup(detail) },
+                        media = state.mediaMessages,
+                        isLoadingHistory = state.isLoadingHistory,
+                        hasMoreHistory = state.hasMoreHistory,
+                        onLoadHistory = viewModel::loadMoreHistory
+                    )
+
+                    else -> LegacyDetail(
+                        modifier = Modifier.padding(padding),
+                        detail = detail,
+                        isAdded = state.isAdded,
+                        isAdding = state.isAdding,
+                        onAdd = viewModel::addChat,
+                        onMessage = { onEnterChat(detail) }
                     )
                 }
-            )
-
-            detail.chatType == 1 -> UserConversationDetail(
-                modifier = Modifier.padding(padding),
-                detail = detail,
-                listState = userListState,
-                isCurrentUser = detail.chatId == currentUserId,
-                isAdded = state.isAdded,
-                isAdding = state.isAdding,
-                onAdd = viewModel::addChat,
-                onMessage = { onEnterChat(detail) },
-                onMute = viewModel::toggleMute,
-                isChangingMute = state.isChangingMute,
-                media = state.mediaMessages,
-                isLoadingHistory = state.isLoadingHistory,
-                hasMoreHistory = state.hasMoreHistory,
-                onLoadHistory = viewModel::loadMoreHistory,
-                createdBoards = state.createdBoards,
-                isLoadingCreatedBoards = state.isLoadingCreatedBoards,
-                hasLoadedCreatedBoards = state.hasLoadedCreatedBoards,
-                onOpenBoard = onOpenBoard
-            )
-
-            detail.chatType == 3 -> BotConversationDetail(
-                modifier = Modifier.padding(padding),
-                detail = detail,
-                isAdded = state.isAdded,
-                isAdding = state.isAdding,
-                onAdd = viewModel::addChat,
-                onMessage = { onEnterChat(detail) },
-                onMute = viewModel::toggleMute,
-                isChangingMute = state.isChangingMute,
-                onInviteToGroup = { onInviteBotToGroup(detail) },
-                media = state.mediaMessages,
-                isLoadingHistory = state.isLoadingHistory,
-                hasMoreHistory = state.hasMoreHistory,
-                onLoadHistory = viewModel::loadMoreHistory
-            )
-
-            else -> LegacyDetail(
-                modifier = Modifier.padding(padding),
-                detail = detail,
-                isAdded = state.isAdded,
-                isAdding = state.isAdding,
-                onAdd = viewModel::addChat,
-                onMessage = { onEnterChat(detail) }
-            )
+            }
         }
     }
 
@@ -482,7 +524,6 @@ private fun GroupConversationDetail(
                                 onGag = { onGagMember(member) },
                                 onAdminToggle = { onAdminToggle(member) }
                             )
-                            if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
                         }
                     }
                     if (hasMoreMembers) item(key = "members-load-more") {
@@ -527,7 +568,6 @@ private fun GroupConversationDetail(
                         val isLast = bot == bots.last()
                         DetailCardSegment(cardColor, isBottom = isLast) {
                             BotRow(bot, onClick = { onOpenBot(bot) })
-                            if (!isLast) HorizontalDivider(Modifier.padding(start = 70.dp))
                         }
                     }
                 }
@@ -929,13 +969,16 @@ private fun UserHeader(
             )
         }
         if (detail.introduction.isNotBlank()) {
-            Surface(
+            LiquidGlassSurface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                onClick = onIntroductionClick,
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .clickable(onClick = onIntroductionClick),
                 shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                color = detailGlassColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                blurRadius = 6.dp,
+                lensHeight = 6.dp,
+                lensAmount = 12.dp
             ) {
                 IntroductionContent(
                     introduction = detail.introduction,
@@ -1137,13 +1180,16 @@ private fun GroupHeader(
         Spacer(Modifier.height(8.dp))
         GroupIdentityInfo(detail)
         if (detail.introduction.isNotBlank()) {
-            Surface(
+            LiquidGlassSurface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                onClick = onIntroductionClick,
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .clickable(onClick = onIntroductionClick),
                 shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                color = detailGlassColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                blurRadius = 6.dp,
+                lensHeight = 6.dp,
+                lensAmount = 12.dp
             ) {
                 IntroductionContent(
                     introduction = detail.introduction,
@@ -1169,12 +1215,15 @@ private fun GroupIdentityInfo(detail: ConversationDetail) {
         }
     }
 
-    Surface(
+    LiquidGlassSurface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp),
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh
+        color = detailGlassColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+        blurRadius = 6.dp,
+        lensHeight = 6.dp,
+        lensAmount = 12.dp
     ) {
         Row(
             modifier = Modifier
@@ -1341,17 +1390,22 @@ private fun TelegramAction(
         isDanger -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
-    Surface(
-        onClick = onClick,
-        enabled = enabled && !loading,
-        modifier = modifier.height(72.dp),
+    LiquidGlassSurface(
+        modifier = modifier
+            .height(72.dp)
+            .clickable(
+                enabled = enabled && !loading,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(24.dp),
-        color = if (enabled) {
+        color = detailGlassColor(if (enabled) {
             MaterialTheme.colorScheme.surfaceContainerHigh
         } else {
             MaterialTheme.colorScheme.surfaceContainer
-        },
-        tonalElevation = 1.dp
+        }),
+        blurRadius = 6.dp,
+        lensHeight = 8.dp,
+        lensAmount = 14.dp
     ) {
         Column(
             Modifier.fillMaxSize(),
@@ -1531,7 +1585,7 @@ private fun MemberManagementDialogs(
                 } else {
                     Column {
                         Text("禁言时长：${gagOptions[selectedGagIndex].second}")
-                        androidx.compose.material3.Slider(
+                        LiquidGlassSlider(
                             value = selectedGagIndex.toFloat(),
                             onValueChange = { selectedGagIndex = it.toInt() },
                             valueRange = 0f..gagOptions.lastIndex.toFloat(),
@@ -1685,12 +1739,13 @@ private fun DetailCardSegment(
         isBottom -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
         else -> RectangleShape
     }
-    Surface(
+    LiquidGlassSurface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp),
         shape = shape,
-        color = cardColor
+        color = detailGlassColor(cardColor),
+        blurRadius = 6.dp
     ) {
         if (minHeight == null) {
             Column { content() }

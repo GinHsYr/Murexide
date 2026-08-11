@@ -19,3 +19,22 @@ litehtml includes gumbo-parser for HTML5 parsing.
 The complete notice and license texts are available in the gumbo source directory included by
 the litehtml submodule.
 
+## Backdrop
+
+- Source: https://github.com/Kyant0/AndroidLiquidGlass
+- Version: `2.0.0`
+- License: Apache License 2.0
+- Copyright (c) 2025 Kyant
+
+The liquid bottom tabs, slider, toggle, interaction highlight, and damped-drag
+implementations include code adapted from the official catalog application. The adapted
+files contain local changes for Murexide navigation, accessibility, discrete values, and
+Material fallbacks.
+
+## Kyant Shapes
+
+- Source: https://github.com/Kyant0/Shapes
+- Version: `1.2.0`
+- License: Apache License 2.0
+- Copyright (c) 2025 Kyant
+

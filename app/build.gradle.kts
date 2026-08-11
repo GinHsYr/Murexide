@@ -140,6 +140,8 @@ dependencies {
 
     implementation(libs.haze)
     implementation(libs.haze.materials)
+    implementation(libs.backdrop)
+    implementation(libs.kyant.shapes)
 
     implementation(libs.multiplatform.markdown.renderer)
     implementation(libs.multiplatform.markdown.renderer.m3)

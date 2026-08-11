@@ -88,14 +88,23 @@ fun AboutScreen(
                 )
             }
 
-            // 开发者信息
-            SettingsGroup(title = "开发者信息") {
+            // 贡献者信息
+            SettingsGroup(title = "贡献者") {
                 SettingsItem(
                     icon = AppIcons.Person,
-                    title = "开发者",
+                    title = "贡献者",
                     subtitle = "JuHao",
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/shijuhao".toUri()))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/JuHao".toUri()))
+                    }
+                )
+
+                SettingsItem(
+                    icon = AppIcons.Person,
+                    title = "贡献者",
+                    subtitle = "GinHsYr",
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/GinHsYr".toUri()))
                     }
                 )
                 

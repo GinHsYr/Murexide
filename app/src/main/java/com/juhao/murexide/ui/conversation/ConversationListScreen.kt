@@ -42,8 +42,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun ConversationListScreen(
     modifier: Modifier = Modifier,
@@ -71,6 +76,7 @@ fun ConversationListScreen(
     } else {
         MaterialTheme.colorScheme.surface
     }
+    val hazeState = remember { HazeState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val uiState by viewModel.uiState.collectAsState()
     val isWsConnected by viewModel.isWsConnected.collectAsState()
@@ -92,74 +98,97 @@ fun ConversationListScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.app_name),
-                            maxLines = 1
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .hazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.thin().copy(
+                                blurRadius = 32.dp,
+                                noiseFactor = 0f,
+                            ),
+                            block = null,
                         )
-                        if (!isWsConnected) {
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Surface(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape),
-                                color = MaterialTheme.colorScheme.error
-                            ) {}
+                )
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.app_name),
+                                maxLines = 1
+                            )
+                            if (!isWsConnected) {
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Surface(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape),
+                                    color = MaterialTheme.colorScheme.error
+                                ) {}
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
+                    ),
+                    actions = {
+                        IconButton(
+                            onClick = { onSearchClick(searchButtonCenter ?: IntOffset.Zero) },
+                            modifier = Modifier.onGloballyPositioned { coordinates ->
+                                val position = coordinates.positionInWindow()
+                                searchButtonCenter = IntOffset(
+                                    x = (position.x + coordinates.size.width / 2f).roundToInt(),
+                                    y = (position.y + coordinates.size.height / 2f).roundToInt()
+                                )
+                            }
+                        ) {
+                            Icon(AppIcons.Search, contentDescription = "搜索")
+                        }
+                        Box {
+                            StyledIconButton(onClick = { showCreateMenu = true }) {
+                                Icon(AppIcons.Add, contentDescription = "创建")
+                            }
+                            DropdownMenu(expanded = showCreateMenu, onDismissRequest = { showCreateMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("创建群聊") },
+                                    onClick = { showCreateMenu = false; onCreateClick(CreationKind.GROUP) },
+                                    leadingIcon = { Icon(AppIcons.Group, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("创建机器人") },
+                                    onClick = { showCreateMenu = false; onCreateClick(CreationKind.BOT) },
+                                    leadingIcon = { Icon(AppIcons.SmartToy, contentDescription = null) }
+                                )
+                            }
                         }
                     }
-                },
-                scrollBehavior = scrollBehavior,
-                actions = {
-                    IconButton(
-                        onClick = { onSearchClick(searchButtonCenter ?: IntOffset.Zero) },
-                        modifier = Modifier.onGloballyPositioned { coordinates ->
-                            val position = coordinates.positionInWindow()
-                            searchButtonCenter = IntOffset(
-                                x = (position.x + coordinates.size.width / 2f).roundToInt(),
-                                y = (position.y + coordinates.size.height / 2f).roundToInt()
-                            )
-                        }
-                    ) {
-                        Icon(AppIcons.Search, contentDescription = "搜索")
-                    }
-                    Box {
-                        StyledIconButton(onClick = { showCreateMenu = true }) {
-                            Icon(AppIcons.Add, contentDescription = "创建")
-                        }
-                        DropdownMenu(expanded = showCreateMenu, onDismissRequest = { showCreateMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("创建群聊") },
-                                onClick = { showCreateMenu = false; onCreateClick(CreationKind.GROUP) },
-                                leadingIcon = { Icon(AppIcons.Group, contentDescription = null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("创建机器人") },
-                                onClick = { showCreateMenu = false; onCreateClick(CreationKind.BOT) },
-                                leadingIcon = { Icon(AppIcons.SmartToy, contentDescription = null) }
-                            )
-                        }
-                    }
-                }
-            )
+                )
+            }
         }
-    ) {
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refresh() },
+    ) { contentPadding ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it),
+                .background(listContainerColor)
+                .hazeSource(hazeState)
         ) {
-            val state = uiState
-            if (state is ConversationUiState.Success) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(listContainerColor)
-                ) {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding),
+            ) {
+                val state = uiState
+                if (state is ConversationUiState.Success) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
                     if (showSticky && state.stickyConversations.isNotEmpty()) {
                         item {
                             StickyConversationSection(
@@ -207,17 +236,20 @@ fun ConversationListScreen(
                             )
                         }
                     }
-                }
-            } else if (state is ConversationUiState.Error) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("加载失败: ${state.message}")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.refresh() }) {
-                            Text("重试")
+                    }
+                } else if (state is ConversationUiState.Error) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("加载失败: ${state.message}")
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.refresh() }) {
+                                Text("重试")
+                            }
                         }
                     }
                 }

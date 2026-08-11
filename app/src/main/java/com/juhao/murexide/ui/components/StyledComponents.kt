@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassToggle
 
 @Composable
 fun StyledSwitch(
@@ -15,23 +16,11 @@ fun StyledSwitch(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    Switch(
+    LiquidGlassToggle(
         checked = checked,
         onCheckedChange = onCheckedChange,
         enabled = enabled,
         modifier = modifier,
-        thumbContent = {
-            Icon(                 
-                imageVector = if (checked) AppIcons.Check else AppIcons.Close,
-                contentDescription = null,
-                modifier = Modifier.size(SwitchDefaults.IconSize),
-                tint = if (checked) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                }
-            )
-        }
     )
 }
 

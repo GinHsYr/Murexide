@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
+import com.juhao.murexide.ui.theme.LiquidGlassSurface
 
 /**
  * 设置组容器 (Card 样式)
@@ -314,13 +316,18 @@ fun CustomItemCell(
     content: @Composable RowScope.() -> Unit
 ) {
     val alpha = if (isEnabled) 1f else 0.38f
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
 
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    LiquidGlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(alpha)
+            .alpha(alpha),
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
+            alpha = if (liquidGlassEnabled) 0.64f else 1f
+        ),
+        lensHeight = 3.dp,
+        lensAmount = 8.dp
     ) {
         Row(
             modifier = modifier
