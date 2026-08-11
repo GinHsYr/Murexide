@@ -47,7 +47,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -173,7 +172,7 @@ private fun FloatingTopBar(
         }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        if (showOverlay && !useGlassBar) {
+        if (showOverlay) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -681,26 +680,63 @@ fun ChatScreen(
     val floatingAvatarState by remember {
         derivedStateOf {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty() || displayItems.isEmpty() || !avatarFollowEnabled) {
+            if (visibleItems.isEmpty() || uiState.messages.isEmpty() || !avatarFollowEnabled) {
                 Triple(false, "", false)
             } else {
-                val topVisibleIndex = visibleItems.first().index
-                val displayItem = displayItems.getOrNull(topVisibleIndex) ?: return@derivedStateOf Triple(false, "", false)
-                val message = displayItem.message
-    
-                val itemHeightDp = with(density) { visibleItems.first().size.toDp() }.value
-                val visibleHeightDp = with(density) {
-                    (visibleItems.first().size + visibleItems.first().offset.coerceAtMost(0)).toDp()
-                }.value
-    
-                val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
-    
-                if (hasEnoughSpace) {
-                    Triple(true, message.senderAvatar, message.isMine)
-                } else if (!displayItem.isLastFromSender) {
-                    Triple(true, message.senderAvatar, message.isMine)
-                } else {
+                val topVisibleItem = visibleItems.minByOrNull { it.index }
+                if (topVisibleItem == null) {
                     Triple(false, "", false)
+                } else {
+                    val firstVisibleIndex = topVisibleItem.index
+                    val message = uiState.messages.getOrNull(firstVisibleIndex)
+
+                    if (message == null) {
+                        Triple(false, "", false)
+                    } else {
+                        val avatarSizePx = with(density) { 36.dp.roundToPx() }
+                        val visibleHeightPx =
+                            topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)
+                        val hasEnoughSpace =
+                            visibleHeightPx >= avatarSizePx && topVisibleItem.size >= avatarSizePx
+
+                        val currentIndex =
+                            uiState.messages.indexOfFirst { it.msgId == message.msgId }
+                        val newerMessage =
+                            if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
+                        val olderMessage =
+                            if (currentIndex < uiState.messages.size - 1) {
+                                uiState.messages[currentIndex + 1]
+                            } else {
+                                null
+                            }
+                        val isLastFromSender =
+                            olderMessage == null || olderMessage.senderId != message.senderId
+                        val hasOtherSameSender =
+                            (newerMessage != null &&
+                                newerMessage.senderId == message.senderId &&
+                                !isLastFromSender) ||
+                                (olderMessage != null && olderMessage.senderId == message.senderId)
+
+                        val avatarUrl = message.senderAvatar.ifBlank {
+                            uiState.messages.firstOrNull { candidate ->
+                                candidate.senderAvatar.isNotBlank() &&
+                                    if (message.isMine) {
+                                        candidate.isMine
+                                    } else {
+                                        message.senderId.isNotBlank() &&
+                                            candidate.senderId == message.senderId
+                                    }
+                            }?.senderAvatar.orEmpty()
+                        }
+
+                        if (hasEnoughSpace) {
+                            Triple(true, avatarUrl, message.isMine)
+                        } else if (hasOtherSameSender && avatarUrl.isNotEmpty()) {
+                            Triple(true, avatarUrl, message.isMine)
+                        } else {
+                            Triple(false, "", false)
+                        }
+                    }
                 }
             }
         }
@@ -712,9 +748,13 @@ fun ChatScreen(
 
     val topVisibleMessage by remember {
         derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo
-                .firstOrNull()
-                ?.let { displayItems.getOrNull(it.index)?.message }
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            if (visibleItems.isNotEmpty()) {
+                val topIndex = visibleItems.minByOrNull { it.index }?.index
+                topIndex?.let { uiState.messages.getOrNull(it) }
+            } else {
+                null
+            }
         }
     }
 
@@ -1223,14 +1263,7 @@ fun ChatScreen(
                         .matchParentSize()
                         .then(
                             if (liquidGlassEnabled) {
-                                Modifier.liquidGlass(
-                                    enabled = true,
-                                    backdrop = liquidBackdrop,
-                                    shape = RectangleShape,
-                                    surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f),
-                                    blurRadius = 5.dp * liquidGlassBlur,
-                                    showHighlight = showGlassHighlight
-                                )
+                                Modifier.background(MaterialTheme.colorScheme.surface)
                             } else {
                                 Modifier.hazeEffect(
                                     state = hazeState,
