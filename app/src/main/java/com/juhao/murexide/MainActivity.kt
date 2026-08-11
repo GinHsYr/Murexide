@@ -95,6 +95,7 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.liquidGlassContentColor
 import com.juhao.murexide.ui.theme.liquidglass.LiquidBottomTabs
 import com.juhao.murexide.ui.theme.liquidglass.LiquidNavigationRail
 
@@ -128,6 +129,8 @@ private fun HomeNavigationIcon(
     onDismissAccountMenu: () -> Unit,
     handleAccountGestures: Boolean = true,
 ) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val inheritedGlassContentColor = LocalContentColor.current
     val icon: @Composable () -> Unit = {
         AnimatedNavigationSymbol(
             outlineIcon = item.outlineIcon,
@@ -136,6 +139,8 @@ private fun HomeNavigationIcon(
             contentDescription = item.title,
             tint = if (selected) {
                 MaterialTheme.colorScheme.primary
+            } else if (liquidGlassEnabled) {
+                inheritedGlassContentColor
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
@@ -181,6 +186,8 @@ private fun HomeNavigationLabel(
     selected: Boolean,
     compact: Boolean = false,
 ) {
+    val liquidGlassEnabled = LocalLiquidGlassEnabled.current
+    val inheritedGlassContentColor = LocalContentColor.current
     AnimatedVisibility(
         visible = compact || selected,
         enter = fadeIn() + expandVertically(),
@@ -195,6 +202,8 @@ private fun HomeNavigationLabel(
             },
             color = if (selected) {
                 MaterialTheme.colorScheme.primary
+            } else if (liquidGlassEnabled) {
+                inheritedGlassContentColor
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             }
@@ -225,13 +234,21 @@ private fun TelegramFloatingNavigationBar(
     val indicatorInset = 5.dp
     val indicatorHeight = navigationBarHeight - indicatorInset * 2f
     val indicatorShape = RoundedCornerShape(26.dp)
+    val navigationSurfaceColor = MaterialTheme.colorScheme.surfaceContainer.copy(
+        alpha = if (liquidGlassEnabled && liquidBackdrop != null) 0.56f else 0.72f
+    )
+    val navigationContentColor = liquidGlassContentColor(
+        preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        glassColor = navigationSurfaceColor,
+        backgroundColor = MaterialTheme.colorScheme.background,
+    )
 
     val containerModifier = if (liquidGlassEnabled && liquidBackdrop != null) {
         Modifier.liquidGlass(
             enabled = true,
             backdrop = liquidBackdrop,
             shape = shape,
-            surfaceColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.56f),
+            surfaceColor = navigationSurfaceColor,
             blurRadius = 16.dp * liquidGlassBlur,
             lensHeight = 12.dp,
             lensAmount = 22.dp,
@@ -243,7 +260,7 @@ private fun TelegramFloatingNavigationBar(
             .hazeEffect(
                 state = hazeState,
                 style = HazeMaterials.thin(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
+                    containerColor = navigationSurfaceColor
                 ).copy(
                     blurRadius = 28.dp,
                     noiseFactor = 0f
@@ -318,59 +335,61 @@ private fun TelegramFloatingNavigationBar(
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = contentInset),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                navItems.forEach { item ->
-                    val selected = currentRoute == item.route
-                    val interactionSource = remember(item.route) { MutableInteractionSource() }
-                    val interactionModifier = if (item.route == "mine") {
-                        Modifier.combinedClickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = { onNavigate(item.route) },
-                            onLongClick = onShowAccountMenu,
-                            onLongClickLabel = "打开账号菜单"
-                        )
-                    } else {
-                        Modifier.selectable(
-                            selected = selected,
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = { onNavigate(item.route) },
-                            role = Role.Tab
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .then(interactionModifier),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            HomeNavigationIcon(
-                                item = item,
-                                selected = selected,
-                                unreadCount = unreadCount,
-                                showAccountMenu = showAccountMenu,
-                                accounts = accounts,
-                                currentAccountId = currentAccountId,
-                                onNavigate = onNavigate,
-                                onShowAccountMenu = onShowAccountMenu,
-                                onDismissAccountMenu = onDismissAccountMenu,
-                                handleAccountGestures = false,
+            CompositionLocalProvider(LocalContentColor provides navigationContentColor) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = contentInset),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    navItems.forEach { item ->
+                        val selected = currentRoute == item.route
+                        val interactionSource = remember(item.route) { MutableInteractionSource() }
+                        val interactionModifier = if (item.route == "mine") {
+                            Modifier.combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { onNavigate(item.route) },
+                                onLongClick = onShowAccountMenu,
+                                onLongClickLabel = "打开账号菜单"
                             )
-                            Spacer(modifier = Modifier.height(1.dp))
-                            HomeNavigationLabel(item, selected, compact = true)
+                        } else {
+                            Modifier.selectable(
+                                selected = selected,
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { onNavigate(item.route) },
+                                role = Role.Tab
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .then(interactionModifier),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                HomeNavigationIcon(
+                                    item = item,
+                                    selected = selected,
+                                    unreadCount = unreadCount,
+                                    showAccountMenu = showAccountMenu,
+                                    accounts = accounts,
+                                    currentAccountId = currentAccountId,
+                                    onNavigate = onNavigate,
+                                    onShowAccountMenu = onShowAccountMenu,
+                                    onDismissAccountMenu = onDismissAccountMenu,
+                                    handleAccountGestures = false,
+                                )
+                                Spacer(modifier = Modifier.height(1.dp))
+                                HomeNavigationLabel(item, selected, compact = true)
+                            }
                         }
                     }
                 }

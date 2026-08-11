@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.juhao.murexide.data.BoardItem
 import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.LiteHtmlContent
+import com.juhao.murexide.ui.theme.resolvedLiquidGlassContentColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,6 +60,10 @@ fun BoardPanel(
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = resolvedLiquidGlassContentColor(
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         text = {
                             Text(
                                 text = board.botName.ifBlank { "看板" },
@@ -87,6 +92,9 @@ private fun BoardContent(
     board: BoardItem,
     onImageClick: ((String) -> Unit)?
 ) {
+    val bodyContentColor = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+    val secondaryContentColor =
+        resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -116,7 +124,7 @@ private fun BoardContent(
                 Text(
                     text = formatBoardTime(board.lastUpdateTime),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = secondaryContentColor
                 )
             }
         }
@@ -124,16 +132,18 @@ private fun BoardContent(
         when (board.contentType) {
             BoardItem.CONTENT_TYPE_MARKDOWN -> MarkdownText(
                 markdown = board.content,
+                textColor = bodyContentColor,
                 onImageClick = onImageClick
             )
             BoardItem.CONTENT_TYPE_HTML -> LiteHtmlContent(
                 htmlContent = board.content,
+                textColor = bodyContentColor,
                 onImageClick = onImageClick
             )
             else -> Text(
                 text = board.content,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = bodyContentColor
             )
         }
     }

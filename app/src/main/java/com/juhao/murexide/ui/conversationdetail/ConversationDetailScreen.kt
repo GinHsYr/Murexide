@@ -102,6 +102,8 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassBackdrop
 import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
+import com.juhao.murexide.ui.theme.liquidGlassContentColor
+import com.juhao.murexide.ui.theme.resolvedLiquidGlassContentColor
 import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSlider
 import kotlinx.coroutines.launch
 
@@ -153,6 +155,18 @@ fun ConversationDetailScreen(
         if (state.hasLeft) onLeaveGroup()
     }
 
+    val topAppBarGlassColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f)
+    val topAppBarGlassContentColor = liquidGlassContentColor(
+        preferredColor = MaterialTheme.colorScheme.onSurface,
+        glassColor = topAppBarGlassColor,
+        backgroundColor = MaterialTheme.colorScheme.background,
+    )
+    val topAppBarGlassSecondaryContentColor = liquidGlassContentColor(
+        preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        glassColor = topAppBarGlassColor,
+        backgroundColor = MaterialTheme.colorScheme.background,
+    )
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbars) },
         topBar = {
@@ -162,7 +176,7 @@ fun ConversationDetailScreen(
                         enabled = true,
                         backdrop = liquidBackdrop,
                         shape = RectangleShape,
-                        surfaceColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f),
+                        surfaceColor = topAppBarGlassColor,
                         blurRadius = 6.dp,
                         showHighlight = showGlassHighlight
                     )
@@ -170,7 +184,12 @@ fun ConversationDetailScreen(
                     Modifier
                 },
                 colors = if (liquidGlassEnabled) {
-                    TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        navigationIconContentColor = topAppBarGlassContentColor,
+                        titleContentColor = topAppBarGlassContentColor,
+                        actionIconContentColor = topAppBarGlassContentColor,
+                    )
                 } else {
                     TopAppBarDefaults.topAppBarColors()
                 },
@@ -201,7 +220,11 @@ fun ConversationDetailScreen(
                                 Text(
                                     text = "${group.memberCount ?: 0} 位成员",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (liquidGlassEnabled) {
+                                        topAppBarGlassSecondaryContentColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                                     maxLines = 1
                                 )
                             }
@@ -888,7 +911,7 @@ private fun UserHeader(
                     2 -> Triple(AppIcons.Girl, Color(0xFFFF6B9A), "女")
                     else -> Triple(
                         AppFilledIcons.Person,
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
                         "未知性别"
                     )
                 }
@@ -912,14 +935,14 @@ private fun UserHeader(
                 } else {
                     "ID: ${detail.chatId}"
                 },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
                 style = MaterialTheme.typography.bodyMedium
             )
             detail.ipGeo?.takeIf { !isBot }?.let { ip ->
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = "IP:$ip",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -1062,7 +1085,7 @@ private fun UserInfoContent(
 
                 createdBoards.isEmpty() -> Text(
                     text = if (hasLoadedCreatedBoards) "暂无创建的板块" else "加载失败，点击重试",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
                 )
@@ -1096,11 +1119,15 @@ private fun UserInfoRow(
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         )
         trailingIcon?.let {
             Spacer(Modifier.width(4.dp))
-            Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                it,
+                contentDescription = null,
+                tint = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
+            )
         }
     }
 }
@@ -1151,7 +1178,7 @@ private fun GroupHeader(
         )
         Text(
             "${detail.memberCount ?: 0} 位成员",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         )
         Spacer(Modifier.height(12.dp))
         Row(
@@ -1268,7 +1295,7 @@ private fun GroupIdentityColumn(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         )
         GroupIdentityText(
             value = value,
@@ -1287,7 +1314,7 @@ private fun GroupIdentityText(
     Text(
         text = value,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
@@ -1350,7 +1377,7 @@ private fun IntroductionContent(
             Text(
                 "简介",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
             )
             Spacer(Modifier.weight(1f))
             IconButton(
@@ -1386,7 +1413,7 @@ private fun TelegramAction(
     enabled: Boolean = true
 ) {
     val actionColor = when {
-        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        !enabled -> resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
         isDanger -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
@@ -1429,7 +1456,11 @@ private fun TelegramAction(
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
-                color = if (enabled && !isDanger) MaterialTheme.colorScheme.onSurface else actionColor
+                color = if (enabled && !isDanger) {
+                    resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurface)
+                } else {
+                    actionColor
+                }
             )
         }
     }
@@ -1480,7 +1511,7 @@ private fun MemberRow(
                     else -> "成员"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
             )
         }
         if (canManage) {
@@ -1536,7 +1567,7 @@ private fun BotRow(bot: BotItem, onClick: () -> Unit) {
                 Text(
                     bot.introduction,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1771,7 +1802,10 @@ private fun AutoLoadingRow(loading: Boolean) {
         if (loading) {
             CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
         } else {
-            Text("继续下滑加载更多", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "继续下滑加载更多",
+                color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
+            )
         }
     }
 }
@@ -1796,7 +1830,7 @@ private fun LegacyDetail(
         if (detail.introduction.isNotBlank()) Text(
             detail.introduction,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant),
             modifier = Modifier.padding(top = 8.dp)
         )
         Spacer(Modifier.height(20.dp))
@@ -1818,7 +1852,7 @@ private fun LoadingContent() =
 private fun EmptyContent(text: String) = Box(Modifier.fillMaxSize(), Alignment.Center) {
     Text(
         text,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        color = resolvedLiquidGlassContentColor(MaterialTheme.colorScheme.onSurfaceVariant)
     )
 }
 
