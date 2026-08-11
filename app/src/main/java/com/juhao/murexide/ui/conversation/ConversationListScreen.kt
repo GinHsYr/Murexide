@@ -182,16 +182,12 @@ fun ConversationListScreen(
                 onRefresh = { viewModel.refresh() },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = contentPadding.calculateBottomPadding()),
+                    .padding(contentPadding),
             ) {
                 val state = uiState
                 if (state is ConversationUiState.Success) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            top = contentPadding.calculateTopPadding(),
-                            bottom = contentPadding.calculateBottomPadding(),
-                        ),
                     ) {
                     if (showSticky && state.stickyConversations.isNotEmpty()) {
                         item {
