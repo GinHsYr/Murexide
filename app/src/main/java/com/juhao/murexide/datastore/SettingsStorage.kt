@@ -284,7 +284,7 @@ class SettingsStorage(private val context: Context) {
 
     // ====== 液态玻璃模糊强度 ======
     val liquidGlassBlurFlow: Flow<Float> = context.dataStore.data.map { preferences ->
-        preferences[LIQUID_GLASS_BLUR_KEY]?.coerceIn(0f, 4f) ?: 1f
+        preferences[LIQUID_GLASS_BLUR_KEY]?.coerceIn(0f, 4f) ?: 3f
     }
 
     suspend fun setLiquidGlassBlur(value: Float) {

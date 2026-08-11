@@ -143,7 +143,7 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
         gravity = Gravity.CENTER_VERTICAL or Gravity.START
         includeFontPadding = false
         setPadding(0, 0, 0, 0)
-        setMinLines(1)
+        minLines = 1
         maxLines = 5
         isSingleLine = false
         isFocusable = true
@@ -559,7 +559,7 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
                 val end = editable.getSpanEnd(span)
                 val emoji = currentEmojisByName[span.emojiName]
                 val bitmap = emoji?.let { DefaultEmojiBitmapCache.get(it, cachedEmojiHeight) }
-                if (start >= 0 && end > start && bitmap != null) {
+                if (start in 0..<end && bitmap != null) {
                     editable.removeSpan(span)
                     editable.setSpan(
                         DefaultEmojiSpan(

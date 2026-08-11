@@ -153,16 +153,32 @@ fun ConversationListScreen(
                             StyledIconButton(onClick = { showCreateMenu = true }) {
                                 Icon(AppIcons.Add, contentDescription = "创建")
                             }
-                            DropdownMenu(expanded = showCreateMenu, onDismissRequest = { showCreateMenu = false }) {
+                            DropdownMenu(
+                                expanded = showCreateMenu,
+                                onDismissRequest = { showCreateMenu = false }) {
                                 DropdownMenuItem(
                                     text = { Text("创建群聊") },
-                                    onClick = { showCreateMenu = false; onCreateClick(CreationKind.GROUP) },
-                                    leadingIcon = { Icon(AppIcons.Group, contentDescription = null) }
+                                    onClick = {
+                                        showCreateMenu = false; onCreateClick(CreationKind.GROUP)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            AppIcons.Group,
+                                            contentDescription = null
+                                        )
+                                    }
                                 )
                                 DropdownMenuItem(
                                     text = { Text("创建机器人") },
-                                    onClick = { showCreateMenu = false; onCreateClick(CreationKind.BOT) },
-                                    leadingIcon = { Icon(AppIcons.SmartToy, contentDescription = null) }
+                                    onClick = {
+                                        showCreateMenu = false; onCreateClick(CreationKind.BOT)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            AppIcons.SmartToy,
+                                            contentDescription = null
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -188,54 +204,58 @@ fun ConversationListScreen(
                 if (state is ConversationUiState.Success) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 100.dp)
                     ) {
-                    if (showSticky && state.stickyConversations.isNotEmpty()) {
-                        item {
-                            StickyConversationSection(
-                                stickyItems = state.stickyConversations,
-                                onStickyClick = { sticky ->
-                                    onConversationClick(
-                                        ConversationItem(
-                                            chatId = sticky.chatId,
-                                            chatType = sticky.chatType,
-                                            name = sticky.chatName,
-                                            chatContent = "",
-                                            timestampMs = 0,
-                                            avatarUrl = sticky.avatarUrl
+                        if (showSticky && state.stickyConversations.isNotEmpty()) {
+                            item {
+                                StickyConversationSection(
+                                    stickyItems = state.stickyConversations,
+                                    onStickyClick = { sticky ->
+                                        onConversationClick(
+                                            ConversationItem(
+                                                chatId = sticky.chatId,
+                                                chatType = sticky.chatType,
+                                                name = sticky.chatName,
+                                                chatContent = "",
+                                                timestampMs = 0,
+                                                avatarUrl = sticky.avatarUrl
+                                            )
                                         )
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    if (state.conversations.isEmpty() && state.stickyConversations.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillParentMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("暂无会话")
+                                    }
+                                )
                             }
                         }
-                    } else {
-                        items(
-                            items = state.conversations,
-                            key = { item -> "${item.chatType}:${item.chatId}" }
-                        ) { conversation ->
-                            ConversationItem(
-                                conversation = conversation,
-                                isSelected = currentConversation?.chatId == conversation.chatId &&
-                                    currentConversation.chatType == conversation.chatType &&
-                                    bigScreenMode,
-                                onClick = {
-                                    viewModel.clearUnread(conversation.chatId, conversation.chatType)
-                                    onConversationClick(conversation)
+
+                        if (state.conversations.isEmpty() && state.stickyConversations.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillParentMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("暂无会话")
                                 }
-                            )
+                            }
+                        } else {
+                            items(
+                                items = state.conversations,
+                                key = { item -> "${item.chatType}:${item.chatId}" }
+                            ) { conversation ->
+                                ConversationItem(
+                                    conversation = conversation,
+                                    isSelected = currentConversation?.chatId == conversation.chatId &&
+                                            currentConversation.chatType == conversation.chatType &&
+                                            bigScreenMode,
+                                    onClick = {
+                                        viewModel.clearUnread(
+                                            conversation.chatId,
+                                            conversation.chatType
+                                        )
+                                        onConversationClick(conversation)
+                                    }
+                                )
+                            }
                         }
-                    }
                     }
                 } else if (state is ConversationUiState.Error) {
                     Box(
@@ -331,10 +351,11 @@ fun ConversationItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isSelected)
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-            else
-                listItemColor
+            .background(
+                if (isSelected)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                else
+                    listItemColor
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),

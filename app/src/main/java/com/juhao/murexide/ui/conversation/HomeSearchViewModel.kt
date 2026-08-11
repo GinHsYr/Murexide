@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 data class HomeSearchUiState(
     val query: String = "",
@@ -38,7 +39,7 @@ class HomeSearchViewModel(
     init {
         viewModelScope.launch {
             query
-                .debounce(400)
+                .debounce(400.milliseconds)
                 .collectLatest(::search)
         }
     }

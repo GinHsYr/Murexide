@@ -52,7 +52,7 @@ fun EditProfileScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
     val applicationContext = context.applicationContext
-    val regions by produceState<List<RegionProvince>>(
+    val regions by produceState(
         initialValue = emptyList(),
         key1 = applicationContext
     ) {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 internal fun calculateItemCenterScrollDistance(
     itemOffset: Int,
@@ -27,14 +28,14 @@ internal suspend fun LazyListState.animateScrollToCenteredItem(index: Int) {
     }
 
     // A freshly loaded message can be present in state before LazyColumn has accepted its index.
-    val itemIsAvailable = withTimeoutOrNull(2_000L) {
+    val itemIsAvailable = withTimeoutOrNull(2_000L.milliseconds) {
         snapshotFlow { layoutInfo.totalItemsCount > index }.first { it }
     } ?: false
     if (!itemIsAvailable) return
 
     animateScrollToItem(index)
 
-    val centerScrollDistance = withTimeoutOrNull(2_000L) {
+    val centerScrollDistance = withTimeoutOrNull(2_000L.milliseconds) {
         snapshotFlow { centerScrollDistance(index) }.first { it != null }
     } ?: return
 

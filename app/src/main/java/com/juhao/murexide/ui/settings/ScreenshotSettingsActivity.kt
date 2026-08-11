@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.juhao.murexide.datastore.SettingsStorage
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.ui.theme.MurexideTheme
 import kotlinx.coroutines.launch
 

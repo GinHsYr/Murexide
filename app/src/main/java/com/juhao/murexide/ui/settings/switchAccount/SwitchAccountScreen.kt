@@ -41,7 +41,6 @@ import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.StyledIconButton
 import com.juhao.murexide.ui.components.StyledTopBar
 import com.juhao.murexide.ui.login.LoginActivity
-import com.juhao.murexide.ui.theme.UiState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

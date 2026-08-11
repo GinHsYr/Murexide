@@ -38,7 +38,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
-import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -48,8 +47,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.ViewModel
@@ -81,7 +78,6 @@ import com.juhao.murexide.ui.components.AccountQuickSwitchMenu
 import com.juhao.murexide.ui.community.CommunityScreen
 import com.juhao.murexide.ui.settings.SettingsActivity
 import com.juhao.murexide.utils.getAppVersionInfo
-import kotlinx.coroutines.delay
 import androidx.compose.foundation.combinedClickable
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -97,7 +93,6 @@ import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import com.juhao.murexide.ui.theme.liquidGlassContentColor
 import com.juhao.murexide.ui.theme.liquidglass.LiquidBottomTabs
-import com.juhao.murexide.ui.theme.liquidglass.LiquidNavigationRail
 
 private data class NavItem(
     val route: String,
@@ -399,9 +394,8 @@ private fun TelegramFloatingNavigationBar(
 }
 
 
-
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.tabSlideDirection():
-    AnimatedContentTransitionScope.SlideDirection {
+        AnimatedContentTransitionScope.SlideDirection {
     val initialIndex = navItems.indexOfFirst { it.route == initialState.destination.route }
     val targetIndex = navItems.indexOfFirst { it.route == targetState.destination.route }
     return if (targetIndex > initialIndex) {
@@ -451,36 +445,25 @@ fun MainScreen(account: UserAccount) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val liquidBackdrop = if (liquidGlassEnabled) rememberLayerBackdrop() else null
     val context = LocalContext.current
-    
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    var previousRoute by remember { mutableStateOf<String?>(null) }
-    var blockContentInput by remember { mutableStateOf(false) }
 
-    LaunchedEffect(currentRoute) {
-        val routeChanged = previousRoute != null && previousRoute != currentRoute
-        previousRoute = currentRoute
-        if (routeChanged) {
-            blockContentInput = true
-            delay(TAB_TRANSITION_DURATION_MILLIS.toLong())
-            blockContentInput = false
-        }
-    }
-    
     val settingsStorage = remember { SettingsStorage(context) }
     val bigScreenEnabled by settingsStorage.bigScreenFlow.collectAsState(initial = true)
-    
+
     val isBigScreen = LocalConfiguration.current.screenWidthDp >= 600
 
     var currentConversation by remember { mutableStateOf<ConversationItem?>(null) }
-    val cachedConversations by LocalCache.observeConversations(account.id).collectAsState(initial = emptyList())
+    val cachedConversations by LocalCache.observeConversations(account.id)
+        .collectAsState(initial = emptyList())
     val unreadCount = cachedConversations.unreadTotal(
         currentConversation?.takeIf { isBigScreen && bigScreenEnabled }
             ?.let { ConversationKey(it.chatId, it.chatType) }
     )
 
     var isContactNewMessagesVisible by remember { mutableStateOf(false) }
-    
+
     var showDevTip by remember { mutableStateOf(context.getAppVersionInfo().commitHash == "dev") }
     var showAccountMenu by remember { mutableStateOf(false) }
     val accountStorage = remember(context.applicationContext) {
@@ -500,7 +483,7 @@ fun MainScreen(account: UserAccount) {
 
     val useNavigationRail = bigScreenEnabled && isBigScreen
     val hideMobileNavigation = currentRoute == "contacts" && isContactNewMessagesVisible
-    
+
     if (showDevTip) {
         AlertDialog(
             onDismissRequest = { showDevTip = false },
@@ -516,7 +499,7 @@ fun MainScreen(account: UserAccount) {
     }
 
     NavigationSuiteScaffold(
-        layoutType = if (useNavigationRail && !liquidGlassEnabled) {
+        layoutType = if (useNavigationRail) {
             NavigationSuiteType.NavigationRail
         } else {
             NavigationSuiteType.None
@@ -538,60 +521,64 @@ fun MainScreen(account: UserAccount) {
             NavigationSuiteDefaults.colors()
         },
         navigationSuiteItems = {
-            if (!(useNavigationRail && liquidGlassEnabled)) {
+            if (useNavigationRail || !liquidGlassEnabled) {
                 navItems.forEach { item ->
-                val selected = currentRoute == item.route
-                item(
-                    icon = {
-                        if (item.route == "mine") {
-                            Box(
-                                modifier = Modifier.combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { navigateTo(item.route) },
-                                    onLongClick = { showAccountMenu = true }
-                                )
-                            ) {
-                                AnimatedNavigationSymbol(
-                                    outlineIcon = item.outlineIcon,
-                                    filledIcon = item.filledIcon,
-                                    selected = selected,
-                                    contentDescription = item.title,
-                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                AccountQuickSwitchMenu(
-                                    expanded = showAccountMenu,
-                                    accounts = loggedInAccounts,
-                                    currentAccountId = account.id,
-                                    onDismissRequest = { showAccountMenu = false }
-                                )
+                    val selected = currentRoute == item.route
+                    item(
+                        icon = {
+                            when (item.route) {
+                                "mine" -> {
+                                    Box(
+                                        modifier = Modifier.combinedClickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { navigateTo(item.route) },
+                                            onLongClick = { showAccountMenu = true }
+                                        )
+                                    ) {
+                                        AnimatedNavigationSymbol(
+                                            outlineIcon = item.outlineIcon,
+                                            filledIcon = item.filledIcon,
+                                            selected = selected,
+                                            contentDescription = item.title,
+                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        AccountQuickSwitchMenu(
+                                            expanded = showAccountMenu,
+                                            accounts = loggedInAccounts,
+                                            currentAccountId = account.id,
+                                            onDismissRequest = { showAccountMenu = false }
+                                        )
+                                    }
+                                }
+
+                                "conversations" -> {
+                                    BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
+                                        AnimatedNavigationSymbol(
+                                            outlineIcon = item.outlineIcon,
+                                            filledIcon = item.filledIcon,
+                                            selected = selected,
+                                            contentDescription = item.title,
+                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+
+                                else -> {
+                                    AnimatedNavigationSymbol(
+                                        outlineIcon = item.outlineIcon,
+                                        filledIcon = item.filledIcon,
+                                        selected = selected,
+                                        contentDescription = item.title,
+                                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
-                        } else if (item.route == "conversations") {
-                            BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
-                                AnimatedNavigationSymbol(
-                                    outlineIcon = item.outlineIcon,
-                                    filledIcon = item.filledIcon,
-                                    selected = selected,
-                                    contentDescription = item.title,
-                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        } else {
-                            AnimatedNavigationSymbol(
-                                outlineIcon = item.outlineIcon,
-                                filledIcon = item.filledIcon,
-                                selected = selected,
-                                contentDescription = item.title,
-                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    label = { HomeNavigationLabel(item, selected) },
-                    selected = selected,
-                    onClick = {
-                        navigateTo(item.route)
-                    }
-                )
+                        },
+                        label = { HomeNavigationLabel(item, selected) },
+                        selected = selected,
+                        onClick = { navigateTo(item.route) }
+                    )
                 }
             }
         }
@@ -656,236 +643,204 @@ fun MainScreen(account: UserAccount) {
                 }
             }
         ) { innerPadding ->
-            Row(Modifier.fillMaxSize().consumeWindowInsets(innerPadding)) {
-                if (useNavigationRail && liquidGlassEnabled && liquidBackdrop != null) {
-                    LiquidNavigationRail(
-                        selectedTabIndex = navItems.indexOfFirst { it.route == currentRoute }
-                            .coerceAtLeast(0),
-                        onTabSelected = { index -> navigateTo(navItems[index].route) },
-                        backdrop = liquidBackdrop,
-                        tabsCount = navItems.size,
-                        modifier = Modifier
-                            .padding(start = 12.dp, top = 20.dp, bottom = 20.dp)
-                            .align(Alignment.Top),
-                        onTabLongClick = { index ->
-                            if (navItems[index].route == "mine") showAccountMenu = true
-                        },
-                        onTabLongClickLabel = { index ->
-                            if (navItems[index].route == "mine") "打开账号菜单" else null
-                        },
-                    ) { index, selected ->
-                        val item = navItems[index]
-                        HomeNavigationIcon(
-                            item = item,
-                            selected = selected,
-                            unreadCount = unreadCount,
-                            showAccountMenu = showAccountMenu,
-                            accounts = loggedInAccounts,
-                            currentAccountId = account.id,
-                            onNavigate = navigateTo,
-                            onShowAccountMenu = { showAccountMenu = true },
-                            onDismissAccountMenu = { showAccountMenu = false },
-                            handleAccountGestures = false,
-                        )
-                        HomeNavigationLabel(item, selected, compact = true)
-                    }
-                }
-
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .consumeWindowInsets(innerPadding)
+            ) {
                 NavHost(
-                navController = navController,
-                startDestination = "conversations",
-                modifier = Modifier
-                    .then(
-                        if (useNavigationRail && liquidGlassEnabled) {
-                            Modifier.weight(1f)
-                        } else {
-                            Modifier.fillMaxSize()
-                        }
-                    )
-                    .hazeSource(hazeState)
-                    .then(
-                        if (liquidBackdrop != null) {
-                            Modifier.layerBackdrop(liquidBackdrop)
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .pointerInput(blockContentInput) {
-                        if (blockContentInput) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach {
-                                        it.consume()
+                    navController = navController,
+                    startDestination = "conversations",
+                    modifier = Modifier
+                        .then(
+                            if (useNavigationRail && liquidGlassEnabled) {
+                                Modifier.weight(1f)
+                            } else {
+                                Modifier.fillMaxSize()
+                            }
+                        )
+                        .hazeSource(hazeState)
+                        .then(
+                            if (liquidBackdrop != null) {
+                                Modifier.layerBackdrop(liquidBackdrop)
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = tabSlideDirection(),
+                            animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = tabSlideDirection(),
+                            animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = tabSlideDirection(),
+                            animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = tabSlideDirection(),
+                            animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
+                        )
+                    }
+                ) {
+                    composable("conversations") {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            ConversationListScreen(
+                                modifier = Modifier
+                                    .weight(if (isBigScreen && bigScreenEnabled) 0.4f else 1f)
+                                    .fillMaxHeight(),
+                                token = token,
+                                accountId = account.id,
+                                bigScreenMode = isBigScreen && bigScreenEnabled,
+                                currentConversation = if (isBigScreen && bigScreenEnabled) currentConversation else null,
+                                onConversationClick = { conversation ->
+                                    if (isBigScreen && bigScreenEnabled) {
+                                        currentConversation = conversation
+                                    } else {
+                                        ChatActivity.start(
+                                            context = context,
+                                            chatId = conversation.chatId,
+                                            chatType = conversation.chatType,
+                                            chatName = conversation.displayName,
+                                            chatAvatar = conversation.avatarUrl,
+                                        )
+                                    }
+                                },
+                                onSearchClick = { origin ->
+                                    HomeSearchActivity.start(
+                                        context,
+                                        origin
+                                    )
+                                },
+                                onCreateClick = { kind -> CreationActivity.start(context, kind) }
+                            )
+
+                            if (isBigScreen && bigScreenEnabled) {
+                                if (currentConversation != null) {
+                                    BackHandler {
+                                        currentConversation = null
+                                    }
+                                    key(currentConversation!!.chatId) {
+                                        ChatScreen(
+                                            modifier = Modifier
+                                                .weight(0.7f)
+                                                .fillMaxHeight(),
+                                            chatAvatar = currentConversation!!.avatarUrl,
+                                            chatName = currentConversation!!.name,
+                                            chatType = currentConversation!!.chatType,
+                                            chatId = currentConversation!!.chatId,
+                                            onBackClick = { currentConversation = null },
+                                            onOpenConversation = { target ->
+                                                currentConversation = target.toConversationItem()
+                                            },
+                                            bigScreenMode = true,
+                                            backUnreadCount = unreadCount,
+                                            viewModel = viewModel(
+                                                key = "chat_" + currentConversation!!.chatId,
+                                                factory = object : ViewModelProvider.Factory {
+                                                    @Suppress("UNCHECKED_CAST")
+                                                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                                        return ChatViewModel(
+                                                            token = token,
+                                                            chatId = currentConversation!!.chatId,
+                                                            chatType = currentConversation!!.chatType,
+                                                            currentUserId = account.id,
+                                                            currentUserName = account.username,
+                                                            currentUserAvatar = account.avatar
+                                                        ) as T
+                                                    }
+                                                }
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(0.7f)
+                                            .fillMaxHeight(),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = AppIcons.ChatBubble,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(80.dp)
+                                                .alpha(0.6f)
+                                        )
                                     }
                                 }
                             }
                         }
-                    },
-                enterTransition = {
-                    slideIntoContainer(
-                        towards = tabSlideDirection(),
-                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                    )
-                },
-                exitTransition = {
-                    slideOutOfContainer(
-                        towards = tabSlideDirection(),
-                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                    )
-                },
-                popEnterTransition = {
-                    slideIntoContainer(
-                        towards = tabSlideDirection(),
-                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                    )
-                },
-                popExitTransition = {
-                    slideOutOfContainer(
-                        towards = tabSlideDirection(),
-                        animationSpec = tween(TAB_TRANSITION_DURATION_MILLIS)
-                    )
-                }
-                ) {
-            composable("conversations") {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    ConversationListScreen(
-                        modifier = Modifier
-                            .weight(if (isBigScreen && bigScreenEnabled) 0.4f else 1f)
-                            .fillMaxHeight(),
-                        token = token,
-                        accountId = account.id,
-                        bigScreenMode = isBigScreen && bigScreenEnabled,
-                        currentConversation = if (isBigScreen && bigScreenEnabled) currentConversation else null,
-                        onConversationClick = { conversation ->
-                            if (isBigScreen && bigScreenEnabled) {
-                                currentConversation = conversation
-                            } else {
+                    }
+
+                    composable("contacts") {
+                        ContactListScreen(
+                            token = token,
+                            onNewMessagesVisibilityChanged = { isVisible ->
+                                isContactNewMessagesVisible = isVisible
+                            },
+                            onContactClick = { contact ->
                                 ChatActivity.start(
                                     context = context,
-                                    chatId = conversation.chatId,
-                                    chatType = conversation.chatType,
-                                    chatName = conversation.displayName,
-                                    chatAvatar = conversation.avatarUrl,
+                                    chatId = contact.chatId,
+                                    chatType = contact.chatType,
+                                    chatName = contact.remark ?: contact.name,
+                                    chatAvatar = contact.avatarUrl
                                 )
                             }
-                        },
-                        onSearchClick = { origin -> HomeSearchActivity.start(context, origin) },
-                        onCreateClick = { kind -> CreationActivity.start(context, kind) }
-                    )
+                        )
+                    }
 
-                    if (isBigScreen && bigScreenEnabled) {
-                        if (currentConversation != null) {
-                            BackHandler {
-                                currentConversation = null
-                            }
-                            key(currentConversation!!.chatId) {
-                                ChatScreen(
-                                    modifier = Modifier
-                                        .weight(0.7f)
-                                        .fillMaxHeight(),
-                                    chatAvatar = currentConversation!!.avatarUrl,
-                                    chatName = currentConversation!!.name,
-                                    chatType = currentConversation!!.chatType,
-                                    chatId = currentConversation!!.chatId,
-                                    onBackClick = { currentConversation = null },
-                                    onOpenConversation = { target ->
-                                        currentConversation = target.toConversationItem()
-                                    },
-                                    bigScreenMode = true,
-                                    backUnreadCount = unreadCount,
-                                    viewModel = viewModel(
-                                        key = "chat_" + currentConversation!!.chatId,
-                                        factory = object : ViewModelProvider.Factory {
-                                            @Suppress("UNCHECKED_CAST")
-                                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                                return ChatViewModel(
-                                                    token = token,
-                                                    chatId = currentConversation!!.chatId,
-                                                    chatType = currentConversation!!.chatType,
-                                                    currentUserId = account.id,
-                                                    currentUserName = account.username,
-                                                    currentUserAvatar = account.avatar
-                                                ) as T
-                                            }
+                    composable("community") {
+                        CommunityScreen(
+                            token = token
+                        )
+                    }
+
+                    composable("discover") {
+                        Scaffold(
+                            topBar = {
+                                TopAppBar(
+                                    title = { Text("发现") },
+                                    actions = {
+                                        IconButton(onClick = { /* TODO: 搜索 */ }) {
+                                            Icon(AppIcons.Search, contentDescription = "搜索")
                                         }
-                                    )
+                                    }
                                 )
                             }
-                        } else {
+                        ) { innerPadding ->
                             Column(
-                                modifier = Modifier.weight(0.7f).fillMaxHeight(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                                    .padding(top = 16.dp),
                             ) {
-                                Icon(
-                                    imageVector = AppIcons.ChatBubble,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(80.dp).alpha(0.6f)
-                                )
+                                Text("发现")
                             }
                         }
                     }
-                }
-            }
 
-            composable("contacts") {
-                ContactListScreen(
-                    token = token,
-                    onNewMessagesVisibilityChanged = { isVisible ->
-                        isContactNewMessagesVisible = isVisible
-                    },
-                    onContactClick = { contact ->
-                        ChatActivity.start(
-                            context = context,
-                            chatId = contact.chatId,
-                            chatType = contact.chatType,
-                            chatName = contact.remark ?: contact.name,
-                            chatAvatar = contact.avatarUrl
-                        )
-                    }
-                )
-            }
-
-            composable("community") {
-                CommunityScreen(
-                    token = token
-                )
-            }
-            
-            composable("discover") {
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("发现") },
-                            actions = {
-                                IconButton(onClick = { /* TODO: 搜索 */ }) {
-                                    Icon(AppIcons.Search, contentDescription = "搜索")
-                                }
+                    composable("mine") {
+                        MineScreen(
+                            token = token,
+                            onSettingsClick = {
+                                context.startActivity(Intent(context, SettingsActivity::class.java))
                             }
                         )
                     }
-                ) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(top = 16.dp),
-                    ) {
-                        Text("发现")
-                    }
                 }
-            }
-
-            composable("mine") {
-                MineScreen(
-                    token = token,
-                    onSettingsClick = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }
-                )
-            }
             }
         }
     }
-}
 }

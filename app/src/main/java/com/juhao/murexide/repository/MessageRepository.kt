@@ -187,58 +187,6 @@ class MessageRepository(
         }
     }
 
-    suspend fun getImageMessageList(
-        token: String,
-        chatId: String,
-        chatType: Int,
-        imageId: Long,
-        earlierQuantities: Int,
-        latestQuantities: Int
-    ): Result<List<ConversationImage>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (imageId == 0L) {
-                    return@withContext Result.failure(
-                        IllegalArgumentException("图片消息缺少有效的 image_id")
-                    )
-                }
-                val requestBody = createImageMessageListRequestBody(
-                    imageId = imageId,
-                    chatId = chatId,
-                    chatType = chatType,
-                    earlierQuantities = earlierQuantities,
-                    latestQuantities = latestQuantities
-                )
-                val httpRequest = Request.Builder()
-                    .url("$baseUrl/v1/msg/pic-list-message-by-mid-seq")
-                    .post(requestBody)
-                    .header("token", token)
-                    .build()
-
-                client.newCall(httpRequest).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@use Result.failure<List<ConversationImage>>(
-                            Exception("HTTP error: ${response.code}")
-                        )
-                    }
-
-                    val result = pic_list_message_by_mid_seq.ADAPTER.decode(response.body.bytes())
-                    if (result.status?.code == 1) {
-                        Result.success(result.toConversationImages())
-                    } else {
-                        Result.failure(Exception(result.status?.msg ?: "获取图片列表失败"))
-                    }
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
-
-    /**
-     * Returns messages whose server-side send/edit/recall time is newer than [updateTime].
-     * This is the API's incremental catch-up path used after the app returns to foreground.
-     */
     suspend fun getMessagesByUpdate(
         token: String,
         chatId: String,
@@ -263,14 +211,14 @@ class MessageRepository(
 
                 client.newCall(httpRequest).execute().use { response ->
                     if (!response.isSuccessful) {
-                        return@use Result.failure<List<MessageItem>>(
+                        return@use Result.failure(
                             Exception("HTTP error: ${response.code}")
                         )
                     }
 
                     val messageList = list_message.ADAPTER.decode(response.body.bytes())
                     if (messageList.status?.code != 1) {
-                        return@use Result.failure<List<MessageItem>>(
+                        return@use Result.failure(
                             Exception(messageList.status?.msg ?: "增量同步消息失败")
                         )
                     }
@@ -363,13 +311,13 @@ class MessageRepository(
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        return@use Result.failure<Boolean>(
+                        return@use Result.failure(
                             Exception("HTTP error: ${response.code}")
                         )
                     }
                     val body = response.body.string()
                     if (body.isBlank()) {
-                        return@use Result.failure<Boolean>(Exception("转发响应为空"))
+                        return@use Result.failure(Exception("转发响应为空"))
                     }
                     val result = forwardJson.decodeFromString<ForwardStatusResponse>(body)
                     if (result.code == 1) {

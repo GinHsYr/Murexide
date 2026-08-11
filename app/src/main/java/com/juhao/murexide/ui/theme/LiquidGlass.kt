@@ -2,7 +2,6 @@ package com.juhao.murexide.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -22,9 +21,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
@@ -36,13 +32,8 @@ import com.kyant.backdrop.isRuntimeShaderSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 
-/** Whether the user opted into the GPU-backed liquid glass treatment. */
 val LocalLiquidGlassEnabled = staticCompositionLocalOf { false }
-
-/** User-controlled multiplier for the blur used by liquid glass surfaces. */
 val LocalLiquidGlassBlur = staticCompositionLocalOf { 1f }
-
-/** The nearest backdrop source used by glass surfaces. */
 val LocalLiquidGlassBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
 private const val DEFAULT_MINIMUM_TEXT_CONTRAST = 4.5f
@@ -90,10 +81,6 @@ half4 main(float2 coord) {
 }
 """.trimIndent()
 
-/**
- * Applies the Backdrop treatment when enabled and keeps a faithful opaque fallback otherwise.
- * The fallback is important for API levels where RenderEffect is unavailable.
- */
 fun Modifier.liquidGlass(
     enabled: Boolean,
     backdrop: Backdrop?,
@@ -131,7 +118,6 @@ fun Modifier.liquidGlass(
     )
 }
 
-/** Keeps the preferred foreground when readable, otherwise flips it to black or white. */
 internal fun liquidGlassContentColor(
     preferredColor: Color,
     glassColor: Color,
@@ -155,7 +141,6 @@ private fun contrastRatio(foreground: Color, background: Color): Float {
     return (lighter + 0.05f) / (darker + 0.05f)
 }
 
-/** Supplies the adaptive foreground to content drawn on a glass surface. */
 @Composable
 fun ProvideLiquidGlassContentColor(
     glassColor: Color,
@@ -236,29 +221,6 @@ fun Modifier.adaptiveLiquidGlassForeground(): Modifier {
 }
 
 @Composable
-internal fun ProvideAdaptiveLiquidGlassForeground(
-    backdrop: Backdrop?,
-    glassColor: Color,
-    blurRadius: Dp,
-    content: @Composable () -> Unit,
-) {
-    if (!LocalLiquidGlassEnabled.current || backdrop == null) {
-        content()
-        return
-    }
-    CompositionLocalProvider(
-        LocalLiquidGlassForegroundSampling provides LiquidGlassForegroundSampling(
-            backdrop = backdrop,
-            glassColor = glassColor,
-            blurRadius = blurRadius,
-        ),
-    ) {
-        content()
-    }
-}
-
-/** A small glass surface used by settings and conversation-detail controls. */
-@Composable
 fun LiquidGlassSurface(
     modifier: Modifier = Modifier,
     shape: Shape,
@@ -297,27 +259,3 @@ fun liquidGlassHighlightEnabled(): Boolean =
 
 private fun Color.liquidGlassLuminance(): Float =
     (0.2126f * red) + (0.7152f * green) + (0.0722f * blue)
-
-/**
- * Creates a backdrop source for a screen whose content is rendered above a plain background.
- * Rich screens can provide their own source by applying [layerBackdrop] to their content.
- */
-@Composable
-fun rememberLiquidGlassBackdrop(): LayerBackdrop = rememberLayerBackdrop()
-
-@Composable
-fun LiquidGlassBackground(
-    backdrop: LayerBackdrop,
-    color: Color,
-    content: @Composable () -> Unit,
-) {
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .layerBackdrop(backdrop)
-                .background(color)
-        )
-        content()
-    }
-}

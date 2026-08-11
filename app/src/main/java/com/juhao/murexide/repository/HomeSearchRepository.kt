@@ -10,9 +10,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -83,7 +81,7 @@ class HomeSearchRepository {
                 } == true
                 if (isCategorizedResponse) {
                     recognized = true
-                    categorizedLists.orEmpty().mapNotNull { it as? JsonObject }.forEach { category ->
+                    categorizedLists.mapNotNull { it as? JsonObject }.forEach { category ->
                         val fallbackType = when (category["title"].asString()) {
                             "用户" -> 1
                             "群组", "群聊" -> 2
@@ -119,18 +117,38 @@ class HomeSearchRepository {
             ?: this["chat_type"].asInt()?.takeIf { it in 1..3 }
             ?: this["friendType"].asInt()?.takeIf { it in 1..3 }
             ?: return null
-        val chatId = sequenceOf("friendId", "chatId", "chat_id", "id", "userId", "user_id", "groupId", "group_id", "botId", "bot_id")
-            .mapNotNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }
-            .firstOrNull() ?: return null
-        val name = sequenceOf("nickname", "name", "groupName", "group_name", "botName", "bot_name")
-            .mapNotNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }
-            .firstOrNull() ?: "未知对象"
-        val avatar = sequenceOf("avatarUrl", "avatar_url", "avatar", "headUrl", "head_url")
-            .mapNotNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }
-            .firstOrNull().orEmpty()
-        val introduction = sequenceOf("introduction", "introduce", "description")
-            .mapNotNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }
-            .firstOrNull().orEmpty()
+        val chatId = sequenceOf(
+            "friendId",
+            "chatId",
+            "chat_id",
+            "id",
+            "userId",
+            "user_id",
+            "groupId",
+            "group_id",
+            "botId",
+            "bot_id"
+        ).firstNotNullOfOrNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } } ?: return null
+        val name = sequenceOf(
+            "nickname",
+            "name",
+            "groupName",
+            "group_name",
+            "botName",
+            "bot_name"
+        ).firstNotNullOfOrNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } } ?: "未知对象"
+        val avatar = sequenceOf(
+            "avatarUrl",
+            "avatar_url",
+            "avatar",
+            "headUrl",
+            "head_url"
+        ).firstNotNullOfOrNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }.orEmpty()
+        val introduction = sequenceOf(
+            "introduction",
+            "introduce",
+            "description"
+        ).firstNotNullOfOrNull { this[it].asString()?.takeIf { value -> value.isNotBlank() } }.orEmpty()
         return HomeSearchResult(chatId, chatType, name, avatar, introduction)
     }
 }

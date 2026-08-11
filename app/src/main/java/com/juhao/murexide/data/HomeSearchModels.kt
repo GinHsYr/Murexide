@@ -20,7 +20,7 @@ data class ConversationKey(val chatId: String, val chatType: Int)
 
 fun List<ConversationItem>.unreadTotal(excluding: ConversationKey? = null): Int {
     val total = asSequence()
-        .filterNot { excluding != null && it.chatId == excluding.chatId && it.chatType == excluding.chatType }
+        .filterNot { it.doNotDisturb == 1 || (excluding != null && it.chatId == excluding.chatId && it.chatType == excluding.chatType) }
         .sumOf { it.unreadMessage.coerceAtLeast(0).toLong() }
     return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 }

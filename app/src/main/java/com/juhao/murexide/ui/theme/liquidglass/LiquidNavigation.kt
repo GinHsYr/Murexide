@@ -17,10 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -39,7 +36,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -51,7 +47,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
-import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -91,13 +86,11 @@ fun LiquidBottomTabs(
     content: @Composable (index: Int, selected: Boolean, overlayPass: Boolean) -> Unit,
 ) {
     val blurScale = LocalLiquidGlassBlur.current
-    val accentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
-    val isLightTheme =
-        androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val containerColor = if (isLightTheme) {
-        Color(0xFFFAFAFA).copy(alpha = 0.4f)
+        Color(0xFFFAFAFA).copy(alpha = 0.6f)
     } else {
-        Color(0xFF121212).copy(alpha = 0.4f)
+        Color(0xFF121212).copy(alpha = 0.6f)
     }
     val navigationContentColor = liquidGlassContentColor(
         preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -243,8 +236,7 @@ fun LiquidBottomTabs(
                     .then(if (isLightTheme) interactiveHighlight.modifier else Modifier)
                     .height(56.dp)
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 repeat(tabsCount) { index ->
@@ -256,6 +248,25 @@ fun LiquidBottomTabs(
                     ) {
                         content(index, currentIndex == index, true)
                     }
+                }
+            }
+        }
+
+        Row(
+            Modifier
+                .padding(horizontal = 4.dp)
+                .height(56.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(tabsCount) { index ->
+                LiquidBottomTab(
+                    selected = currentIndex == index,
+                    contentColor = navigationContentColor,
+                    onClick = {},
+                    interactive = false,
+                ) {
+                    content(index, currentIndex == index, false)
                 }
             }
         }
@@ -314,26 +325,6 @@ fun LiquidBottomTabs(
                 .height(56.dp)
                 .fillMaxWidth(1f / tabsCount),
         )
-
-        // Keep labels and badges above the moving glass capsule. The second pass is visual only.
-        Row(
-            Modifier
-                .padding(horizontal = 4.dp)
-                .height(56.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            repeat(tabsCount) { index ->
-                LiquidBottomTab(
-                    selected = currentIndex == index,
-                    contentColor = navigationContentColor,
-                    onClick = {},
-                    interactive = false,
-                ) {
-                    content(index, currentIndex == index, false)
-                }
-            }
-        }
     }
 }
 
@@ -384,147 +375,6 @@ private fun androidx.compose.foundation.layout.RowScope.LiquidBottomTab(
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             content()
         }
-    }
-}
-
-@Composable
-fun LiquidNavigationRail(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    backdrop: Backdrop,
-    tabsCount: Int,
-    modifier: Modifier = Modifier,
-    onTabLongClick: ((Int) -> Unit)? = null,
-    onTabLongClickLabel: ((Int) -> String?)? = null,
-    content: @Composable (index: Int, selected: Boolean) -> Unit,
-) {
-    val blurScale = LocalLiquidGlassBlur.current
-    val accentColor = androidx.compose.material3.MaterialTheme.colorScheme.primary
-    val isLightTheme =
-        androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
-        .copy(alpha = 0.42f)
-    val navigationContentColor = liquidGlassContentColor(
-        preferredColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        glassColor = containerColor,
-        backgroundColor = MaterialTheme.colorScheme.background,
-    )
-    val animationScope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val itemHeight = 64.dp
-    var currentIndex by remember { mutableIntStateOf(selectedTabIndex) }
-    val dragAnimation = remember(animationScope, tabsCount) {
-        DampedDragAnimation(
-            animationScope = animationScope,
-            initialValue = selectedTabIndex.toFloat(),
-            valueRange = 0f..(tabsCount - 1).toFloat(),
-            visibilityThreshold = 0.001f,
-            initialScale = 1f,
-            pressedScale = 1.18f,
-            onDragStarted = {},
-            onDragStopped = {
-                val target = snapNavigationIndex(targetValue, tabsCount)
-                currentIndex = target
-                animateToValue(target.toFloat())
-                onTabSelected(target)
-            },
-            onDrag = { _, dragAmount ->
-                val itemHeightPx = with(density) { itemHeight.toPx() }
-                dragToValue(
-                    (targetValue + dragAmount.y / itemHeightPx)
-                        .fastCoerceIn(0f, (tabsCount - 1).toFloat()),
-                )
-            },
-        )
-    }
-    LaunchedEffect(selectedTabIndex) {
-        if (selectedTabIndex != currentIndex) {
-            currentIndex = selectedTabIndex
-            dragAnimation.animateToValue(selectedTabIndex.toFloat())
-        }
-    }
-
-    Box(
-        modifier
-            .width(80.dp)
-            .height(itemHeight * tabsCount + 8.dp)
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { Capsule() },
-                effects = {
-                    vibrancy()
-                    blur(5.dp.toPx() * blurScale)
-                    lens(24.dp.toPx(), 24.dp.toPx())
-                },
-                highlight = if (isLightTheme) {
-                    { Highlight.Default }
-                } else {
-                    null
-                },
-                onDrawSurface = { drawRect(containerColor) },
-            )
-            .padding(4.dp),
-    ) {
-        Column(Modifier.fillMaxWidth()) {
-            repeat(tabsCount) { index ->
-                Column(
-                    Modifier
-                        .height(itemHeight)
-                        .fillMaxWidth()
-                        .clip(Capsule())
-                        .combinedClickable(
-                            onClick = {
-                                currentIndex = index
-                                dragAnimation.animateToValue(index.toFloat())
-                                onTabSelected(index)
-                            },
-                            onLongClick = onTabLongClick?.let { callback -> { callback(index) } },
-                            onLongClickLabel = onTabLongClickLabel?.invoke(index),
-                        )
-                        .semantics {
-                            selected = currentIndex == index
-                            role = Role.Tab
-                        },
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides navigationContentColor) {
-                        content(index, currentIndex == index)
-                    }
-                }
-            }
-        }
-
-        Box(
-            Modifier
-                .offset(y = itemHeight * dragAnimation.value)
-                .then(dragAnimation.modifier)
-                .drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { Capsule() },
-                    effects = {
-                        lens(
-                            10.dp.toPx() * dragAnimation.pressProgress,
-                            14.dp.toPx() * dragAnimation.pressProgress,
-                            chromaticAberration = true,
-                        )
-                    },
-                    highlight = if (isLightTheme) {
-                        { Highlight.Default.copy(alpha = dragAnimation.pressProgress) }
-                    } else {
-                        null
-                    },
-                    shadow = { Shadow(alpha = dragAnimation.pressProgress) },
-                    innerShadow = {
-                        InnerShadow(
-                            radius = 8.dp * dragAnimation.pressProgress,
-                            alpha = dragAnimation.pressProgress,
-                        )
-                    },
-                    onDrawSurface = { drawRect(accentColor.copy(alpha = 0.14f)) },
-                )
-                .size(72.dp, itemHeight),
-        )
     }
 }
 

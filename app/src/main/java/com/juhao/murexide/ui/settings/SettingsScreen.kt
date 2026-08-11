@@ -18,7 +18,6 @@ import com.juhao.murexide.utils.UpdateInfo
 import com.juhao.murexide.utils.checkForUpdateWithDetails
 import com.juhao.murexide.utils.getAppVersionInfo
 import com.juhao.murexide.ui.components.*
-import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.datastore.SettingsStorage
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll

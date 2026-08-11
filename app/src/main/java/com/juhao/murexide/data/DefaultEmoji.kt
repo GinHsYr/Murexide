@@ -364,7 +364,7 @@ object DefaultEmojiParser {
         val candidate = text.lastIndexOf("[.", (changedStart - 1).coerceAtLeast(0))
         if (candidate >= 0) {
             val close = text.indexOf(']', candidate + 2)
-            if (close < 0 || close >= changedStart || close >= changedEnd) return candidate
+            if (close !in 0..<changedStart || close >= changedEnd) return candidate
         }
         return changedStart.coerceIn(0, text.length)
     }
@@ -403,7 +403,7 @@ object DefaultEmojiParser {
 
         val matches = ArrayList<DefaultEmojiMatch>()
         var cursor = text.indexOf("[.", start)
-        while (cursor >= 0 && cursor < end) {
+        while (cursor in 0..<end) {
             val close = text.indexOf(']', cursor + 2)
             if (close < 0 || close + 1 > end) break
             val nameStart = cursor + 2

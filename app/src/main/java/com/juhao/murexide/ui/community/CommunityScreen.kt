@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.juhao.murexide.ui.theme.UiState
 import com.juhao.murexide.data.PostItem
 import com.juhao.murexide.data.BaItem
 import com.juhao.murexide.ui.community.ba.BaDetailActivity
@@ -179,7 +178,7 @@ fun ManageContent(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp)
+        contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp)
     ) {
         item {
             SettingsGroup {
@@ -250,7 +249,7 @@ fun BaList(
             Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     } else {
-        LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = 100.dp)) {
             items(baList) { ba ->
                 BaRow(ba = ba, onClick = { onBaClick(ba) })
             }
@@ -339,7 +338,11 @@ fun PostsList(
                 if (shouldLoadMore) onLoadMore()
             }
 
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
                 items(posts) { post ->
                     PostCard(
                         post = post,

@@ -118,7 +118,6 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import com.juhao.murexide.ui.theme.ProvideLiquidGlassContentColor
-import com.juhao.murexide.ui.theme.ProvideAdaptiveLiquidGlassForeground
 import com.juhao.murexide.ui.theme.adaptiveLiquidGlassForeground
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
@@ -150,12 +149,12 @@ private fun FloatingTopBar(
         noiseFactor = 0f
     )
     val useGlassBar = liquidGlassEnabled && liquidBackdrop != null
-    val glassSurfaceColor = topBarColor.copy(alpha = 0.08f)
+    val glassSurfaceColor = topBarColor.copy(alpha = 0.6f)
 
     fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape): Modifier =
         if (useGlassBar) {
             drawBackdrop(
-                backdrop = requireNotNull(liquidBackdrop),
+                backdrop = liquidBackdrop,
                 shape = { shape },
                 effects = {
                     vibrancy()
@@ -167,11 +166,13 @@ private fun FloatingTopBar(
                 },
             )
         } else {
-            shadow(2.dp, shape).clip(shape).hazeEffect(
-                state = hazeState,
-                style = buttonHazeStyle,
-                block = null
-            )
+            shadow(2.dp, shape)
+                .clip(shape)
+                .hazeEffect(
+                    state = hazeState,
+                    style = buttonHazeStyle,
+                    block = null
+                )
         }
 
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -191,19 +192,14 @@ private fun FloatingTopBar(
             )
         }
 
-        ProvideAdaptiveLiquidGlassForeground(
-            backdrop = if (useGlassBar) liquidBackdrop else null,
-            glassColor = glassSurfaceColor,
-            blurRadius = 1.dp * liquidGlassBlur,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
             if (navigationIcon != null) {
                 Box(
                     modifier = Modifier
@@ -234,7 +230,6 @@ private fun FloatingTopBar(
                 ) {
                     actions()
                 }
-            }
             }
         }
     }
@@ -334,7 +329,8 @@ private fun ChatComposer(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
+@OptIn(
+    ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalComposeUiApi::class,
     ExperimentalLayoutApi::class, ExperimentalHazeMaterialsApi::class,
     ExperimentalMaterial3ExpressiveApi::class
 )
@@ -411,6 +407,7 @@ fun ChatScreen(
             ChatInputPanel.Emoji -> {
                 if (!expressions.isVisible) viewModel.toggleStickerPanel()
             }
+
             ChatInputPanel.Instruction -> {
                 if (!instructionPanel.isVisible) viewModel.toggleInstructionPanel()
             }
@@ -560,7 +557,7 @@ fun ChatScreen(
         val emojisByName = defaultEmojis.associateBy(DefaultEmoji::name)
         recentDefaultEmojiNames.mapNotNull(emojisByName::get)
     }
-    
+
     val hazeState = remember { HazeState() }
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val liquidGlassBlur = LocalLiquidGlassBlur.current
@@ -579,27 +576,27 @@ fun ChatScreen(
     ) { uri: Uri? ->
         uri?.let { viewModel.uploadAndSendImage(it, context) }
     }
-    
+
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.uploadAndSendVideo(it, context) }
     }
-    
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.uploadAndSendFile(it, context) }
     }
-    
+
     fun openImagePicker() {
         imagePickerLauncher.launch("image/*")
     }
-    
+
     fun openVideoPicker() {
         videoPickerLauncher.launch("video/*")
     }
-    
+
     fun openFilePicker() {
         filePickerLauncher.launch("*/*")
     }
@@ -610,8 +607,8 @@ fun ChatScreen(
     fun openForward(messages: List<MessageItem>) {
         val validMessages = messages.filter {
             it.msgId.isNotBlank() &&
-                !it.isRecalled &&
-                it.contentType != MessageItem.CONTENT_TYPE_TIP
+                    !it.isRecalled &&
+                    it.contentType != MessageItem.CONTENT_TYPE_TIP
         }
         if (validMessages.size != messages.size) {
             Toast.makeText(context, "已撤回或提示消息不可转发", Toast.LENGTH_SHORT).show()
@@ -666,7 +663,7 @@ fun ChatScreen(
             }
         }
     }
-    
+
     BackHandler(enabled = selectionMode) {
         viewModel.exitSelectionMode()
     }
@@ -674,7 +671,7 @@ fun ChatScreen(
     BackHandler(enabled = !selectionMode && showMenuMsgId != null) {
         showMenuMsgId = null
     }
-    
+
     val displayItems by remember {
         derivedStateOf {
             computeDisplayItems(
@@ -685,75 +682,6 @@ fun ChatScreen(
             )
         }
     }
-
-    val floatingAvatarState by remember {
-        derivedStateOf {
-            val visibleItems = listState.layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty() || uiState.messages.isEmpty() || !avatarFollowEnabled) {
-                Triple(false, "", false)
-            } else {
-                val topVisibleItem = visibleItems.minByOrNull { it.index }
-                if (topVisibleItem == null) {
-                    Triple(false, "", false)
-                } else {
-                    val firstVisibleIndex = topVisibleItem.index
-                    val message = uiState.messages.getOrNull(firstVisibleIndex)
-
-                    if (message == null) {
-                        Triple(false, "", false)
-                    } else {
-                        val avatarSizePx = with(density) { 44.dp.roundToPx() }
-                        val visibleHeightPx =
-                            topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)
-                        val hasEnoughSpace =
-                            visibleHeightPx >= avatarSizePx && topVisibleItem.size >= avatarSizePx
-
-                        val currentIndex =
-                            uiState.messages.indexOfFirst { it.msgId == message.msgId }
-                        val newerMessage =
-                            if (currentIndex > 0) uiState.messages[currentIndex - 1] else null
-                        val olderMessage =
-                            if (currentIndex < uiState.messages.size - 1) {
-                                uiState.messages[currentIndex + 1]
-                            } else {
-                                null
-                            }
-                        val isLastFromSender =
-                            olderMessage == null || olderMessage.senderId != message.senderId
-                        val hasOtherSameSender =
-                            (newerMessage != null &&
-                                newerMessage.senderId == message.senderId &&
-                                !isLastFromSender) ||
-                                (olderMessage != null && olderMessage.senderId == message.senderId)
-
-                        val avatarUrl = message.senderAvatar.ifBlank {
-                            uiState.messages.firstOrNull { candidate ->
-                                candidate.senderAvatar.isNotBlank() &&
-                                    if (message.isMine) {
-                                        candidate.isMine
-                                    } else {
-                                        message.senderId.isNotBlank() &&
-                                            candidate.senderId == message.senderId
-                                    }
-                            }?.senderAvatar.orEmpty()
-                        }
-
-                        if (hasEnoughSpace) {
-                            Triple(true, avatarUrl, message.isMine)
-                        } else if (hasOtherSameSender && avatarUrl.isNotEmpty()) {
-                            Triple(true, avatarUrl, message.isMine)
-                        } else {
-                            Triple(false, "", false)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    val showFloatingAvatar = floatingAvatarState.first
-    val floatingAvatarUrl = floatingAvatarState.second
-    val floatingAvatarIsMine = floatingAvatarState.third
 
     val topVisibleMessage by remember {
         derivedStateOf {
@@ -768,6 +696,38 @@ fun ChatScreen(
     }
 
     val topVisibleMessageId = topVisibleMessage?.msgId
+
+    val floatingAvatarState by remember {
+        derivedStateOf {
+            val visibleItems = listState.layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty() || displayItems.isEmpty() || !avatarFollowEnabled) {
+                Triple(false, "", false)
+            } else {
+                val topVisibleIndex = visibleItems.first().index
+                val displayItem = displayItems.getOrNull(topVisibleIndex) ?: return@derivedStateOf Triple(false, "", false)
+                val message = displayItem.message
+
+                val itemHeightDp = with(density) { visibleItems.first().size.toDp() }.value
+                val visibleHeightDp = with(density) {
+                    (visibleItems.first().size + visibleItems.first().offset.coerceAtMost(0)).toDp()
+                }.value
+
+                val hasEnoughSpace = visibleHeightDp >= 44 && itemHeightDp >= 44
+
+                if (hasEnoughSpace) {
+                    Triple(true, message.senderAvatar, message.isMine)
+                } else if (!displayItem.isLastFromSender) {
+                    Triple(true, message.senderAvatar, message.isMine)
+                } else {
+                    Triple(false, "", false)
+                }
+            }
+        }
+    }
+
+    val showFloatingAvatar = floatingAvatarState.first
+    val floatingAvatarUrl = floatingAvatarState.second
+    val floatingAvatarIsMine = floatingAvatarState.third
 
     LaunchedEffect(Unit) {
         NotificationHelper.clearNotification(context, chatId)
@@ -785,6 +745,7 @@ fun ChatScreen(
                 is ButtonEvent.OpenUrl -> {
                     handleStaticHtmlLink(context, event.url)
                 }
+
                 is ButtonEvent.CopyText -> {
                     clipboardManager.setClipEntry(
                         ClipEntry(ClipData.newPlainText("button", event.text))
@@ -884,14 +845,14 @@ fun ChatScreen(
             }
         }
     }
-    
+
     var showScreenshotSheet by remember { mutableStateOf(false) }
-    
+
     if (showScreenshotSheet) {
         val orderedSelected = uiState.messages
             .filter { it in selectedMessages }
             .reversed()
-            
+
         ScreenshotBottomSheet(
             messages = orderedSelected,
             chatName = chatName,
@@ -911,7 +872,7 @@ fun ChatScreen(
             onSend = forwardViewModel::send
         )
     }
-    
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = chatBackgroundColor,
@@ -1083,17 +1044,17 @@ fun ChatScreen(
                                                 .padding(horizontal = 4.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                                Icon(
-                                                    imageVector = if (uiState.boardPanel.isExpanded) {
-                                                        AppIcons.KeyboardArrowUp
-                                                    } else {
-                                                        AppIcons.KeyboardArrowDown
-                                                    },
-                                                    contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
-                                                    modifier = Modifier
-                                                        .size(24.dp)
-                                                        .adaptiveLiquidGlassForeground()
-                                                )
+                                            Icon(
+                                                imageVector = if (uiState.boardPanel.isExpanded) {
+                                                    AppIcons.KeyboardArrowUp
+                                                } else {
+                                                    AppIcons.KeyboardArrowDown
+                                                },
+                                                contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .adaptiveLiquidGlassForeground()
+                                            )
                                         }
                                     }
                                 }
@@ -1239,7 +1200,7 @@ fun ChatScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 6.dp, vertical = 4.dp)
-                                        .shadow(4.dp, boardShape)
+                            .shadow(4.dp, boardShape)
                             .then(
                                 if (liquidGlassEnabled) {
                                     Modifier.liquidGlass(
@@ -1313,7 +1274,7 @@ fun ChatScreen(
                         .align(Alignment.TopCenter)
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                 )
-                
+
                 AnimatedContent(
                     targetState = selectionMode,
                     transitionSpec = {
@@ -1331,9 +1292,9 @@ fun ChatScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             val message = selectedMessages.firstOrNull()
-                            message?.let { 
+                            message?.let {
                                 Button(
-                                    onClick = { 
+                                    onClick = {
                                         viewModel.setReplyTo(it)
                                         viewModel.exitSelectionMode()
                                     },
@@ -1348,7 +1309,9 @@ fun ChatScreen(
                             }
                             TextButton(
                                 onClick = {
-                                    openForward(uiState.messages.asReversed().filter { it in selectedMessages })
+                                    openForward(
+                                        uiState.messages.asReversed()
+                                            .filter { it in selectedMessages })
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -1521,12 +1484,12 @@ fun ChatScreen(
                                 onAddFileClick = { openFilePicker() },
                                 isEmojiPanelVisible =
                                     expressions.isVisible ||
-                                        pendingInputPanel == ChatInputPanel.Emoji,
+                                            pendingInputPanel == ChatInputPanel.Emoji,
                                 onEmojiClick = { requestInputPanel(ChatInputPanel.Emoji) },
                                 hasInstructions = instructionPanel.instructions.isNotEmpty(),
                                 isInstructionPanelVisible =
                                     instructionPanel.isVisible ||
-                                        pendingInputPanel == ChatInputPanel.Instruction,
+                                            pendingInputPanel == ChatInputPanel.Instruction,
                                 onInstructionClick = {
                                     requestInputPanel(ChatInputPanel.Instruction)
                                 },
@@ -1536,8 +1499,8 @@ fun ChatScreen(
                                         !isMeasuringIme &&
                                         !isReturningToKeyboard &&
                                         (pendingInputPanel != null ||
-                                            expressions.isVisible ||
-                                            instructionPanel.isVisible)
+                                                expressions.isVisible ||
+                                                instructionPanel.isVisible)
                                     ) {
                                         returnToKeyboard()
                                     }
@@ -1546,8 +1509,8 @@ fun ChatScreen(
 
                             BackHandler(
                                 enabled = pendingInputPanel != null ||
-                                    expressions.isVisible ||
-                                    instructionPanel.isVisible
+                                        expressions.isVisible ||
+                                        instructionPanel.isVisible
                             ) {
                                 isMeasuringIme = false
                                 pendingInputPanel = null
@@ -1567,6 +1530,7 @@ fun ChatScreen(
                                             )
                                     )
                                 }
+
                                 pendingInputPanel != null || isReturningToKeyboard -> {
                                     Spacer(
                                         modifier = Modifier
@@ -1574,6 +1538,7 @@ fun ChatScreen(
                                             .height(inputPanelHeight)
                                     )
                                 }
+
                                 expressions.isVisible -> {
                                     EmojiPanel(
                                         defaultEmojis = defaultEmojis,
@@ -1598,6 +1563,7 @@ fun ChatScreen(
                                             .height(inputPanelHeight)
                                     )
                                 }
+
                                 instructionPanel.isVisible -> {
                                     InstructionPanel(
                                         bots = instructionPanel.bots,
@@ -1609,6 +1575,7 @@ fun ChatScreen(
                                             .height(inputPanelHeight)
                                     )
                                 }
+
                                 else -> {
                                     Spacer(
                                         modifier = Modifier
@@ -1727,14 +1694,14 @@ fun ChatScreen(
                         contentType = { it.message.contentType }
                     ) { item ->
                         val message = item.message
-                        
+
                         val isTopVisibleItem = message.msgId == topVisibleMessageId
 
                         val shouldShowItemAvatar = if (isTopVisibleItem) {
-                                !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
-                            } else {
-                                item.isFirstFromSender
-                            }
+                            !showFloatingAvatar && ((item.isLastFromSender && avatarFollowEnabled) || item.isFirstFromSender)
+                        } else {
+                            item.isFirstFromSender
+                        }
 
                         val avatarAlignment =
                             if (isTopVisibleItem && shouldShowItemAvatar && avatarFollowEnabled) {
@@ -1757,13 +1724,14 @@ fun ChatScreen(
                                     quoteJumpJob?.cancel()
                                     quoteJumpJob = scope.launch {
                                         if (viewModel.loadQuotedMessage(quoteMsgId)) {
-                                            val targetIndex = withTimeoutOrNull(2_000.milliseconds) {
-                                                snapshotFlow {
-                                                    displayItems.indexOfFirst {
-                                                        it.message.msgId == quoteMsgId
-                                                    }
-                                                }.first { it >= 0 }
-                                            }
+                                            val targetIndex =
+                                                withTimeoutOrNull(2_000.milliseconds) {
+                                                    snapshotFlow {
+                                                        displayItems.indexOfFirst {
+                                                            it.message.msgId == quoteMsgId
+                                                        }
+                                                    }.first { it >= 0 }
+                                                }
                                             if (targetIndex != null) {
                                                 listState.animateScrollToCenteredItem(targetIndex)
                                                 highlightedMessageId = quoteMsgId
@@ -1811,6 +1779,7 @@ fun ChatScreen(
                                                                 messageId = entry.messageId,
                                                                 imageId = entry.sequence
                                                             )
+
                                                             ChatMediaKind.VIDEO -> videoMessagePreviewItem(
                                                                 url = entry.url,
                                                                 messageId = entry.messageId,
@@ -1827,6 +1796,7 @@ fun ChatScreen(
                                                 )
                                             }
                                         }
+
                                         MessageItem.CONTENT_TYPE_STICKER -> {
                                             resolveStickerMessageUrl(
                                                 imageUrl = msg.imageUrl,
@@ -1918,7 +1888,7 @@ fun ChatScreen(
                     topVisibleMessage?.isRecalled == true -> 0.6f
                     else -> 1f
                 }
-                
+
                 val animatedAlpha by animateFloatAsState(
                     targetValue = targetAlpha,
                     animationSpec = tween(durationMillis = 300),
@@ -2061,7 +2031,13 @@ fun ChatScreen(
         }
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            icon = { Icon(AppIcons.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = {
+                Icon(
+                    AppIcons.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
             title = { Text(actionText) },
             text = {
                 Text("确定要${actionText}吗？")

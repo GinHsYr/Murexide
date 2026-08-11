@@ -76,7 +76,7 @@ class ConversationDetailActivity : ComponentActivity() {
                             )
                         },
                         onOpenMember = { member ->
-                            ConversationDetailActivity.start(
+                            start(
                                 context = this,
                                 chatId = member.userId,
                                 chatType = 1,

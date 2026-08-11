@@ -138,7 +138,7 @@ class ConversationRepository {
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        return@use Result.failure<List<StickyItem>>(
+                        return@use Result.failure(
                             Exception("HTTP error: ${response.code}")
                         )
                     }
@@ -181,14 +181,14 @@ class ConversationRepository {
 
                 client.newCall(httpRequest).execute().use { response ->
                     if (!response.isSuccessful) {
-                        return@use Result.failure<MessageItem?>(
+                        return@use Result.failure(
                             Exception("HTTP error: ${response.code}")
                         )
                     }
 
                     val messageList = list_message.ADAPTER.decode(response.body.bytes())
                     if (messageList.status?.code != 1) {
-                        return@use Result.failure<MessageItem?>(
+                        return@use Result.failure(
                             Exception(messageList.status?.msg ?: "获取消息预览失败")
                         )
                     }
@@ -196,9 +196,7 @@ class ConversationRepository {
                     Result.success(
                         messageList.msg
                             .firstOrNull()
-                            ?.let { msg ->
-                                msg.toMessageItem(chatId = chatId, chatType = chatType)
-                            }
+                            ?.toMessageItem(chatId = chatId, chatType = chatType)
                     )
                 }
             } catch (e: Exception) {

@@ -122,9 +122,7 @@ class MurexideDownloadMediaHelper : DownloadMediaHelper {
 @OptIn(ExperimentalCoilApi::class)
 private fun ImageLoader.cachedFilePath(cacheKey: String): String? {
     val snapshot = runCatching { diskCache?.openSnapshot(cacheKey) }.getOrNull() ?: return null
-    return try {
+    return snapshot.use { snapshot ->
         snapshot.data.toFile().absolutePath
-    } finally {
-        snapshot.close()
     }
 }

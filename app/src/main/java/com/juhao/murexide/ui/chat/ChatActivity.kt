@@ -69,7 +69,7 @@ class ChatActivity : ComponentActivity() {
                         onBackClick = { finish() },
                         onOpenConversation = { target ->
                             if (target.chatId != chatId || target.chatType != chatType) {
-                                ChatActivity.start(
+                                start(
                                     context = this@ChatActivity,
                                     chatId = target.chatId,
                                     chatType = target.chatType,

@@ -16,9 +16,7 @@ fun resolveStickerUrl(url: String): String {
 }
 
 fun resolveStickerMessageUrl(imageUrl: String?, stickerUrl: String?): String? {
-    return sequenceOf(imageUrl, stickerUrl)
-        .mapNotNull { it?.takeIf(String::isNotBlank) }
-        .firstOrNull()
+    return sequenceOf(imageUrl, stickerUrl).firstNotNullOfOrNull { it?.takeIf(String::isNotBlank) }
         ?.let(::resolveStickerUrl)
 }
 

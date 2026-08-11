@@ -55,6 +55,7 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
 internal data class ChatComposerState(
@@ -1290,7 +1291,7 @@ class ChatViewModel(
                     chatType = chatType
                 )
             val confirmedByWebSocket = if (result.isFailure) {
-                withTimeoutOrNull(RECALL_CONFIRMATION_GRACE_MS) {
+                withTimeoutOrNull(RECALL_CONFIRMATION_GRACE_MS.milliseconds) {
                     confirmation.await()
                     true
                 } ?: false
@@ -1769,7 +1770,7 @@ class ChatViewModel(
         }
         streamPersistJob?.cancel()
         streamPersistJob = viewModelScope.launch {
-            delay(500L)
+            delay(500L.milliseconds)
             val message = _uiState.value.messages.firstOrNull { it.msgId == msgId } ?: return@launch
             LocalCache.currentAccountId()?.let { accountId ->
                 LocalCache.cacheMessages(accountId, listOf(message))

@@ -7,9 +7,9 @@ import com.juhao.murexide.network.WebSocketManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Persists complete real-time messages even while no chat screen is in the foreground. */
 class CacheSyncCoordinator(
@@ -74,7 +74,7 @@ class CacheSyncCoordinator(
 
     private fun scheduleReadReceipt(scope: CoroutineScope, conversation: ConversationKey) {
         val job = scope.launch {
-            delay(READ_RECEIPT_DEBOUNCE_MS)
+            delay(READ_RECEIPT_DEBOUNCE_MS.milliseconds)
             runCatching {
                 dismissConversationNotification(conversation.chatId)
             }.onFailure { error ->

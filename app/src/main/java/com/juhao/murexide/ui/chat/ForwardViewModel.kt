@@ -168,14 +168,10 @@ class ForwardViewModel(
             }
 
             val result = withContext(Dispatchers.IO) {
-                val conversations = if (cachedConversations.isNotEmpty()) {
-                    cachedConversations
-                } else {
+                val conversations = cachedConversations.ifEmpty {
                     conversationRepository.getConversationList(token).getOrNull().orEmpty()
                 }
-                val sticky = if (cachedSticky.isNotEmpty()) {
-                    cachedSticky
-                } else {
+                val sticky = cachedSticky.ifEmpty {
                     conversationRepository.getStickyList(token).getOrNull().orEmpty()
                 }
                 conversations to sticky

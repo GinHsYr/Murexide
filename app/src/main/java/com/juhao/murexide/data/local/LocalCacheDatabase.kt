@@ -398,7 +398,7 @@ abstract class LocalCacheDatabase : RoomDatabase() {
                 LocalCacheDatabase::class.java,
                 "murexide-cache.db"
             )
-                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .addMigrations(MIGRATION_1_2)
                 .build()
                 .also { instance = it }

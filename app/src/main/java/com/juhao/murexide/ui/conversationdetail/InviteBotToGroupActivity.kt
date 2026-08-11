@@ -14,13 +14,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -131,8 +129,7 @@ private class InviteBotToGroupViewModel(
         if (groups.isEmpty() || _uiState.value.isInviting) return
         _uiState.update { it.copy(isInviting = true, error = null) }
         viewModelScope.launch {
-            var succeeded = 0
-            for (group in groups) {
+            for ((succeeded, group) in groups.withIndex()) {
                 val result = friendRepository.inviteBotToGroup(token, botId, group.chatId)
                 if (result.isFailure) {
                     val reason = result.exceptionOrNull()?.message ?: "邀请失败"
@@ -144,7 +141,6 @@ private class InviteBotToGroupViewModel(
                     }
                     return@launch
                 }
-                succeeded++
             }
             _uiState.update { it.copy(isInviting = false) }
             _events.emit("已加入群聊")

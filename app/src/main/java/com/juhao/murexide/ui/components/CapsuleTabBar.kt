@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,12 +37,6 @@ import com.juhao.murexide.ui.theme.PurpleDarkColorScheme
 import com.juhao.murexide.ui.theme.PurpleLightColorScheme
 import com.juhao.murexide.ui.theme.UiState
 
-/**
- * A Material 3 capsule tab bar with equally-sized tabs and an animated selection pill.
- *
- * Keep [selectedTabIndex] in the owning screen or ViewModel so the selected content and
- * this control always share one source of truth.
- */
 @Composable
 fun CapsuleTabBar(
     tabs: List<String>,

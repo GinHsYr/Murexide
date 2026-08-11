@@ -324,7 +324,7 @@ private fun ContactTabContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             if (showNewMessageShortcut) {
                 item(key = "new_messages", contentType = "shortcut") {
