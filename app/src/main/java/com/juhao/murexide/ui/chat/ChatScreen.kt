@@ -693,7 +693,7 @@ fun ChatScreen(
                     if (message == null) {
                         Triple(false, "", false)
                     } else {
-                        val avatarSizePx = with(density) { 36.dp.roundToPx() }
+                        val avatarSizePx = with(density) { 44.dp.roundToPx() }
                         val visibleHeightPx =
                             topVisibleItem.size + topVisibleItem.offset.coerceAtMost(0)
                         val hasEnoughSpace =
