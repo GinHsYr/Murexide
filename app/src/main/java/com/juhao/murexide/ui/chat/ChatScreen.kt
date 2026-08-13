@@ -149,7 +149,7 @@ private fun FloatingTopBar(
         noiseFactor = 0f
     )
     val useGlassBar = liquidGlassEnabled && liquidBackdrop != null
-    val glassSurfaceColor = topBarColor.copy(alpha = 0.6f)
+    val glassSurfaceColor = topBarColor.copy(alpha = 0.75f)
 
     fun Modifier.glassControl(shape: androidx.compose.ui.graphics.Shape): Modifier =
         if (useGlassBar) {

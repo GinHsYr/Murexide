@@ -1,6 +1,7 @@
 package com.juhao.murexide.datastore
 
 import android.content.Context
+import android.os.Build
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -269,7 +270,7 @@ class SettingsStorage(private val context: Context) {
 
     // ====== 液态玻璃效果 ======
     val liquidGlassEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[LIQUID_GLASS_ENABLED_KEY] ?: false
+        (preferences[LIQUID_GLASS_ENABLED_KEY] == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
     }
 
     suspend fun setLiquidGlassEnabled(enabled: Boolean) {

@@ -64,12 +64,6 @@ internal fun upsertNewestMessage(
     }
 }
 
-/**
- * Reconciles a freshly loaded history page with messages already visible in this chat.
- *
- * History responses retain the original message sender, including for recalled messages. Merge a
- * loaded recall with an already visible copy only to preserve identity when a partial event omitted it.
- */
 internal fun reconcileLoadedMessages(
     existingMessages: List<MessageItem>,
     loadedMessages: List<MessageItem>
@@ -85,10 +79,6 @@ internal fun reconcileLoadedMessages(
     }
 }
 
-/**
- * Applies an incremental-update response without turning an edited old message into a new one.
- * Messages are stored newest-first; [anchorMessage] is the latest item that supplied the cursor.
- */
 internal fun mergeIncrementalMessages(
     existingMessages: List<MessageItem>,
     updatedMessages: List<MessageItem>,
@@ -154,8 +144,6 @@ private fun mergeMessageIdentity(
     existing: MessageItem,
     incoming: MessageItem
 ): MessageItem {
-    // Recall updates can report the operator (notably a bot) as sender. Once the original
-    // message is known, never replace its author/direction with recall metadata.
     if (incoming.isRecalled && existing.hasReliableSender) {
         return incoming.copy(
             senderId = existing.senderId,

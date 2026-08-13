@@ -111,9 +111,8 @@ private fun LiquidToggleContent(
 ) {
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val accentColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-        alpha = if (isLightTheme) 0.20f else 0.36f,
-    )
+    val boxColor = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val currentChecked by rememberUpdatedState(checked)
     val currentOnCheckedChange by rememberUpdatedState(onCheckedChange)
     val density = LocalDensity.current
@@ -168,7 +167,7 @@ private fun LiquidToggleContent(
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.38f)
-            .size(width = 64.dp, height = 48.dp)
+            .size(width = 48.dp, height = 48.dp)
             .semantics {
                 role = Role.Switch
                 toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
@@ -189,7 +188,7 @@ private fun LiquidToggleContent(
                 .drawBehind {
                     drawRect(lerp(trackColor, accentColor, dragAnimation.value))
                 }
-                .size(width = 64.dp, height = 28.dp),
+                .size(width = 48.dp, height = 28.dp),
         )
 
         Box(
@@ -251,10 +250,10 @@ private fun LiquidToggleContent(
                         scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
                     onDrawSurface = {
-                        drawRect(Color.White.copy(alpha = 1f - dragAnimation.pressProgress))
+                        drawRect(boxColor.copy(alpha = 1f - dragAnimation.pressProgress))
                     },
                 )
-                .size(width = 40.dp, height = 24.dp),
+                .size(24.dp),
         )
     }
 }

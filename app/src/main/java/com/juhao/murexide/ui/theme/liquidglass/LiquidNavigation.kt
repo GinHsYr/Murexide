@@ -167,11 +167,6 @@ fun LiquidBottomTabs(
                         blur(1.dp.toPx() * blurScale)
                         lens(24.dp.toPx(), 32.dp.toPx())
                     },
-                    highlight = if (isLightTheme) {
-                        { Highlight.Default }
-                    } else {
-                        null
-                    },
                     layerBlock = {
                         val scale = lerp(
                             1f,
@@ -183,7 +178,7 @@ fun LiquidBottomTabs(
                     },
                     onDrawSurface = { drawRect(containerColor) },
                 )
-                .then(if (isLightTheme) interactiveHighlight.modifier else Modifier)
+                .then(interactiveHighlight.modifier)
                 .height(64.dp)
                 .fillMaxWidth()
                 .padding(4.dp),
@@ -202,50 +197,6 @@ fun LiquidBottomTabs(
                     onLongClickLabel = onTabLongClickLabel?.invoke(index),
                 ) {
                     Box(Modifier.alpha(0f)) {
-                        content(index, currentIndex == index, true)
-                    }
-                }
-            }
-        }
-
-        CompositionLocalProvider(LocalLiquidNavigationScale provides {
-            lerp(1f, 1.2f, dragAnimation.pressProgress)
-        }) {
-            Row(
-                Modifier
-                    .clearAndSetSemantics { }
-                    .alpha(0f)
-                    .layerBackdrop(tabsBackdrop)
-                    .graphicsLayer { translationX = panelOffset }
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { Capsule() },
-                        effects = {
-                            val progress = dragAnimation.pressProgress
-                            vibrancy()
-                            blur(5.dp.toPx() * blurScale)
-                            lens(24.dp.toPx() * progress, 24.dp.toPx() * progress)
-                        },
-                        highlight = if (isLightTheme) {
-                            { Highlight.Default.copy(alpha = dragAnimation.pressProgress) }
-                        } else {
-                            null
-                        },
-                        onDrawSurface = { drawRect(containerColor) },
-                    )
-                    .then(if (isLightTheme) interactiveHighlight.modifier else Modifier)
-                    .height(56.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                repeat(tabsCount) { index ->
-                    LiquidBottomTab(
-                        selected = currentIndex == index,
-                        contentColor = navigationContentColor,
-                        onClick = {},
-                        interactive = false,
-                    ) {
                         content(index, currentIndex == index, true)
                     }
                 }
@@ -271,6 +222,46 @@ fun LiquidBottomTabs(
             }
         }
 
+        CompositionLocalProvider(LocalLiquidNavigationScale provides {
+            lerp(1f, 1.2f, dragAnimation.pressProgress)
+        }) {
+            Row(
+                Modifier
+                    .clearAndSetSemantics { }
+                    .alpha(0f)
+                    .layerBackdrop(tabsBackdrop)
+                    .graphicsLayer { translationX = panelOffset }
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { Capsule() },
+                        effects = {
+                            val progress = dragAnimation.pressProgress
+                            vibrancy()
+                            blur(5.dp.toPx() * blurScale)
+                            lens(24.dp.toPx() * progress, 24.dp.toPx() * progress)
+                        },
+                        highlight = { Highlight.Default.copy(alpha = dragAnimation.pressProgress) },
+                        onDrawSurface = { drawRect(containerColor) },
+                    )
+                    .then(interactiveHighlight.modifier)
+                    .height(56.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(tabsCount) { index ->
+                    LiquidBottomTab(
+                        selected = currentIndex == index,
+                        contentColor = navigationContentColor,
+                        onClick = {},
+                        interactive = false,
+                    ) {
+                        content(index, currentIndex == index, true)
+                    }
+                }
+            }
+        }
+
         Box(
             Modifier
                 .padding(horizontal = 4.dp)
@@ -281,7 +272,7 @@ fun LiquidBottomTabs(
                         size.width - (dragAnimation.value + 1f) * tabWidth + panelOffset
                     }
                 }
-                .then(if (isLightTheme) interactiveHighlight.gestureModifier else Modifier)
+                .then(interactiveHighlight.gestureModifier)
                 .then(dragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
@@ -291,14 +282,10 @@ fun LiquidBottomTabs(
                         lens(
                             10.dp.toPx() * progress,
                             14.dp.toPx() * progress,
-                            chromaticAberration = true,
+                            chromaticAberration = true
                         )
                     },
-                    highlight = if (isLightTheme) {
-                        { Highlight.Default.copy(alpha = dragAnimation.pressProgress) }
-                    } else {
-                        null
-                    },
+                    highlight = { Highlight.Default.copy(alpha = dragAnimation.pressProgress) },
                     shadow = { Shadow(alpha = dragAnimation.pressProgress) },
                     innerShadow = {
                         InnerShadow(

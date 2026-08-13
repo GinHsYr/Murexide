@@ -116,13 +116,6 @@ internal fun List<ConversationItem>.withLatestMessages(
         ?: conversation
 }
 
-/**
- * Updates a conversation preview only when [message] is the conversation's latest message.
- *
- * The conversation response does not expose its latest message id. Prefer an id learned from a
- * real-time push or chat snapshot, and fall back to the original send timestamp for server-loaded
- * conversations. An older edited message must never replace the current preview.
- */
 internal fun List<ConversationItem>.withEditedLatestMessage(
     message: MessageItem
 ): List<ConversationItem> {
@@ -181,7 +174,6 @@ internal fun List<ConversationItem>.withRecalledLatestMessage(
     }
 }
 
-/** Learns the latest message identity without changing the visible preview. */
 internal fun List<ConversationItem>.withLatestMessageIdentity(
     message: MessageItem
 ): List<ConversationItem> {
@@ -208,13 +200,6 @@ internal fun List<ConversationItem>.withLatestMessageIdentity(
     }
 }
 
-/**
- * Combines an HTTP refresh with the currently displayed conversation state.
- *
- * Unread indicators are only cleared by opening a conversation, so an eventually consistent
- * refresh must not lower them. A newer WS preview also stays visible and at the front instead of
- * being overwritten by a stale batch.
- */
 internal fun mergeRefreshedConversations(
     refreshed: List<ConversationItem>,
     current: List<ConversationItem>,
@@ -267,7 +252,6 @@ internal fun mergeRefreshedConversations(
     }
 }
 
-/** Merges a server snapshot with the rows currently stored in Room before replacing them. */
 internal fun mergeCachedConversationSnapshot(
     refreshed: List<ConversationItem>,
     cached: List<ConversationItem>,

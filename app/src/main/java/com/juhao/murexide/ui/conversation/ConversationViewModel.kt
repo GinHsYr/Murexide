@@ -9,12 +9,10 @@ import com.juhao.murexide.data.LatestMessageRelation
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.StickyItem
 import com.juhao.murexide.data.findConversationFor
-import com.juhao.murexide.data.mergeRefreshedConversations
 import com.juhao.murexide.data.relationToLatest
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.data.withLatestMessageIdentity
-import com.juhao.murexide.data.withLatestMessages
 import com.juhao.murexide.data.withRecalledLatestMessage
 import com.juhao.murexide.data.withStreamedLatestMessage
 import com.juhao.murexide.data.local.LocalCache
@@ -23,9 +21,6 @@ import com.juhao.murexide.repository.ConversationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -48,10 +43,7 @@ class ConversationViewModel(
     private val repository: ConversationRepository = ConversationRepository(),
     private val wsManager: WebSocketManager = WebSocketManager.getInstance()
 ) : ViewModel() {
-    companion object {
-        private const val PREVIEW_REFRESH_BATCH_SIZE = 10
-    }
-    
+
     private val _uiState = MutableStateFlow<ConversationUiState>(ConversationUiState.Loading)
     val uiState: StateFlow<ConversationUiState> = _uiState
 
@@ -60,13 +52,11 @@ class ConversationViewModel(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
-    
+
     private var stickyConversations: List<StickyItem> = emptyList()
     private var loadJob: Job? = null
     private var loadGeneration = 0
     private val resolvingLatestMutations = mutableSetOf<String>()
-    private var realtimePreviewVersion = 0L
-    private val realtimePreviewVersionByConversation = mutableMapOf<Pair<Int, String>, Long>()
     private var foregroundSyncEnabled = false
 
     init {
@@ -162,11 +152,7 @@ class ConversationViewModel(
         if (conversationMissing) {
             refresh()
         } else {
-            markRealtimePreview(message)
-            val state = _uiState.value
-            if (state is ConversationUiState.Success) {
-                UiCache.conversation.value = state.conversations
-            }
+            syncConversationCache()
         }
     }
 
@@ -199,7 +185,6 @@ class ConversationViewModel(
             }
             state.copy(conversations = conversations)
         }
-        markRealtimePreview(message)
         syncConversationCache()
     }
 
@@ -283,7 +268,6 @@ class ConversationViewModel(
                 state
             }
         }
-        markRealtimePreview(message)
         syncConversationCache()
     }
 
@@ -300,7 +284,6 @@ class ConversationViewModel(
                 state
             }
         }
-        markRealtimePreview(msgId)
         syncConversationCache()
     }
 
@@ -316,28 +299,9 @@ class ConversationViewModel(
         }
     }
 
-    private fun markRealtimePreview(message: MessageItem) {
-        val state = _uiState.value as? ConversationUiState.Success ?: return
-        val conversation = state.conversations.findConversationFor(message) ?: return
-        markRealtimePreview(conversation.chatType to conversation.chatId)
-    }
-
-    private fun markRealtimePreview(messageId: String) {
-        val state = _uiState.value as? ConversationUiState.Success ?: return
-        val conversation = state.conversations.firstOrNull { it.latestMessageId == messageId }
-            ?: return
-        markRealtimePreview(conversation.chatType to conversation.chatId)
-    }
-
-    private fun markRealtimePreview(key: Pair<Int, String>) {
-        realtimePreviewVersion += 1L
-        realtimePreviewVersionByConversation[key] = realtimePreviewVersion
-    }
-
     fun loadConversations(refreshPreviews: Boolean = false) {
         loadJob?.cancel()
         val generation = ++loadGeneration
-        val refreshStartVersion = realtimePreviewVersion
         loadJob = viewModelScope.launch {
             val hadVisibleConversations = _uiState.value is ConversationUiState.Success
             _isRefreshing.value = true
@@ -351,17 +315,10 @@ class ConversationViewModel(
                 forceRefresh = refreshPreviews
             ).onSuccess {
                 if (generation != loadGeneration) return@onSuccess
-                if (refreshPreviews) {
-                    refreshMessagePreviewsProgressively(
-                        conversations = LocalCache.getCachedConversations(accountId),
-                        generation = generation,
-                        refreshStartVersion = refreshStartVersion
-                    )
-                } else {
-                    _isRefreshing.value = false
-                    if (_uiState.value is ConversationUiState.Loading) {
-                        _uiState.value = ConversationUiState.Success(emptyList(), stickyConversations)
-                    }
+                _isRefreshing.value = false
+                if (_uiState.value is ConversationUiState.Loading) {
+                    _uiState.value = ConversationUiState.Success(emptyList(), stickyConversations)
+                    syncConversationCache()
                 }
             }.onFailure { error ->
                 if (generation != loadGeneration) return@onFailure
@@ -372,82 +329,6 @@ class ConversationViewModel(
                     Log.w("ConversationViewModel", "Conversation refresh failed", error)
                 }
             }
-        }
-    }
-
-    private suspend fun refreshMessagePreviewsProgressively(
-        conversations: List<ConversationItem>,
-        generation: Int,
-        refreshStartVersion: Long
-    ) {
-        if (conversations.isEmpty()) {
-            publishConversations(emptyList(), refreshStartVersion)
-            if (generation == loadGeneration) _isRefreshing.value = false
-            return
-        }
-
-        var refreshedConversations = conversations
-        conversations.chunked(PREVIEW_REFRESH_BATCH_SIZE).forEachIndexed { batchIndex, batch ->
-            val batchUpdates = coroutineScope {
-                batch.map { conversation ->
-                    async {
-                        val latestMessage = repository.getLatestMessage(
-                            token = token,
-                            chatId = conversation.chatId,
-                            chatType = conversation.chatType
-                        ).getOrNull()
-                        (conversation.chatType to conversation.chatId) to latestMessage
-                    }
-                }.awaitAll()
-            }
-
-            val latestByConversation = batchUpdates.toMap()
-            val latestMessages = batchUpdates.mapNotNull { it.second }
-            LocalCache.cacheMessages(accountId, latestMessages)
-            refreshedConversations = refreshedConversations.withLatestMessages(
-                messagesByConversation = latestByConversation,
-                incrementUnread = false
-            )
-            publishConversations(refreshedConversations, refreshStartVersion)
-
-            // The pull gesture completes as soon as the first visible batch is on screen. The
-            // remaining batches continue in this coroutine and publish independently.
-            if (batchIndex == 0 && generation == loadGeneration) {
-                _isRefreshing.value = false
-            }
-        }
-
-        if (generation == loadGeneration) _isRefreshing.value = false
-    }
-
-    private suspend fun publishConversations(
-        conversations: List<ConversationItem>,
-        refreshStartVersion: Long
-    ) {
-        var displayedConversations = conversations
-        _uiState.update { state ->
-            val displayed = if (state is ConversationUiState.Success) {
-                mergeRefreshedConversations(
-                    refreshed = conversations,
-                    current = state.conversations,
-                    protectedKeys = realtimePreviewVersionByConversation
-                        .filterValues { it > refreshStartVersion }
-                        .keys
-                )
-            } else {
-                conversations
-            }
-            displayedConversations = displayed
-            ConversationUiState.Success(
-                conversations = displayed,
-                stickyConversations = stickyConversations
-            )
-        }
-        syncConversationCache()
-        runCatching {
-            LocalCache.persistRefreshedConversations(accountId, displayedConversations)
-        }.onFailure { error ->
-            Log.w("ConversationViewModel", "Failed to persist refreshed previews", error)
         }
     }
 

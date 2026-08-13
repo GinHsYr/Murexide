@@ -125,11 +125,9 @@ private fun LiquidSliderContent(
     blurScale: Float,
     modifier: Modifier,
 ) {
-    val accentColor = MaterialTheme.colorScheme.primary
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-        alpha = if (isLightTheme) 0.20f else 0.36f,
-    )
+    val accentColor = MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val trackBackdrop = rememberLayerBackdrop()
     val snappedValue = snapSliderValue(value, valueRange, steps)
     val currentValue by rememberUpdatedState(snappedValue)
@@ -307,7 +305,7 @@ private fun LiquidSliderContent(
                         drawRect(Color.White.copy(alpha = 1f - dampedDragAnimation.pressProgress))
                     },
                 )
-                .size(40.dp, 24.dp)
+                .size(24.dp, 24.dp)
                 .align(Alignment.CenterStart),
         )
     }

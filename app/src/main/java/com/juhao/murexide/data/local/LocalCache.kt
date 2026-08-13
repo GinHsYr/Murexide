@@ -7,7 +7,6 @@ import com.juhao.murexide.data.ConversationKey
 import com.juhao.murexide.data.MessageItem
 import com.juhao.murexide.data.MessageTag
 import com.juhao.murexide.data.StickyItem
-import com.juhao.murexide.data.mergeCachedConversationSnapshot
 import com.juhao.murexide.data.withEditedLatestMessage
 import com.juhao.murexide.data.withLatestMessage
 import com.juhao.murexide.data.withRecalledLatestMessage
@@ -62,10 +61,6 @@ object LocalCache {
         .observeSticky(accountId)
         .map { rows -> rows.map { it.toModel() } }
 
-    suspend fun getCachedConversations(accountId: String): List<ConversationItem> =
-        withContext(Dispatchers.IO) {
-            db().conversations().getConversations(accountId).map { it.toModel() }
-        }
 
     suspend fun getCachedConversation(
         accountId: String,
@@ -112,14 +107,9 @@ object LocalCache {
         val database = db()
         database.withTransaction {
             val dao = database.conversations()
-            val merged = mergeCachedConversationSnapshot(
-                refreshed = conversations,
-                cached = dao.getConversations(accountId).map { it.toModel() },
-                locallyRead = recentConversationReadGuards(database, accountId)
-            )
             dao.replaceConversations(
                 accountId,
-                merged.mapIndexed { index, item -> item.toEntity(accountId, index) }
+                conversations.mapIndexed { index, item -> item.toEntity(accountId, index) }
             )
             if (md5 != null) {
                 database.states().put(
@@ -131,30 +121,6 @@ object LocalCache {
                     )
                 )
             }
-        }
-    }
-
-    /**
-     * Persists refreshed previews without allowing a newer WebSocket update to be replaced by an
-     * older HTTP snapshot that completed later.
-     */
-    suspend fun persistRefreshedConversations(
-        accountId: String,
-        refreshed: List<ConversationItem>
-    ) = withContext(Dispatchers.IO) {
-        val database = db()
-        database.withTransaction {
-            val dao = database.conversations()
-            val current = dao.getConversations(accountId).map { it.toModel() }
-            val merged = mergeCachedConversationSnapshot(
-                refreshed = refreshed,
-                cached = current,
-                locallyRead = recentConversationReadGuards(database, accountId)
-            )
-            dao.replaceConversations(
-                accountId,
-                merged.mapIndexed { index, item -> item.toEntity(accountId, index) }
-            )
         }
     }
 
@@ -281,9 +247,6 @@ object LocalCache {
         trimAccountMessages(accountId)
     }
 
-    suspend fun latestMessageUpdate(accountId: String, chatId: String, chatType: Int): Long =
-        db().messages().latestUpdateTimestamp(accountId, chatId, chatType) ?: 0L
-
     suspend fun putPayload(
         accountId: String,
         kind: String,
@@ -325,22 +288,6 @@ object LocalCache {
     private suspend fun setState(accountId: String, key: String, value: String) = withContext(Dispatchers.IO) {
         db().states().put(CacheSyncStateEntity(accountId, key, value, System.currentTimeMillis()))
     }
-
-    private suspend fun recentConversationReadGuards(
-        database: LocalCacheDatabase,
-        accountId: String
-    ): Set<ConversationKey> = database.states().getRecentByPrefix(
-        accountId = accountId,
-        prefix = CONVERSATION_READ_GUARD_PREFIX,
-        updatedAfter = System.currentTimeMillis() - CONVERSATION_READ_GUARD_TTL_MS
-    ).mapNotNull { state ->
-        state.key.removePrefix(CONVERSATION_READ_GUARD_PREFIX).let { suffix ->
-            val separator = suffix.indexOf(':')
-            if (separator <= 0 || separator == suffix.lastIndex) return@let null
-            val chatType = suffix.substring(0, separator).toIntOrNull() ?: return@let null
-            ConversationKey(chatId = suffix.substring(separator + 1), chatType = chatType)
-        }
-    }.toSet()
 
     private fun conversationReadGuardKey(conversation: ConversationKey): String =
         "$CONVERSATION_READ_GUARD_PREFIX${conversation.chatType}:${conversation.chatId}"
