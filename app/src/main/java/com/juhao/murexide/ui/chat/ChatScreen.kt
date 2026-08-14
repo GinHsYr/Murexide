@@ -1062,127 +1062,123 @@ fun ChatScreen(
                         }
                     },
                     actions = {
-                        Box(
+                        Row(
                             modifier = Modifier.animateContentSize()
                         ) {
-                            Crossfade(targetState = selectionMode) { isSelectionMode ->
-                                Row {
-                                    if (isSelectionMode) {
-                                        IconButton(
-                                            onClick = { viewModel.recallSelectedMessages() },
-                                            modifier = Modifier.size(46.dp)
-                                        ) {
-                                            AutoMirroredIcon(
-                                                AppIcons.Undo,
-                                                contentDescription = "撤回",
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .adaptiveLiquidGlassForeground()
-                                            )
-                                        }
-                                        if (selectedMessages.size == 1) {
-                                            val message = selectedMessages.firstOrNull()
-                                            message?.let {
-                                                if (it.content.isNotBlank()) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            scope.launch {
-                                                                clipboardManager.setClipEntry(
-                                                                    ClipEntry(
-                                                                        ClipData.newPlainText(
-                                                                            "msg",
-                                                                            it.content
-                                                                        )
-                                                                    )
+                            if (isSelectionMode) {
+                                IconButton(
+                                    onClick = { viewModel.recallSelectedMessages() },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    AutoMirroredIcon(
+                                        AppIcons.Undo,
+                                        contentDescription = "撤回",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .adaptiveLiquidGlassForeground()
+                                    )
+                                }
+                                if (selectedMessages.size == 1) {
+                                    val message = selectedMessages.firstOrNull()
+                                    message?.let {
+                                        if (it.content.isNotBlank()) {
+                                            IconButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        clipboardManager.setClipEntry(
+                                                            ClipEntry(
+                                                                ClipData.newPlainText(
+                                                                    "msg",
+                                                                    it.content
                                                                 )
-                                                            }
-                                                            Toast.makeText(
-                                                                context,
-                                                                "复制成功",
-                                                                Toast.LENGTH_SHORT
-                                                            ).show()
-                                                            viewModel.exitSelectionMode()
-                                                        },
-                                                        modifier = Modifier.size(46.dp)
-                                                    ) {
-                                                        Icon(
-                                                            AppIcons.ContentCopy,
-                                                            contentDescription = "复制",
-                                                            modifier = Modifier
-                                                                .size(24.dp)
-                                                                .adaptiveLiquidGlassForeground()
+                                                            )
                                                         )
                                                     }
-                                                }
-                                            }
-                                        }
-                                        IconButton(
-                                            onClick = { showScreenshotSheet = true },
-                                            modifier = Modifier.size(46.dp)
-                                        ) {
-                                            Icon(
-                                                AppIcons.Screenshot,
-                                                contentDescription = "截图",
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .adaptiveLiquidGlassForeground()
-                                            )
-                                        }
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(46.dp)
-                                                .clip(CircleShape)
-                                                .clickable { showMoreMenu = true },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            ExpressiveDropdownMenu(
-                                                expanded = showMoreMenu,
-                                                onDismissRequest = { showMoreMenu = false }
+                                                    Toast.makeText(
+                                                        context,
+                                                        "复制成功",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    viewModel.exitSelectionMode()
+                                                },
+                                                modifier = Modifier.size(46.dp)
                                             ) {
-                                                DropdownMenuItem(
-                                                    text = { Text("刷新") },
-                                                    onClick = {
-                                                        showMoreMenu = false
-                                                        viewModel.refresh()
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            AppIcons.Refresh,
-                                                            contentDescription = null
-                                                        )
-                                                    }
-                                                )
-                                                DropdownMenuItem(
-                                                    text = { Text("会话详情") },
-                                                    onClick = {
-                                                        showMoreMenu = false
-                                                        ConversationDetailActivity.start(
-                                                            context = context,
-                                                            chatId = viewModel.chatId,
-                                                            chatType = chatType,
-                                                            chatName = chatName,
-                                                            chatAvatar = chatAvatar
-                                                        )
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            AppIcons.Info,
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(24.dp)
-                                                        )
-                                                    }
+                                                Icon(
+                                                    AppIcons.ContentCopy,
+                                                    contentDescription = "复制",
+                                                    modifier = Modifier
+                                                        .size(24.dp)
+                                                        .adaptiveLiquidGlassForeground()
                                                 )
                                             }
-                                            Icon(
-                                                imageVector = AppIcons.MoreVert,
-                                                contentDescription = "更多",
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .adaptiveLiquidGlassForeground()
-                                            )
                                         }
                                     }
+                                }
+                                IconButton(
+                                    onClick = { showScreenshotSheet = true },
+                                    modifier = Modifier.size(46.dp)
+                                ) {
+                                    Icon(
+                                        AppIcons.Screenshot,
+                                        contentDescription = "截图",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .adaptiveLiquidGlassForeground()
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .clickable { showMoreMenu = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    ExpressiveDropdownMenu(
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("刷新") },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                viewModel.refresh()
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    AppIcons.Refresh,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("会话详情") },
+                                            onClick = {
+                                                showMoreMenu = false
+                                                ConversationDetailActivity.start(
+                                                    context = context,
+                                                    chatId = viewModel.chatId,
+                                                    chatType = chatType,
+                                                    chatName = chatName,
+                                                    chatAvatar = chatAvatar
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    AppIcons.Info,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = AppIcons.MoreVert,
+                                        contentDescription = "更多",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .adaptiveLiquidGlassForeground()
+                                    )
                                 }
                             }
                         }
