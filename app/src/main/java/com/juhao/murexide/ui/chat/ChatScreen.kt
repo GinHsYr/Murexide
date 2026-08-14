@@ -1065,7 +1065,7 @@ fun ChatScreen(
                         Row(
                             modifier = Modifier.animateContentSize()
                         ) {
-                            if (isSelectionMode) {
+                            if (selectionMode) {
                                 IconButton(
                                     onClick = { viewModel.recallSelectedMessages() },
                                     modifier = Modifier.size(46.dp)
