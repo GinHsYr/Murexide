@@ -1,7 +1,9 @@
 package com.juhao.murexide.ui.components
 
+import android.Manifest
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -15,10 +17,22 @@ import com.juhao.murexide.repository.MessageRepository
 import com.juhao.murexide.ui.chat.ChatMediaGalleryEntry
 import com.juhao.murexide.ui.chat.ChatMediaKind
 import com.juhao.murexide.ui.chat.buildEarlierChatMediaPage
+import com.juhao.murexide.utils.LegacyStoragePermissionRequester
+import com.juhao.murexide.utils.requiresLegacyWritePermission
 import kotlinx.coroutines.launch
 
 /** OpenImage activity with mixed chat-media pagination and fullscreen media. */
-class MurexideOpenImageActivity : StandardOpenImageActivity() {
+class MurexideOpenImageActivity : StandardOpenImageActivity(), LegacyStoragePermissionRequester {
+    private var pendingStoragePermissionResult: ((Boolean) -> Unit)? = null
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        pendingStoragePermissionResult?.let { callback ->
+            pendingStoragePermissionResult = null
+            callback(granted)
+        }
+    }
+
     private val viewerOptions by lazy(LazyThreadSafetyMode.NONE) {
         intent.getBundleExtra(EXTRA_VIEWER_OPTIONS)
     }
@@ -87,6 +101,16 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
         if (!shareTransitionFinished) {
             viewPager2.postDelayed(shareTransitionFallback, TRANSITION_FALLBACK_DELAY_MS)
         }
+    }
+
+    override fun requestLegacyStoragePermission(onResult: (Boolean) -> Unit) {
+        if (!requiresLegacyWritePermission(this)) {
+            onResult(true)
+            return
+        }
+        pendingStoragePermissionResult?.invoke(false)
+        pendingStoragePermissionResult = onResult
+        storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -215,6 +239,7 @@ class MurexideOpenImageActivity : StandardOpenImageActivity() {
     }
 
     override fun onDestroy() {
+        pendingStoragePermissionResult = null
         if (callbackRegistered) {
             viewPager2.unregisterOnPageChangeCallback(pageChangeCallback)
         }

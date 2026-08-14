@@ -164,7 +164,7 @@ object FileDownloader {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, candidate)
                 mimeTypeForName(fileName)?.let { put(MediaStore.MediaColumns.MIME_TYPE, it) }
-                put(MediaStore.MediaColumns.RELATIVE_PATH, murexideDownloadRelativePath())
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
 
@@ -235,11 +235,8 @@ object FileDownloader {
         contentLength: Long,
         onProgress: (Float) -> Unit
     ): String {
-        if (requiresLegacyWritePermission(context)) {
-            throw LegacyStoragePermissionRequiredException()
-        }
-
-        val downloadDir = legacyMurexideDownloadDirectory(context)
+        val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            ?: context.getExternalFilesDir(null) ?: context.filesDir
 
         if (!downloadDir.exists() && !downloadDir.mkdirs()) {
             throw IOException("无法创建下载目录")
@@ -309,9 +306,8 @@ object FileDownloader {
         displayName: String
     ): Boolean {
         val projection = arrayOf(MediaStore.MediaColumns._ID)
-        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND " +
-            "${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
-        val args = arrayOf(displayName, murexideDownloadRelativePath())
+        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
+        val args = arrayOf(displayName)
         resolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             projection, selection, args, null

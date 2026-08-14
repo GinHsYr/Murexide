@@ -5,6 +5,8 @@ import com.juhao.murexide.ui.icons.AutoMirroredIcon
 
 import android.Manifest
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,9 +29,12 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.about.AboutActivity
 import com.juhao.murexide.ui.settings.appearance.AppearanceActivity
 import com.juhao.murexide.ui.settings.switchAccount.SwitchAccountActivity
+import com.juhao.murexide.utils.hasLegacyWritePermission
+import com.juhao.murexide.utils.requiresLegacyWritePermission
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +58,42 @@ fun SettingsScreen(
     var avatarFollow by remember { mutableStateOf(false) }
     var bigScreen by remember { mutableStateOf(true) }
     var updateChannel by remember { mutableStateOf("stable") }
+    val legacyStoragePermission = Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+    var storagePermissionGranted by remember {
+        mutableStateOf(!legacyStoragePermission || hasLegacyWritePermission(context))
+    }
+    var storagePermissionRequestAttempted by remember { mutableStateOf(false) }
+
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        storagePermissionRequestAttempted = true
+        storagePermissionGranted = granted
+        if (!granted) {
+            Toast.makeText(context, "需要存储权限才能保存下载内容", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LifecycleResumeEffect(legacyStoragePermission) {
+        storagePermissionGranted = !legacyStoragePermission || hasLegacyWritePermission(context)
+        onPauseOrDispose { }
+    }
+
+    fun openApplicationSettings() {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+        })
+    }
+
+    fun requestStoragePermission() {
+        if (!legacyStoragePermission) return
+        if (storagePermissionRequestAttempted && !storagePermissionGranted) {
+            openApplicationSettings()
+        } else {
+            storagePermissionRequestAttempted = true
+            storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
 
     val (notificationEnabled, onNotificationToggle) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         val enabled = ContextCompat.checkSelfPermission(
@@ -162,6 +203,17 @@ fun SettingsScreen(
                     },
                     checked = notificationEnabled,
                     onCheckedChange = { onNotificationToggle(it) }
+                )
+                SettingsItem(
+                    icon = AppIcons.FolderZip,
+                    title = "存储权限",
+                    subtitle = when {
+                        !legacyStoragePermission -> "Android 10 及以上下载无需存储权限"
+                        storagePermissionGranted -> "已允许，下载保存到 Download/Murexide"
+                        else -> "未允许，点击申请存储权限"
+                    },
+                    isEnabled = legacyStoragePermission,
+                    onClick = ::requestStoragePermission
                 )
                 SettingsSwitchItem(
                     icon = AppIcons.LaptopChromebook,
