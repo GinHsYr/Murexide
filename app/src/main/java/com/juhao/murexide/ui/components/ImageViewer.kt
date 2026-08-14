@@ -27,8 +27,11 @@ import com.flyjingfish.openimagelib.OpenImage
 import com.flyjingfish.openimagelib.beans.DownloadParams
 import com.flyjingfish.openimagelib.beans.OpenImageUrl
 import com.flyjingfish.openimagelib.enums.MediaType
+import com.flyjingfish.openimagelib.listener.OnPermissionsInterceptListener
 import com.juhao.murexide.R
+import com.juhao.murexide.utils.hasLegacyWritePermission
 import com.juhao.murexide.utils.imageThumbnailUrl
+import com.juhao.murexide.utils.requestLegacyStoragePermission
 import java.util.WeakHashMap
 
 data class OpenImageItem(
@@ -129,6 +132,27 @@ fun showImageViewer(
             MurexideOpenImageActivity.EXTRA_VIEWER_OPTIONS,
             viewerOptions
         )
+        .setOnPermissionsInterceptListener(object : OnPermissionsInterceptListener {
+            override fun hasPermissions(
+                openImageActivity: com.flyjingfish.openimagelib.OpenImageActivity,
+                permissions: Array<String>
+            ): Boolean {
+                // MediaStore handles downloads without storage permissions on
+                // Android 10 and later. Only legacy devices need WRITE access.
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                    hasLegacyWritePermission(openImageActivity)
+            }
+
+            override fun requestPermission(
+                openImageActivity: com.flyjingfish.openimagelib.OpenImageActivity,
+                permissions: Array<String>,
+                listener: com.flyjingfish.openimagelib.listener.OnRequestPermissionListener
+            ) {
+                requestLegacyStoragePermission(openImageActivity) { granted ->
+                    listener.onCall(granted)
+                }
+            }
+        })
         .setShowDownload(viewerDownloadParams(activity))
         .setOnItemLongClickListener { _, image, _ ->
             val mediaUrl = if (image.type == MediaType.VIDEO) image.videoUrl else image.imageUrl

@@ -3,6 +3,7 @@ package com.juhao.murexide.ui.chat
 import com.juhao.murexide.ui.icons.AppIcons
 import com.juhao.murexide.ui.icons.AutoMirroredIcon
 
+import android.Manifest
 import android.content.ClipData
 import android.net.Uri
 import android.os.Build
@@ -119,6 +120,7 @@ import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import com.juhao.murexide.ui.theme.ProvideLiquidGlassContentColor
 import com.juhao.murexide.ui.theme.adaptiveLiquidGlassForeground
+import com.juhao.murexide.utils.requiresLegacyWritePermission
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -589,6 +591,19 @@ fun ChatScreen(
         uri?.let { viewModel.uploadAndSendFile(it, context) }
     }
 
+    var pendingDownloadMessage by remember { mutableStateOf<MessageItem?>(null) }
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val message = pendingDownloadMessage
+        pendingDownloadMessage = null
+        if (granted && message != null) {
+            viewModel.startDownload(message, context)
+        } else if (message != null) {
+            Toast.makeText(context, "需要存储权限才能下载文件", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     fun openImagePicker() {
         imagePickerLauncher.launch("image/*")
     }
@@ -603,6 +618,15 @@ fun ChatScreen(
 
     val selectionMode = uiState.selectionMode
     val selectedMessages = uiState.selectedMessages
+
+    fun startDownload(message: MessageItem) {
+        if (requiresLegacyWritePermission(context)) {
+            pendingDownloadMessage = message
+            storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            viewModel.startDownload(message, context)
+        }
+    }
 
     fun openForward(messages: List<MessageItem>) {
         val validMessages = messages.filter {
@@ -1835,7 +1859,7 @@ fun ChatScreen(
                             isDownloaded = message.msgId in uiState.downloadedFiles,
                             onDownloadClick = { msg ->
                                 if (!selectionMode) {
-                                    viewModel.startDownload(msg, context)
+                                    startDownload(msg)
                                 } else {
                                     viewModel.toggleMessageSelection(msg)
                                 }

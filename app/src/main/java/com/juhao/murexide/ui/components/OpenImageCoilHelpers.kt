@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import coil.Coil
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
@@ -20,7 +21,13 @@ import com.flyjingfish.openimagelib.listener.BigImageHelper
 import com.flyjingfish.openimagelib.listener.DownloadMediaHelper
 import com.flyjingfish.openimagelib.listener.OnDownloadMediaListener
 import com.flyjingfish.openimagelib.listener.OnLoadBigImageListener
-import com.flyjingfish.openimagelib.utils.SaveImageUtils
+import com.juhao.murexide.utils.downloadedMediaFileName
+import com.juhao.murexide.utils.requestLegacyStoragePermission
+import com.juhao.murexide.utils.requiresLegacyWritePermission
+import com.juhao.murexide.utils.saveMediaFileToDownloads
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MurexideBigImageHelper : BigImageHelper {
     @OptIn(ExperimentalCoilApi::class)
@@ -95,16 +102,38 @@ class MurexideDownloadMediaHelper : DownloadMediaHelper {
             .memoryCachePolicy(CachePolicy.DISABLED)
             .decoderFactory { result: SourceResult, _: coil.request.Options, _: ImageLoader ->
                 Decoder {
-                    SaveImageUtils.INSTANCE.saveFile(
-                        activity,
-                        result.source.file().toFile(),
-                        isVideo
-                    ) { savedPath ->
-                        if (savedPath.isNullOrEmpty()) {
-                            listener.onDownloadFailed()
-                        } else {
-                            listener.onDownloadSuccess(savedPath)
+                    val sourceFile = result.source.file().toFile()
+                    val mimeType = result.mimeType
+                    val save = {
+                        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                            val savedPath = runCatching {
+                                saveMediaFileToDownloads(
+                                    context = activity,
+                                    sourceFile = sourceFile,
+                                    displayName = downloadedMediaFileName(
+                                        sourceFile = sourceFile,
+                                        isVideo = isVideo,
+                                        mimeType = mimeType
+                                    ),
+                                    mimeType = mimeType
+                                )
+                            }.getOrNull()
+                            withContext(Dispatchers.Main) {
+                                if (savedPath.isNullOrEmpty()) {
+                                    listener.onDownloadFailed()
+                                } else {
+                                    listener.onDownloadSuccess(savedPath)
+                                }
+                            }
                         }
+                    }
+
+                    if (requiresLegacyWritePermission(activity)) {
+                        requestLegacyStoragePermission(activity) { granted ->
+                            if (granted) save() else listener.onDownloadFailed()
+                        }
+                    } else {
+                        save()
                     }
                     DecodeResult(ColorDrawable(Color.TRANSPARENT), false)
                 }
