@@ -1356,7 +1356,7 @@ private fun IntroductionContent(
                             Brush.verticalGradient(
                                 listOf(
                                     Color.Transparent,
-                                    cardColor.copy(alpha = 0.8f)
+                                    cardColor.copy(alpha = 0.8f),
                                     cardColor
                                 )
                             )
