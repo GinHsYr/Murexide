@@ -101,8 +101,7 @@ fun MessageInput(
     onTextChange: (String, List<MentionToken>, Int, Int) -> Unit,
     onSendClick: () -> Unit,
     onSendWithType: (String) -> Unit,
-    onAddImageClick: () -> Unit,
-    onAddVideoClick: () -> Unit,
+    onAddAlbumClick: () -> Unit,
     onAddFileClick: () -> Unit,
     isEmojiPanelVisible: Boolean = false,
     onEmojiClick: () -> Unit,
@@ -130,8 +129,7 @@ fun MessageInput(
         verticalAlignment = Alignment.CenterVertically
     ) {
         MoreActionsButton(
-            onAddImageClick = onAddImageClick,
-            onAddVideoClick = onAddVideoClick,
+            onAddAlbumClick = onAddAlbumClick,
             onAddFileClick = onAddFileClick
         )
         
@@ -430,8 +428,7 @@ private fun FormatSendButton(
 
 @Composable
 private fun MoreActionsButton(
-    onAddImageClick: () -> Unit,
-    onAddVideoClick: () -> Unit,
+    onAddAlbumClick: () -> Unit,
     onAddFileClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -452,23 +449,13 @@ private fun MoreActionsButton(
             onDismissRequest = { showMenu = false }
         ) {
             DropdownMenuItem(
-                text = { Text("图片") },
+                text = { Text("相册") },
                 onClick = {
                     showMenu = false
-                    onAddImageClick()
+                    onAddAlbumClick()
                 },
                 leadingIcon = {
                     Icon(AppIcons.Image, contentDescription = null)
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("视频") },
-                onClick = {
-                    showMenu = false
-                    onAddVideoClick()
-                },
-                leadingIcon = {
-                    Icon(AppIcons.Movie, contentDescription = null)
                 }
             )
             DropdownMenuItem(

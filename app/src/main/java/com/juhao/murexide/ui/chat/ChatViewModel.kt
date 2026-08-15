@@ -33,6 +33,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -763,82 +764,125 @@ class ChatViewModel(
         }
     }
 
-    fun uploadAndSendVideo(uri: Uri, context: Context) {
+    fun uploadAndSendMedia(uris: List<Uri>, context: Context) {
+        if (uris.isEmpty()) return
         uploadJob?.cancel()
         uploadJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isUploading = true,
-                    uploadProgress = 0f,
-                    uploadImagePath = uri.toString(),
-                    isSending = false
+            var successCount = 0
+            var failCount = 0
+            uris.forEach { uri ->
+                val isVideo = context.contentResolver.getType(uri)?.startsWith("video/") == true
+                if (uploadSingleMedia(uri, context, isVideo)) {
+                    successCount++
+                } else {
+                    failCount++
+                }
+            }
+            if (failCount > 0) {
+                _toastMessage.emit(
+                    if (uris.size > 1) {
+                        "已发送 $successCount 项，$failCount 项失败"
+                    } else {
+                        "发送失败"
+                    }
                 )
             }
-    
-            try {
-                val uploader = QiniuUploader(
+        }
+    }
+
+    private suspend fun uploadSingleMedia(
+        uri: Uri,
+        context: Context,
+        isVideo: Boolean
+    ): Boolean {
+        _uiState.update {
+            it.copy(
+                isUploading = true,
+                uploadProgress = 0f,
+                uploadImagePath = uri.toString(),
+                isSending = false
+            )
+        }
+
+        return try {
+            val uploader = if (isVideo) {
+                QiniuUploader(
                     context = context,
                     userToken = token,
                     uploadType = 2
                 )
-    
-                val result = uploader.uploadFromUri(
+            } else {
+                QiniuUploader(
                     context = context,
-                    uri = uri,
-                    onProgress = { progress ->
-                        _uiState.update { it.copy(uploadProgress = progress) }
-                    }
+                    userToken = token,
+                    enableWebp = true
                 )
-    
-                if (!isActive) {
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 0f,
-                            uploadImagePath = null
-                        )
-                    }
-                    return@launch
-                }
-    
-                result.onSuccess { response ->
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 1f,
-                            uploadImagePath = null
-                        )
-                    }
-                    sendVideoMessage(response)
-                }.onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 0f,
-                            uploadImagePath = null
-                        )
-                    }
-                    _toastMessage.emit("视频上传失败: ${error.message}")
-                }
-            } catch (_: CancellationException) {
-                _uiState.update {
-                    it.copy(
-                        isUploading = false,
-                        uploadProgress = 0f,
-                        uploadImagePath = null
-                    )
-                }
-                _toastMessage.emit("已取消上传")
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isUploading = false,
-                        uploadProgress = 0f,
-                        uploadImagePath = null
-                    )
-                }
-                _toastMessage.emit("上传失败: ${e.message}")
             }
+
+            val result = uploader.uploadFromUri(
+                context = context,
+                uri = uri,
+                onProgress = { progress ->
+                    _uiState.update { it.copy(uploadProgress = progress) }
+                }
+            )
+
+            if (!coroutineContext.isActive) {
+                _uiState.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 0f,
+                        uploadImagePath = null
+                    )
+                }
+                return false
+            }
+
+            result.onSuccess { response ->
+                _uiState.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 1f,
+                        uploadImagePath = null
+                    )
+                }
+                if (isVideo) {
+                    sendVideoMessage(response)
+                } else {
+                    sendImageMessage(response)
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isUploading = false,
+                        uploadProgress = 0f,
+                        uploadImagePath = null
+                    )
+                }
+                val prefix = if (isVideo) "视频" else "图片"
+                _toastMessage.emit("${prefix}上传失败: ${error.message}")
+            }
+
+            result.isSuccess
+        } catch (e: CancellationException) {
+            _uiState.update {
+                it.copy(
+                    isUploading = false,
+                    uploadProgress = 0f,
+                    uploadImagePath = null
+                )
+            }
+            throw e
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    isUploading = false,
+                    uploadProgress = 0f,
+                    uploadImagePath = null
+                )
+            }
+            _toastMessage.emit("上传失败: ${e.message}")
+            false
         }
     }
     
@@ -880,85 +924,6 @@ class ChatViewModel(
             }.onFailure { error ->
                 _uiState.update { it.copy(isSending = false) }
                 _toastMessage.emit("发送失败: ${error.message}")
-            }
-        }
-    }
-    
-    fun uploadAndSendImage(uri: Uri, context: Context) {
-        uploadJob?.cancel()
-        uploadJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isUploading = true,
-                    uploadProgress = 0f,
-                    uploadImagePath = uri.toString(),
-                    isSending = false
-                )
-            }
-    
-            try {
-                val uploader = QiniuUploader(
-                    context = context,
-                    userToken = token,
-                    enableWebp = true
-                )
-    
-                val result = uploader.uploadFromUri(
-                    context = context,
-                    uri = uri,
-                    onProgress = { progress ->
-                        _uiState.update { it.copy(uploadProgress = progress) }
-                    }
-                )
-    
-                if (!isActive) {
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 0f,
-                            uploadImagePath = null
-                        )
-                    }
-                    return@launch
-                }
-    
-                result.onSuccess { response ->
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 1f,
-                            uploadImagePath = null
-                        )
-                    }
-                    sendImageMessage(response)
-                }.onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isUploading = false,
-                            uploadProgress = 0f,
-                            uploadImagePath = null
-                        )
-                    }
-                    _toastMessage.emit("图片上传失败: ${error.message}")
-                }
-            } catch (_: CancellationException) {
-                _uiState.update {
-                    it.copy(
-                        isUploading = false,
-                        uploadProgress = 0f,
-                        uploadImagePath = null
-                    )
-                }
-                _toastMessage.emit("已取消上传")
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isUploading = false,
-                        uploadProgress = 0f,
-                        uploadImagePath = null
-                    )
-                }
-                _toastMessage.emit("上传失败: ${e.message}")
             }
         }
     }

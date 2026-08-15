@@ -13,6 +13,7 @@ import android.view.WindowInsets as AndroidWindowInsets
 import android.view.WindowInsetsAnimationControlListener
 import android.view.WindowInsetsAnimationController
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -290,8 +291,7 @@ private fun ChatComposer(
     hasInstructions: Boolean,
     isInstructionPanelVisible: Boolean,
     onInstructionClick: () -> Unit,
-    onAddImageClick: () -> Unit,
-    onAddVideoClick: () -> Unit,
+    onAddAlbumClick: () -> Unit,
     onAddFileClick: () -> Unit,
     focusRequester: FocusRequester,
     onInputFocused: () -> Unit
@@ -313,8 +313,7 @@ private fun ChatComposer(
         },
         onSendClick = { viewModel.sendMessage() },
         onSendWithType = { type -> viewModel.sendMessage(type) },
-        onAddImageClick = onAddImageClick,
-        onAddVideoClick = onAddVideoClick,
+        onAddAlbumClick = onAddAlbumClick,
         onAddFileClick = onAddFileClick,
         isEmojiPanelVisible = isEmojiPanelVisible,
         onEmojiClick = onEmojiClick,
@@ -567,16 +566,12 @@ fun ChatScreen(
         null
     }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.uploadAndSendImage(it, context) }
-    }
-
-    val videoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.uploadAndSendVideo(it, context) }
+    val albumPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 9)
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.uploadAndSendMedia(uris.take(9), context)
+        }
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -598,12 +593,10 @@ fun ChatScreen(
         }
     }
 
-    fun openImagePicker() {
-        imagePickerLauncher.launch("image/*")
-    }
-
-    fun openVideoPicker() {
-        videoPickerLauncher.launch("video/*")
+    fun openAlbumPicker() {
+        albumPickerLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+        )
     }
 
     fun openFilePicker() {
@@ -1498,8 +1491,7 @@ fun ChatScreen(
                                 defaultEmojis = defaultEmojis,
                                 chatType = chatType,
                                 isSending = uiState.isSending,
-                                onAddImageClick = { openImagePicker() },
-                                onAddVideoClick = { openVideoPicker() },
+                                onAddAlbumClick = { openAlbumPicker() },
                                 onAddFileClick = { openFilePicker() },
                                 isEmojiPanelVisible =
                                     expressions.isVisible ||
