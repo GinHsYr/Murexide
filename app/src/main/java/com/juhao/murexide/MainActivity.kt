@@ -349,6 +349,14 @@ private fun TelegramFloatingNavigationBar(
                                 Spacer(modifier = Modifier.height(1.dp))
                                 HomeNavigationLabel(item, selected, compact = true)
                             }
+                            if (item.route == "mine") {
+                                AccountQuickSwitchMenu(
+                                    expanded = showAccountMenu,
+                                    accounts = accounts,
+                                    currentAccountId = currentAccountId,
+                                    onDismissRequest = onDismissAccountMenu
+                                )
+                            }
                         }
                     }
                 }
@@ -571,12 +579,42 @@ fun MainScreen(account: UserAccount) {
                             },
                         ) { index, selected, overlayPass ->
                             val item = navItems[index]
-                            HomeNavigationIcon(
-                                item = item,
-                                selected = selected,
-                                unreadCount = unreadCount
-                            )
-                            HomeNavigationLabel(item, selected, compact = true)
+                            if (item.route == "mine") {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(
+                                            2.dp,
+                                            Alignment.CenterVertically
+                                        )
+                                    ) {
+                                        HomeNavigationIcon(
+                                            item = item,
+                                            selected = selected,
+                                            unreadCount = unreadCount
+                                        )
+                                        HomeNavigationLabel(item, selected, compact = true)
+                                    }
+                                    if (!overlayPass) {
+                                        AccountQuickSwitchMenu(
+                                            expanded = showAccountMenu,
+                                            accounts = loggedInAccounts,
+                                            currentAccountId = account.id,
+                                            onDismissRequest = { showAccountMenu = false }
+                                        )
+                                    }
+                                }
+                            } else {
+                                HomeNavigationIcon(
+                                    item = item,
+                                    selected = selected,
+                                    unreadCount = unreadCount
+                                )
+                                HomeNavigationLabel(item, selected, compact = true)
+                            }
                         }
                     } else {
                         TelegramFloatingNavigationBar(
