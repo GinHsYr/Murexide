@@ -221,8 +221,8 @@ private fun LiquidGlassMagnifierOverlay(
                         shape = { Capsule() },
                         effects = {
                             lens(
-                                8.dp.toPx(),
-                                24.dp.toPx(),
+                                16.dp.toPx(),
+                                48.dp.toPx(),
                                 depthEffect = true,
                                 chromaticAberration = true
                             )
