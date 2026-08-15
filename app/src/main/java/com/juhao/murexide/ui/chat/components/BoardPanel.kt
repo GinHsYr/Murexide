@@ -32,6 +32,7 @@ import com.juhao.murexide.data.BoardItem
 import com.juhao.murexide.ui.components.MarkdownText
 import com.juhao.murexide.ui.components.LiteHtmlContent
 import com.juhao.murexide.ui.theme.resolvedLiquidGlassContentColor
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSelectionContainer
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -129,22 +130,25 @@ private fun BoardContent(
             }
         }
 
-        when (board.contentType) {
-            BoardItem.CONTENT_TYPE_MARKDOWN -> MarkdownText(
-                markdown = board.content,
-                textColor = bodyContentColor,
-                onImageClick = onImageClick
-            )
-            BoardItem.CONTENT_TYPE_HTML -> LiteHtmlContent(
-                htmlContent = board.content,
-                textColor = bodyContentColor,
-                onImageClick = onImageClick
-            )
-            else -> Text(
-                text = board.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = bodyContentColor
-            )
+        LiquidGlassSelectionContainer {
+            when (board.contentType) {
+                BoardItem.CONTENT_TYPE_MARKDOWN -> MarkdownText(
+                    markdown = board.content,
+                    textColor = bodyContentColor,
+                    onImageClick = onImageClick,
+                    enableTextSelection = false
+                )
+                BoardItem.CONTENT_TYPE_HTML -> LiteHtmlContent(
+                    htmlContent = board.content,
+                    textColor = bodyContentColor,
+                    onImageClick = onImageClick
+                )
+                else -> Text(
+                    text = board.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = bodyContentColor
+                )
+            }
         }
     }
 }

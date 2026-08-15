@@ -118,6 +118,7 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import com.juhao.murexide.ui.theme.ProvideLiquidGlassContentColor
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassMagnifierHost
 import com.juhao.murexide.utils.requiresLegacyWritePermission
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
@@ -890,8 +891,12 @@ fun ChatScreen(
         )
     }
 
-    Scaffold(
+    LiquidGlassMagnifierHost(
         modifier = modifier.fillMaxSize(),
+        enabled = liquidGlassEnabled
+    ) {
+        Scaffold(
+        modifier = Modifier.fillMaxSize(),
         containerColor = chatBackgroundColor,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
@@ -1946,6 +1951,7 @@ fun ChatScreen(
                     }
                 }
             }
+        }
         }
     }
 

@@ -13,20 +13,29 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputConnectionWrapper
 import android.view.inputmethod.InputMethodManager
 import android.text.InputType
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.viewinterop.AndroidView
@@ -35,6 +44,10 @@ import com.juhao.murexide.data.DefaultEmojiBitmapCache
 import com.juhao.murexide.data.DefaultEmojiParser
 import com.juhao.murexide.data.DefaultEmojiMatch
 import com.juhao.murexide.data.MentionToken
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassMagnifierPosition
+import com.juhao.murexide.ui.theme.liquidglass.LocalLiquidGlassMagnifierController
+import com.juhao.murexide.ui.theme.liquidglass.PublishLiquidGlassMagnifier
+import com.juhao.murexide.ui.theme.LocalLiquidGlassEnabled
 import com.juhao.murexide.utils.MentionUtils
 import kotlin.math.roundToInt
 
@@ -117,6 +130,7 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
     private var currentMentions: List<MentionToken> = emptyList()
     private var currentEmojis: List<DefaultEmoji> = emptyList()
     private var focused: () -> Unit = {}
+    private var magnifierPositionChanged: (LiquidGlassMagnifierPosition?) -> Unit = {}
     private var valueChanged: (
         value: TextFieldValue,
         mentions: List<MentionToken>,
@@ -137,6 +151,21 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
     private var boundHintColor: Int? = null
     private var boundTextSizeSp = Float.NaN
     private var boundEnabled: Boolean? = null
+    private var boundSuppressPlatformMagnifier: Boolean? = null
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var pointerIsDown = false
+    private var magnifierGestureActive = false
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private val activateMagnifier = Runnable {
+        if (pointerIsDown) {
+            magnifierGestureActive = true
+            publishTouchMagnifier(lastTouchX, lastTouchY)
+        }
+    }
+    private val dismissMagnifier = Runnable { magnifierPositionChanged(null) }
 
     init {
         background = null
@@ -249,13 +278,116 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
     ) {
         super.onFocusChanged(focused, direction, previouslyFocusedRect)
         if (ready && focused) this.focused()
+        if (ready && !focused) {
+            removeCallbacks(activateMagnifier)
+            removeCallbacks(dismissMagnifier)
+            magnifierPositionChanged(null)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(activateMagnifier)
+        removeCallbacks(dismissMagnifier)
+        magnifierPositionChanged(null)
+        super.onDetachedFromWindow()
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                pointerIsDown = true
+                magnifierGestureActive = false
+                touchDownX = event.x
+                touchDownY = event.y
+                lastTouchX = event.x
+                lastTouchY = event.y
+                removeCallbacks(activateMagnifier)
+                removeCallbacks(dismissMagnifier)
+                postDelayed(
+                    activateMagnifier,
+                    ViewConfiguration.getLongPressTimeout().toLong()
+                )
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                lastTouchX = event.x
+                lastTouchY = event.y
+                if (!magnifierGestureActive) {
+                    val dx = event.x - touchDownX
+                    val dy = event.y - touchDownY
+                    if (dx * dx + dy * dy > touchSlop * touchSlop) {
+                        removeCallbacks(activateMagnifier)
+                    }
+                }
+            }
+        }
+
         val handled = super.onTouchEvent(event)
-        if (event.actionMasked == MotionEvent.ACTION_UP) requestEditorFocus()
+        when (event.actionMasked) {
+            MotionEvent.ACTION_MOVE -> {
+                if (magnifierGestureActive) publishTouchMagnifier(event.x, event.y)
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_CANCEL -> {
+                pointerIsDown = false
+                magnifierGestureActive = false
+                removeCallbacks(activateMagnifier)
+                removeCallbacks(dismissMagnifier)
+                magnifierPositionChanged(null)
+                if (event.actionMasked == MotionEvent.ACTION_UP) requestEditorFocus()
+            }
+        }
         return handled
+    }
+
+    private fun publishTouchMagnifier(x: Float, y: Float) {
+        val textLayout = layout ?: return
+        if (textLayout.lineCount == 0) return
+        val textY = (y - totalPaddingTop + scrollY)
+            .roundToInt()
+            .coerceIn(0, textLayout.height.coerceAtLeast(0))
+        val line = textLayout.getLineForVertical(textY)
+        val textX = x - totalPaddingLeft + scrollX
+        val lineLeft = minOf(textLayout.getLineLeft(line), textLayout.getLineRight(line))
+        val lineRight = maxOf(textLayout.getLineLeft(line), textLayout.getLineRight(line))
+        publishMagnifier(
+            line = line,
+            textX = textX.coerceIn(lineLeft, lineRight)
+        )
+    }
+
+    private fun publishSelectionMagnifier(offset: Int) {
+        val textLayout = layout ?: return
+        if (textLayout.lineCount == 0) return
+        val safeOffset = offset.coerceIn(0, text?.length ?: 0)
+        val line = textLayout.getLineForOffset(safeOffset)
+        publishMagnifier(line, textLayout.getPrimaryHorizontal(safeOffset))
+    }
+
+    private fun publishMagnifier(line: Int, textX: Float) {
+        val textLayout = layout ?: return
+        val lineCenterY = (
+            textLayout.getLineTop(line) + textLayout.getLineBottom(line)
+        ) / 2f + totalPaddingTop - scrollY
+        magnifierPositionChanged(
+            LiquidGlassMagnifierPosition(
+                center = Offset(
+                    x = textX + totalPaddingLeft - scrollX,
+                    y = lineCenterY
+                ),
+                lineHeightPx = (
+                    textLayout.getLineBottom(line) - textLayout.getLineTop(line)
+                ).toFloat()
+            )
+        )
+    }
+
+    private fun publishHandleMagnifier(offset: Int) {
+        publishSelectionMagnifier(offset)
+        removeCallbacks(dismissMagnifier)
+        postDelayed(dismissMagnifier, 180L)
     }
 
     override fun performClick(): Boolean {
@@ -330,7 +462,9 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
             insertedText: String,
             insertPosition: Int
         ) -> Unit,
-        onFocused: () -> Unit
+        onFocused: () -> Unit,
+        onMagnifierPositionChanged: (LiquidGlassMagnifierPosition?) -> Unit = {},
+        suppressPlatformMagnifier: Boolean = false
     ) {
         currentMentions = mentions
         val emojisChanged = currentEmojis !== emojis
@@ -338,6 +472,14 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
         if (emojisChanged) currentEmojisByName = emojis.associateBy(DefaultEmoji::name)
         valueChanged = onValueChanged
         focused = onFocused
+        magnifierPositionChanged = onMagnifierPositionChanged
+        if (boundSuppressPlatformMagnifier != suppressPlatformMagnifier) {
+            // Android's Editor suppresses its magnifier for rotated views. The smallest
+            // non-zero float has no visible transform and is restored outside glass mode.
+            rotation = if (suppressPlatformMagnifier) Float.MIN_VALUE else 0f
+            boundSuppressPlatformMagnifier = suppressPlatformMagnifier
+            if (!suppressPlatformMagnifier) magnifierPositionChanged(null)
+        }
         if (boundEnabled != enabled) {
             isEnabled = enabled
             boundEnabled = enabled
@@ -430,6 +572,7 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
         ) return
 
         val currentText = text?.toString().orEmpty()
+        val previousSelection = previousValue.selection
 
         val oldMentions = currentMentions
         val result = MentionUtils.processEdit(
@@ -449,6 +592,20 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
         previousValue = result.value
         currentMentions = result.mentions
         if (changed) valueChanged(result.value, result.mentions, "", -1)
+        if (result.value.selection != previousSelection) {
+            val activeOffset = if (
+                result.value.selection.start != previousSelection.start
+            ) {
+                result.value.selection.start
+            } else {
+                result.value.selection.end
+            }
+            if (magnifierGestureActive) {
+                publishSelectionMagnifier(activeOffset)
+            } else if (!result.value.selection.collapsed) {
+                publishHandleMagnifier(activeOffset)
+            }
+        }
     }
 
     private fun rebuildEmojiSpans(
@@ -620,31 +777,53 @@ internal fun DefaultEmojiTextField(
     onFocused: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val useLiquidGlassMagnifier =
+        LocalLiquidGlassEnabled.current && LocalLiquidGlassMagnifierController.current != null
     val editorHolder = remember { arrayOfNulls<DefaultEmojiEditText>(1) }
-    AndroidView(
-        factory = { context ->
-            DefaultEmojiEditText(context).apply {
-                hint = "输入消息..."
-                editorHolder[0] = this
-            }
-        },
-        update = { editor ->
-            editor.bind(
-                value = value,
-                mentions = mentions,
-                emojis = emojis,
-                enabled = enabled,
-                textColor = textColor,
-                hintColor = hintColor,
-                textSizeSp = textSizeSp,
-                onValueChanged = onValueChange,
-                onFocused = onFocused
-            )
-        },
-        modifier = modifier
-            .focusRequester(focusRequester)
-            .onFocusChanged { state ->
-                if (state.hasFocus) editorHolder[0]?.requestEditorFocus()
-            }
-    )
+    val magnifierOwner = remember { Any() }
+    var magnifierPosition by remember {
+        mutableStateOf<LiquidGlassMagnifierPosition?>(null)
+    }
+    var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    Box(
+        modifier = modifier.onGloballyPositioned { coordinates = it },
+        propagateMinConstraints = true
+    ) {
+        AndroidView(
+            factory = { context ->
+                DefaultEmojiEditText(context).apply {
+                    hint = "输入消息..."
+                    editorHolder[0] = this
+                }
+            },
+            update = { editor ->
+                editor.bind(
+                    value = value,
+                    mentions = mentions,
+                    emojis = emojis,
+                    enabled = enabled,
+                    textColor = textColor,
+                    hintColor = hintColor,
+                    textSizeSp = textSizeSp,
+                    onValueChanged = onValueChange,
+                    onFocused = onFocused,
+                    onMagnifierPositionChanged = { magnifierPosition = it },
+                    suppressPlatformMagnifier = useLiquidGlassMagnifier
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .onFocusChanged { state ->
+                    if (state.hasFocus) editorHolder[0]?.requestEditorFocus()
+                }
+        )
+
+        PublishLiquidGlassMagnifier(
+            owner = magnifierOwner,
+            position = magnifierPosition,
+            sourceCoordinates = coordinates
+        )
+    }
 }

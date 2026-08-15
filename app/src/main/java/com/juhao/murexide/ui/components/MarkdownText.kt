@@ -15,7 +15,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -55,6 +54,7 @@ import java.util.Collections
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.core.net.toUri
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSelectionContainer
 
 @Composable
 fun MarkdownText(
@@ -207,7 +207,7 @@ private fun MarkdownTextRun(
         enableTextSelection && !MarkdownRendererCache.shouldDisableSelectionForPerformance(content)
     val maybeSelection: @Composable (@Composable () -> Unit) -> Unit = { body ->
         if (allowSelectionForThisRun) {
-            SelectionContainer { body() }
+            LiquidGlassSelectionContainer { body() }
         } else {
             body()
         }
@@ -433,7 +433,7 @@ private fun InlineMarkdownWithLatex(
     val lines = remember(segments) { splitInlineSegmentsByLine(segments) }
     val maybeSelection: @Composable (@Composable () -> Unit) -> Unit = { body ->
         if (enableTextSelection) {
-            SelectionContainer { body() }
+            LiquidGlassSelectionContainer { body() }
         } else {
             body()
         }
@@ -604,7 +604,7 @@ private fun CodeBlockComponent(
                 )
             }
             if (enableTextSelection) {
-                SelectionContainer { codeText() }
+                LiquidGlassSelectionContainer { codeText() }
             } else {
                 codeText()
             }

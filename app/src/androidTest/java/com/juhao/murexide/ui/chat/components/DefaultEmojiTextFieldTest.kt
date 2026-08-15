@@ -18,6 +18,43 @@ class DefaultEmojiTextFieldTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun platformMagnifierIsSuppressedWithoutVisibleRotation() {
+        instrumentation.runOnMainSync {
+            val editor = DefaultEmojiEditText(instrumentation.targetContext)
+            val value = TextFieldValue("")
+            editor.bind(
+                value = value,
+                mentions = emptyList(),
+                emojis = emptyList(),
+                enabled = true,
+                textColor = Color.Black,
+                hintColor = Color.Gray,
+                textSizeSp = 16f,
+                onValueChanged = { _, _, _, _ -> },
+                onFocused = {},
+                suppressPlatformMagnifier = true
+            )
+
+            assertEquals(Float.MIN_VALUE, editor.rotation)
+            assertTrue(editor.rotation != 0f)
+
+            editor.bind(
+                value = value,
+                mentions = emptyList(),
+                emojis = emptyList(),
+                enabled = true,
+                textColor = Color.Black,
+                hintColor = Color.Gray,
+                textSizeSp = 16f,
+                onValueChanged = { _, _, _, _ -> },
+                onFocused = {},
+                suppressPlatformMagnifier = false
+            )
+            assertEquals(0f, editor.rotation)
+        }
+    }
+
+    @Test
     fun adjacentEmojiRemainRenderedAfterProgrammaticInsertions() {
         instrumentation.runOnMainSync {
             val editor = DefaultEmojiEditText(instrumentation.targetContext)

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.juhao.murexide.data.DefaultEmoji
 import com.juhao.murexide.data.DefaultEmojiMatch
 import com.juhao.murexide.data.DefaultEmojiParser
+import com.juhao.murexide.ui.theme.liquidglass.LiquidGlassSelectionContainer
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -130,7 +130,7 @@ internal fun BatchedDefaultEmojiText(
     }
 
     if (enableSelection) {
-        SelectionContainer(
+        LiquidGlassSelectionContainer(
             modifier = modifier
         ) {
             basicText()

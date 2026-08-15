@@ -26,7 +26,7 @@ the litehtml submodule.
 - License: Apache License 2.0
 - Copyright (c) 2025 Kyant
 
-The liquid bottom tabs, slider, toggle, interaction highlight, and damped-drag
+The liquid bottom tabs, slider, toggle, magnifier, interaction highlight, and damped-drag
 implementations include code adapted from the official catalog application. The adapted
 files contain local changes for Murexide navigation, accessibility, discrete values, and
 Material fallbacks.
