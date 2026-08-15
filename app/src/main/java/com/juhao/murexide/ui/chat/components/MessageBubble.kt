@@ -111,6 +111,12 @@ fun MessageBubble(
     roleLabel: String? = null,
     isHighlighted: Boolean = false
 ) {
+    LaunchedEffect(Unit) {
+        if (showMenuMsgId != null) {
+            showMenuChanged(null)
+        }
+    }
+
     val clipboardManager = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
@@ -464,7 +470,7 @@ fun MessageBubble(
                                             if (message.contentType == MessageItem.CONTENT_TYPE_MARKDOWN) {
                                                 MarkdownText(
                                                     markdown = message.content,
-                                                    enableTextSelection = false,
+                                                    enableTextSelection = isSelected,
                                                     onImageClick = { url ->
                                                         onMarkdownImageClick(url)
                                                     }
@@ -484,8 +490,11 @@ fun MessageBubble(
                                                         color = MaterialTheme.colorScheme.onSurface
                                                     ),
                                                     timestampStyle = MaterialTheme.typography.labelSmall.copy(
-                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                                    )
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(
+                                                            alpha = 0.7f
+                                                        )
+                                                    ),
+                                                    enableSelection = isSelected
                                                 )
                                             }
                                         }

@@ -40,7 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
@@ -62,7 +61,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.juhao.murexide.ui.components.Avatar
 import com.juhao.murexide.ui.components.ExpressiveDropdownMenu
 import coil.compose.AsyncImage
@@ -97,6 +95,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.Alignment
 import com.juhao.murexide.repository.ConversationDetailRepository
 import com.juhao.murexide.ui.conversationdetail.ConversationDetailActivity
 import com.juhao.murexide.ui.components.handleStaticHtmlLink
@@ -119,7 +118,6 @@ import com.juhao.murexide.ui.theme.LocalLiquidGlassBlur
 import com.juhao.murexide.ui.theme.liquidGlass
 import com.juhao.murexide.ui.theme.liquidGlassHighlightEnabled
 import com.juhao.murexide.ui.theme.ProvideLiquidGlassContentColor
-import com.juhao.murexide.ui.theme.adaptiveLiquidGlassForeground
 import com.juhao.murexide.utils.requiresLegacyWritePermission
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
@@ -386,11 +384,6 @@ fun ChatScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember { FocusRequester() }
     val composeView = LocalView.current
-
-    LifecycleResumeEffect(viewModel, chatType, chatId) {
-        viewModel.setForegroundSyncEnabled(true)
-        onPauseOrDispose { viewModel.setForegroundSyncEnabled(false) }
-    }
 
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val imeTargetBottomPx = WindowInsets.imeAnimationTarget.getBottom(density)
@@ -917,23 +910,35 @@ fun ChatScreen(
                                         Icon(
                                             AppIcons.Close,
                                             contentDescription = "退出多选",
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .adaptiveLiquidGlassForeground()
+                                            modifier = Modifier.size(24.dp)
                                         )
                                     }
                                 } else {
-                                    IconButton(
-                                        modifier = Modifier.size(46.dp),
-                                        onClick = onBackClick
-                                    ) {
-                                        AutoMirroredIcon(
-                                            imageVector = AppIcons.ArrowBack,
-                                            contentDescription = "返回",
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .adaptiveLiquidGlassForeground()
-                                        )
+                                    Box {
+                                        IconButton(
+                                            modifier = Modifier.size(46.dp),
+                                            onClick = onBackClick
+                                        ) {
+                                            AutoMirroredIcon(
+                                                imageVector = AppIcons.ArrowBack,
+                                                contentDescription = "返回",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        if (backUnreadCount > 0) {
+                                            Badge(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    .padding(6.dp),
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ) {
+                                                Text(
+                                                    "$backUnreadCount",
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -947,8 +952,7 @@ fun ChatScreen(
                                 Row(
                                     modifier = Modifier
                                         .padding(start = 12.dp)
-                                        .height(46.dp)
-                                        .adaptiveLiquidGlassForeground(),
+                                        .height(46.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
@@ -1022,7 +1026,7 @@ fun ChatScreen(
                                             size = 40.dp
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Column(Modifier.adaptiveLiquidGlassForeground()) {
+                                        Column {
                                             Text(
                                                 text = chatName,
                                                 style = MaterialTheme.typography.bodyLarge,
@@ -1075,9 +1079,7 @@ fun ChatScreen(
                                                     AppIcons.KeyboardArrowDown
                                                 },
                                                 contentDescription = if (uiState.boardPanel.isExpanded) "收起看板" else "展开看板",
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .adaptiveLiquidGlassForeground()
+                                                modifier = Modifier.size(24.dp)
                                             )
                                         }
                                     }
@@ -1097,9 +1099,7 @@ fun ChatScreen(
                                     AutoMirroredIcon(
                                         AppIcons.Undo,
                                         contentDescription = "撤回",
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .adaptiveLiquidGlassForeground()
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 if (selectedMessages.size == 1) {
@@ -1130,9 +1130,7 @@ fun ChatScreen(
                                                 Icon(
                                                     AppIcons.ContentCopy,
                                                     contentDescription = "复制",
-                                                    modifier = Modifier
-                                                        .size(24.dp)
-                                                        .adaptiveLiquidGlassForeground()
+                                                    modifier = Modifier.size(24.dp)
                                                 )
                                             }
                                         }
@@ -1145,9 +1143,7 @@ fun ChatScreen(
                                     Icon(
                                         AppIcons.Screenshot,
                                         contentDescription = "截图",
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .adaptiveLiquidGlassForeground()
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             } else {
@@ -1199,9 +1195,7 @@ fun ChatScreen(
                                     Icon(
                                         imageVector = AppIcons.MoreVert,
                                         contentDescription = "更多",
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .adaptiveLiquidGlassForeground()
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }

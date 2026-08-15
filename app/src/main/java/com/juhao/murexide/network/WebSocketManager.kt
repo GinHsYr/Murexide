@@ -130,10 +130,6 @@ class WebSocketManager private constructor() {
         publishEvent(WsEvent.EditMessage(message))
     }
 
-    fun publishLatestMessageResolved(message: MessageItem) {
-        publishEvent(WsEvent.LatestMessageResolved(message))
-    }
-
     fun publishLocalMessageRecalled(message: MessageItem, actor: RecallActor) {
         val recalled = message.copy(
             isRecalled = true,

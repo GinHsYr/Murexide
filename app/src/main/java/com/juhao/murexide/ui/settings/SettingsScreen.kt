@@ -204,17 +204,17 @@ fun SettingsScreen(
                     checked = notificationEnabled,
                     onCheckedChange = { onNotificationToggle(it) }
                 )
-                SettingsItem(
-                    icon = AppIcons.FolderZip,
-                    title = "存储权限",
-                    subtitle = when {
-                        !legacyStoragePermission -> "Android 10 及以上下载无需存储权限"
-                        storagePermissionGranted -> "已允许，下载保存到 Download/Murexide"
-                        else -> "未允许，点击申请存储权限"
-                    },
-                    isEnabled = legacyStoragePermission,
-                    onClick = ::requestStoragePermission
-                )
+                if (legacyStoragePermission) {
+                    SettingsItem(
+                        icon = AppIcons.FolderZip,
+                        title = "存储权限",
+                        subtitle = when {
+                            storagePermissionGranted -> "已允许，下载保存到 Download/Murexide"
+                            else -> "未允许，点击申请存储权限"
+                        },
+                        onClick = ::requestStoragePermission
+                    )
+                }
                 SettingsSwitchItem(
                     icon = AppIcons.LaptopChromebook,
                     title = "大屏模式",

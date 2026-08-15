@@ -191,21 +191,10 @@ object LocalCache {
                 message.senderId
             ) ?: return@withTransaction
             val current = currentEntity.toModel()
-            val isStrictlyNewer = message.isStrictlyNewerThan(current)
             val changed = listOf(current).withLatestMessage(message, incrementUnread)?.singleOrNull()
                 ?: return@withTransaction
-            if (incrementUnread && isStrictlyNewer) {
-                database.states().delete(
-                    accountId,
-                    conversationReadGuardKey(ConversationKey(current.chatId, current.chatType))
-                )
-            }
             val entity = changed.toEntity(accountId, currentEntity.listPosition)
-            if (isStrictlyNewer) {
-                dao.moveConversationToFront(entity)
-            } else {
-                dao.upsertConversations(listOf(entity))
-            }
+            dao.upsertConversations(listOf(entity))
         }
     }
 
@@ -342,15 +331,6 @@ object LocalCache {
     private fun StickyItem.toEntity(accountId: String, listPosition: Int) = CachedStickyEntity(
         accountId, id, chatType, chatId, chatName, avatarUrl, certificationLevel, listPosition
     )
-
-    private fun MessageItem.isStrictlyNewerThan(conversation: ConversationItem): Boolean {
-        if (msgId.isNotBlank() && msgId == conversation.latestMessageId) return false
-        if (msgSeq > 0L && conversation.latestMessageSeq > 0L && msgSeq != conversation.latestMessageSeq) {
-            return msgSeq > conversation.latestMessageSeq
-        }
-        val latestTimestamp = conversation.latestMessageTimestamp
-        return timestamp > 0L && (latestTimestamp <= 0L || timestamp > latestTimestamp)
-    }
 
     private fun MessageItem.toEntity(accountId: String, json: Json): CachedMessageEntity =
         CachedMessageEntity(

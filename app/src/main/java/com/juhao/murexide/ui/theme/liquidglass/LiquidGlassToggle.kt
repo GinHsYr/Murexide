@@ -111,8 +111,8 @@ private fun LiquidToggleContent(
 ) {
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val accentColor = MaterialTheme.colorScheme.primary
-    val boxColor = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val boxColor = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
+    val trackColor = MaterialTheme.colorScheme.secondary
     val currentChecked by rememberUpdatedState(checked)
     val currentOnCheckedChange by rememberUpdatedState(onCheckedChange)
     val density = LocalDensity.current

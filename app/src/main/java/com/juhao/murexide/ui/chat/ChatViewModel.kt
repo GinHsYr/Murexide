@@ -24,7 +24,6 @@ import com.juhao.murexide.repository.GroupMemberRepository
 import com.juhao.murexide.utils.FileDownloader.downloadFileWithProgress
 import com.juhao.murexide.data.*
 import com.juhao.murexide.data.local.LocalCache
-import com.juhao.murexide.utils.AppForegroundState
 import com.juhao.murexide.utils.MentionUtils
 import com.juhao.murexide.utils.QiniuUploadResponse
 import com.juhao.murexide.utils.QiniuUploader
@@ -105,8 +104,6 @@ class ChatViewModel(
 
     private var uploadJob: Job? = null
     private var streamPersistJob: Job? = null
-    private var foregroundSyncJob: Job? = null
-    private var foregroundSyncEnabled = false
 
     private val msgIdCache = mutableSetOf<String>()
 
@@ -157,15 +154,15 @@ class ChatViewModel(
 
     init {
         setupWebSocket()
-        observeAppForeground()
+        loadMessages()
         loadBackground()
-        if (chatType == 2) { // 群聊
+        if (chatType == 2) {
             loadGroupInfo()
         }
-        if (chatType == 3) { // 机器人
+        if (chatType == 3) {
             loadBotInfo()
         }
-        if (chatType == 1) { // 私信
+        if (chatType == 1) {
             loadUserInfo()
         }
         if (chatType == 2 || chatType == 3) {
@@ -385,18 +382,6 @@ class ChatViewModel(
                 ).first()
                 if (loadGeneration != historyLoadGeneration) return@launch
                 initialCachedMessages = cached
-                if (cached.isNotEmpty()) {
-                    msgIdCache.clear()
-                    msgIdCache.addAll(cached.map { it.msgId })
-                    _uiState.update {
-                        it.copy(
-                            messages = cached,
-                            isLoading = true,
-                            hasMore = false,
-                            error = null
-                        )
-                    }
-                }
             }
 
             repository.getMessageList(
@@ -424,11 +409,24 @@ class ChatViewModel(
                         error = null
                     )
                 }
-                snapshot.messages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
             }.onFailure { error ->
                 if (loadGeneration != historyLoadGeneration) return@onFailure
                 cachedHistoryCursor = initialCachedMessages.lastOrNull()
                 isUsingCachedHistory = cachedHistoryCursor != null
+                if (initialCachedMessages.isNotEmpty()) {
+                    msgIdCache.clear()
+                    msgIdCache.addAll(initialCachedMessages.map { it.msgId })
+                    _uiState.update {
+                        it.copy(
+                            messages = initialCachedMessages,
+                            isLoading = false,
+                            hasMore = isUsingCachedHistory &&
+                                initialCachedMessages.size >= HISTORY_PAGE_SIZE,
+                            error = null
+                        )
+                    }
+                    return@onFailure
+                }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -460,25 +458,6 @@ class ChatViewModel(
             } finally {
                 historyLoadMutex.unlock()
             }
-        }
-    }
-
-    private fun observeAppForeground() {
-        viewModelScope.launch {
-            AppForegroundState.returnedToForeground.collect {
-                if (foregroundSyncEnabled) syncLatestMessages()
-            }
-        }
-    }
-
-    fun setForegroundSyncEnabled(enabled: Boolean) {
-        if (foregroundSyncEnabled == enabled) return
-        foregroundSyncEnabled = enabled
-        if (enabled) {
-            ActiveConversationRegistry.activate(this, ConversationKey(chatId, chatType))
-            syncLatestMessages()
-        } else {
-            ActiveConversationRegistry.deactivate(this)
         }
     }
 
@@ -665,46 +644,6 @@ class ChatViewModel(
 
     fun refresh() {
         loadMessages()
-    }
-
-    /**
-     * Catches up only changes newer than the latest message currently shown. This keeps foreground
-     * recovery cheap while still receiving new, edited, and recalled messages missed by WebSocket.
-     */
-    fun syncLatestMessages() {
-        if (foregroundSyncJob?.isActive == true) return
-
-        foregroundSyncJob = viewModelScope.launch {
-            val anchorMessage = _uiState.value.messages.firstOrNull()
-            if (anchorMessage == null) {
-                if (!_uiState.value.isLoading) loadMessages()
-                return@launch
-            }
-
-            repository.getMessagesByUpdate(
-                token = token,
-                chatId = chatId,
-                chatType = chatType,
-                updateTime = maxOf(anchorMessage.timestamp, anchorMessage.updateTimestamp)
-            ).onSuccess { updates ->
-                if (updates.isEmpty()) return@onSuccess
-
-                val resolvedUpdates = updates.map(::withCurrentUserProfileFallback)
-                var mergedMessages: List<MessageItem> = emptyList()
-                _uiState.update { state ->
-                    mergedMessages = mergeIncrementalMessages(
-                        existingMessages = state.messages,
-                        updatedMessages = resolvedUpdates,
-                        anchorMessage = anchorMessage
-                    )
-                    state.copy(messages = mergedMessages, error = null)
-                }
-                msgIdCache.addAll(mergedMessages.map(MessageItem::msgId))
-                mergedMessages.firstOrNull()?.let(wsManager::publishLatestMessageResolved)
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to sync foreground message updates", error)
-            }
-        }
     }
 
     fun updateInputText(

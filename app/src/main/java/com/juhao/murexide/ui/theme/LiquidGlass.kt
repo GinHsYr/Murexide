@@ -9,26 +9,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.drawPlainBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.runtimeShaderEffect
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.isRuntimeShaderSupported
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 
@@ -46,40 +39,6 @@ private data class LiquidGlassContrastContext(
 
 private val LocalLiquidGlassContrastContext =
     compositionLocalOf<LiquidGlassContrastContext?> { null }
-
-private data class LiquidGlassForegroundSampling(
-    val backdrop: Backdrop,
-    val glassColor: Color,
-    val blurRadius: Dp,
-)
-
-private val LocalLiquidGlassForegroundSampling =
-    compositionLocalOf<LiquidGlassForegroundSampling?> { null }
-
-private val AdaptiveForegroundShader = """
-uniform shader content;
-layout(color) uniform half4 glassColor;
-
-half toLinear(half channel) {
-    return channel <= 0.04045
-        ? channel / 12.92
-        : pow((channel + 0.055) / 1.055, 2.4);
-}
-
-half4 main(float2 coord) {
-    half4 sample = content.eval(coord);
-    half3 backdrop = sample.a > 0.001
-        ? sample.rgb / sample.a
-        : half3(0.0);
-    half3 visible = mix(backdrop, glassColor.rgb, glassColor.a);
-    half luminance = dot(
-        half3(toLinear(visible.r), toLinear(visible.g), toLinear(visible.b)),
-        half3(0.2126, 0.7152, 0.0722)
-    );
-    half foreground = luminance > 0.179 ? 0.0 : 1.0;
-    return half4(foreground, foreground, foreground, 1.0);
-}
-""".trimIndent()
 
 fun Modifier.liquidGlass(
     enabled: Boolean,
@@ -181,43 +140,6 @@ internal fun resolvedLiquidGlassContentColor(fallbackColor: Color): Color {
         backgroundColor = context.backgroundColor,
         minimumContrast = context.minimumContrast,
     )
-}
-
-/**
- * Makes the child itself black or white per pixel from the real backdrop underneath it.
- * The backdrop is thresholded in a shader and the child's alpha is used as a destination-in
- * mask, so images and message bubbles are included without a CPU screenshot/readback.
- */
-@Composable
-fun Modifier.adaptiveLiquidGlassForeground(): Modifier {
-    val sampling = LocalLiquidGlassForegroundSampling.current ?: return this
-    if (!isRuntimeShaderSupported()) return this
-
-    return this
-        .graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
-        }
-        .drawPlainBackdrop(
-            backdrop = sampling.backdrop,
-            shape = { RectangleShape },
-            effects = {
-                vibrancy()
-                if (sampling.blurRadius > 0.dp) {
-                    blur(sampling.blurRadius.toPx())
-                }
-                runtimeShaderEffect(
-                    key = "adaptive-liquid-glass-foreground",
-                    shaderString = AdaptiveForegroundShader,
-                    uniformShaderName = "content",
-                ) {
-                    setColorUniform("glassColor", sampling.glassColor)
-                }
-            },
-        )
-        .graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
-            blendMode = BlendMode.DstIn
-        }
 }
 
 @Composable

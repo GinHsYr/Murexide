@@ -127,7 +127,7 @@ private fun LiquidSliderContent(
 ) {
     val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val accentColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val trackColor = MaterialTheme.colorScheme.secondary
     val trackBackdrop = rememberLayerBackdrop()
     val snappedValue = snapSliderValue(value, valueRange, steps)
     val currentValue by rememberUpdatedState(snappedValue)

@@ -307,8 +307,6 @@ internal class DefaultEmojiEditText(context: Context) : AppCompatEditText(contex
         val cursor = selectionStart
         if (cursor < 0 || cursor != selectionEnd) return false
 
-        // Some IMEs request deletion on both sides of the cursor. At an emoji boundary,
-        // give the backward direction priority so one backspace removes exactly one span.
         val range = when {
             beforeLength > 0 -> currentProtectedRanges.lastOrNull { it.end == cursor }
             afterLength > 0 -> currentProtectedRanges.firstOrNull { it.start == cursor }

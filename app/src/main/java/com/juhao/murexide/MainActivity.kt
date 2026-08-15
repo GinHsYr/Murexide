@@ -115,14 +115,7 @@ private const val TAB_TRANSITION_DURATION_MILLIS = 300
 private fun HomeNavigationIcon(
     item: NavItem,
     selected: Boolean,
-    unreadCount: Int,
-    showAccountMenu: Boolean,
-    accounts: List<UserAccount>,
-    currentAccountId: String,
-    onNavigate: (String) -> Unit,
-    onShowAccountMenu: () -> Unit,
-    onDismissAccountMenu: () -> Unit,
-    handleAccountGestures: Boolean = true,
+    unreadCount: Int
 ) {
     val liquidGlassEnabled = LocalLiquidGlassEnabled.current
     val inheritedGlassContentColor = LocalContentColor.current
@@ -143,28 +136,6 @@ private fun HomeNavigationIcon(
     }
 
     when (item.route) {
-        "mine" -> {
-            Box(
-                modifier = if (handleAccountGestures) {
-                    Modifier.combinedClickable(
-                        onClick = { onNavigate(item.route) },
-                        onLongClick = onShowAccountMenu,
-                        onLongClickLabel = "打开账号菜单"
-                    )
-                } else {
-                    Modifier
-                }
-            ) {
-                icon()
-                AccountQuickSwitchMenu(
-                    expanded = showAccountMenu,
-                    accounts = accounts,
-                    currentAccountId = currentAccountId,
-                    onDismissRequest = onDismissAccountMenu
-                )
-            }
-        }
-
         "conversations" -> {
             BadgedBox(badge = { UnreadCountBadge(unreadCount) }) {
                 icon()
@@ -373,14 +344,7 @@ private fun TelegramFloatingNavigationBar(
                                 HomeNavigationIcon(
                                     item = item,
                                     selected = selected,
-                                    unreadCount = unreadCount,
-                                    showAccountMenu = showAccountMenu,
-                                    accounts = accounts,
-                                    currentAccountId = currentAccountId,
-                                    onNavigate = onNavigate,
-                                    onShowAccountMenu = onShowAccountMenu,
-                                    onDismissAccountMenu = onDismissAccountMenu,
-                                    handleAccountGestures = false,
+                                    unreadCount = unreadCount
                                 )
                                 Spacer(modifier = Modifier.height(1.dp))
                                 HomeNavigationLabel(item, selected, compact = true)
@@ -610,14 +574,7 @@ fun MainScreen(account: UserAccount) {
                             HomeNavigationIcon(
                                 item = item,
                                 selected = selected,
-                                unreadCount = unreadCount,
-                                showAccountMenu = showAccountMenu && !overlayPass,
-                                accounts = loggedInAccounts,
-                                currentAccountId = account.id,
-                                onNavigate = navigateTo,
-                                onShowAccountMenu = { showAccountMenu = true },
-                                onDismissAccountMenu = { showAccountMenu = false },
-                                handleAccountGestures = false,
+                                unreadCount = unreadCount
                             )
                             HomeNavigationLabel(item, selected, compact = true)
                         }
