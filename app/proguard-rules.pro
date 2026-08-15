@@ -8,6 +8,9 @@
 # Native callbacks are invoked from litehtml through JNI.
 -keep class com.juhao.murexide.ui.components.litehtml.LiteHtmlView { *; }
 
+# LiquidGlassSelectionContainer identifies Compose's pre-materialized text magnifier by class.
+-keep class androidx.compose.ui.ComposedModifier { *; }
+
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
 #-keepattributes SourceFile,LineNumberTable
